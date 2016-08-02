@@ -1,122 +1,132 @@
-%% Detecting a red pen probe - Rough work
+%% Probe Object Detection Model Creation
+% Associate user-provided measurements of the probe with points marked on
+% the image of the probe, such that the image colours can be used to detect
+% the probe in other images.
+%
+% ## Usage
+%   Modify parameters and paths to input data in the first code section
+%   below, then run.
+%
+% ## Probe Design Assumptions
+%   The probe is a cylindrically-symmetric object composed of conical or
+%   cylindrical segments. It may taper to a point at one or both ends,
+%   although only one end will be used as the active tip.
+%
+%   The length of the probe should be divided into different-coloured
+%   bands, and the pattern of bands should be asymmetrical, such that it is
+%   possible to uniquely determine the orientation of the probe.
+%   Specifically asymmetry of band lengths is assumed, as opposed to colour
+%   pattern asymmetry. Band edges should be perpendicular to the probe's
+%   axis of cylindrical symmetry.
+%
+% ## Input
+%
+% ### Probe measurements
+% A '.mat' file containing a structure called 'probe' with the following
+% fields:
+% - lengths: Distances of edges of bands from the active end of the probe,
+%     including a distance of 0.0 for the active end of the probe, and,
+%     optionally, a distance for the other end of the probe (i.e. the
+%     length of the entire probe).
+% - widths: Width of the probe at the edges of bands. Widths must include
+%     the ends of the probe, except for ends that taper to points. The
+%     elements of 'widths' should correspond to elements of 'lengths'
+%     (although, if the probe tips taper to points, the first and/or last
+%     elements of 'lengths' will not match any elements of 'widths').
+%
+% Units are arbitrary, but should be consistent with the units of any
+% partial reconstruction of an object that the probe is used to refine.
+%
+% ### Image of probe
+% An RGB image in any format that can be loaded by `imread` showing the
+% entire portion of the probe that the user has provided measurements for.
+% The image should depict the probe under lighting conditions that are
+% similar to the detection scenario, to facilitate colour-based detection.
+%
+% ### Annotations for probe image
+% An image in any format that can be loaded by `imread` with an alpha
+% channel that is nonzero at user-marked interest points, and zero
+% everywhere else. The image should be based on the same image of the probe
+% provided above.
+%
+% Interest points can be marked by nonzero alpha channel regions that are
+% more than one pixel in size - A morphological shrink operation will be
+% used to extract single pixel locations from them. Optionally, a corner
+% feature detector will then be used to refine the locations of interest
+% points within a search window.
+%
+% A single interest point should be marked for each end of the probe that
+% tapers to a point. Two interest points should be marked for the edges of
+% coloured bands on the probe, corresponding to their intersections with
+% the probe's contour in the image.
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang
 % University of Alberta, Department of Computing Science
 % File created July 26, 2016
 
-clear
-close all
+%% Input data and parameters
 
-I = imread('C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\original\redPen_white_b_1.bmp');
+% Image of probe
+I_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\original\redPen_white_b_1.bmp';
+% Annotations for image of probe
+I_annotations_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\annotated\redPen_white_b_1.png';
+
+% Annotation extraction parameters
+annotation_corner_search_width = 4; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
+
+% Debugging tools
+display_original_image = false;
+display_annotations_image = false;
+display_extracted_annotations = false;
+
+%% Load images and obtain adjusted centers of user-marked annotations
+
+I = imread(I_filename);
 image_width = size(I, 2);
 image_height = size(I, 1);
-[~, ~, Ialpha] = imread('C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\annotated\redPen_white_b_1.png');
-figure; imshow(I); title('Raw image');
-
-%% Obtain centers of user-marked annotations
-
-figure; imshow(Ialpha); title('User-marked interest points');
-annotation = logical(Ialpha);
-[annotations_y, annotations_x] = find(bwmorph(annotation, 'shrink', Inf));
-hold on
-plot(annotations_x, annotations_y, 'ro')
-hold off
-
-%% Test various corner detectors to try and refine annotations
-
-n_annotations = length(annotations_x);
-delta = 4;
-width = delta * 2 + 1;
-fprintf('(Parameter) Maximum feature point search window width: %d\n', width);
-
-I_grey = rgb2gray(I);
-
-annotation_search_windows = zeros(n_annotations, 4);
-for i = 1:n_annotations
-    x_separation = annotations_x([1:(i-1), (i+1):end]) - annotations_x(i);
-    y_separation = annotations_y([1:(i-1), (i+1):end]) - annotations_y(i);
-    distances = sqrt(x_separation .^ 2 + y_separation .^ 2);
-    delta_i = min(floor((min(distances) - 1) / 2), delta);
-    delta_i = max(0, delta_i);
-    width_i = delta_i * 2 + 1;
-    y_min = max(1, annotations_y(i) - delta_i);
-    x_min = max(1, annotations_x(i) - delta_i);
-    annotation_search_windows(i, :) = [x_min, y_min, width_i, width_i];
+if display_original_image
+    figure; %#ok<UNRCH>
+    imshow(I);
+    title('Base image');
 end
 
-fast_corners = cell(n_annotations, 1);
-min_eigen_corners = cell(n_annotations, 1);
-harris_corners = cell(n_annotations, 1);
-brisk_corners = cell(n_annotations, 1);
-for i = 1:n_annotations
-    fast_corners{i} = detectFASTFeatures(I_grey, 'ROI', annotation_search_windows(i, :));
-    min_eigen_corners{i} = detectMinEigenFeatures(I_grey, 'ROI', annotation_search_windows(i, :));
-    harris_corners{i} = detectHarrisFeatures(I_grey, 'ROI', annotation_search_windows(i, :));
-    brisk_corners{i} = detectBRISKFeatures(I_grey, 'ROI', annotation_search_windows(i, :));
+[~, ~, Ialpha] = imread(I_annotations_filename);
+if display_annotations_image
+    figure; %#ok<UNRCH>
+    imshow(Ialpha);
+    title('User-marked annotations');
 end
 
-% figure; imshow(max(I_grey, Ialpha)); title('Feature detection results: FAST');
-% hold on
-% for i = 1:n_annotations
-%     rectangle('Position', annotation_search_windows(i, :), 'EdgeColor', 'w');
-%     if ~isempty(fast_corners{i})
-%         plot(fast_corners{i});
-%     end
-% end
-% hold off
-% 
-% figure; imshow(max(I_grey, Ialpha)); title('Feature detection results: minEigen');
-% hold on
-% for i = 1:n_annotations
-%     rectangle('Position', annotation_search_windows(i, :), 'EdgeColor', 'w');
-%     if ~isempty(min_eigen_corners{i})
-%         plot(min_eigen_corners{i});
-%     end
-% end
-% hold off
-% 
-% figure; imshow(max(I_grey, Ialpha)); title('Feature detection results: Harris');
-% hold on
-% for i = 1:n_annotations
-%     rectangle('Position', annotation_search_windows(i, :), 'EdgeColor', 'w');
-%     if ~isempty(harris_corners{i})
-%         plot(harris_corners{i});
-%     end
-% end
-% hold off
-% 
-% figure; imshow(max(I_grey, Ialpha)); title('Feature detection results: BRISK');
-% hold on
-% for i = 1:n_annotations
-%     rectangle('Position', annotation_search_windows(i, :), 'EdgeColor', 'w');
-%     if ~isempty(brisk_corners{i})
-%         plot(brisk_corners{i});
-%     end
-% end
-% hold off
-
-% minEigen features seem good
-% - Enough are detected
-% - They are close to the user-specified points
-feature_points = zeros(n_annotations, 2);
-chosen_features = min_eigen_corners;
-for i = 1:n_annotations
-    if ~isempty(chosen_features{i})
-        feature_points(i, :) = chosen_features{i}.selectStrongest(1).Location;
+if annotation_corner_search_width
+    [ interest_points, feature_search_windows, corners ] = extractInterestPoints( Ialpha, I, annotation_corner_search_width );
+else
+    interest_points = extractInterestPoints( Ialpha ); %#ok<UNRCH>
+end
+if display_extracted_annotations
+    figure; %#ok<UNRCH>
+    I_grey = rgb2gray(I);
+    imshow(max(I_grey, Ialpha));
+    hold on
+    plot(interest_points(:, 1), interest_points(:, 2), 'ro')
+    if annotation_corner_search_width
+        title('Extracted user-marked interest points (red o) and other corner features');
+        for rect = feature_search_windows'
+            rectangle('Position', rect, 'EdgeColor', 'b');
+        end
+        for i = 1:length(corners)
+            if ~isempty(corners{i})
+                plot(corners{i});
+            end
+        end
     else
-        feature_points(i, :) = [annotations_x(i), annotations_y(i)];
+        title('Extracted user-marked interest points (red o)');
     end
+    hold off
 end
 
-% Plot final point selections
-figure; imshow(max(I_grey, Ialpha)); title('Adjusted interest points');
-hold on
-plot(feature_points(:, 1), feature_points(:, 2), 'g.')
-for i = 1:n_annotations
-    rectangle('Position', annotation_search_windows(i, :), 'EdgeColor', 'w');
-end
-hold off
+
+
 
 %% Model the interest points as a series of segments
 
