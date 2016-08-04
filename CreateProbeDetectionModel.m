@@ -68,6 +68,8 @@
 
 %% Input data and parameters
 
+% Probe measurements
+model_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\redPen.mat';
 % Image of probe
 I_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\original\redPen_white_b_1.bmp';
 % Annotations for image of probe
@@ -83,7 +85,7 @@ point_alignment_outlier_threshold = 3;
 display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
-display_model_from_image = true;
+display_model_from_image = false;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -149,7 +151,7 @@ if ~isempty(model_from_image.unmatched)
 end
 
 if display_model_from_image
-    figure;
+    figure; %#ok<UNRCH>
     imshow(I);
     title('Classified interest points (blue, black = tips; green, red = above/below first PCA component; yellow = unmatched)');
     hold on
@@ -177,12 +179,10 @@ if display_model_from_image
     hold off
 end
 
-
-
 %% Match model extracted from the image to the user-supplied measurements of the probe
-load('C:\Users\Bernard\Documents\Data\20160725_probes_lotus\redPen.mat');
+load(model_filename);
 if ~exist('probe', 'var')
-    error('No variable called ''probe'' is loaded.')
+    error('No variable called ''probe'' is loaded (which would contain probe measurements).')
 end
 
 % The cross ratio is invariant under projective transformations
