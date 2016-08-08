@@ -15,7 +15,7 @@
 %   The length of the probe should be divided into different-coloured
 %   bands, and the pattern of bands should be asymmetrical, such that it is
 %   possible to uniquely determine the orientation of the probe.
-%   Specifically asymmetry of band lengths is assumed, as opposed to colour
+%   Specifically, asymmetry of band lengths is assumed, as opposed to colour
 %   pattern asymmetry. Band edges should be perpendicular to the probe's
 %   axis of cylindrical symmetry.
 %
@@ -25,15 +25,21 @@
 % A '.mat' file containing a structure called 'probe' with the following
 % fields:
 % - lengths: Distances of edges of bands from the active end of the probe,
-%     including a distance of 0.0 for the active end of the probe, and,
-%     optionally, a distance for the other end of the probe (i.e. the
-%     length of the entire probe). Distances are measured along the probe's
-%     axis of cylindrical symmetry.
+%     including a distance of 0.0 for the active end of the probe, and a
+%     distance for the other end of the probe (i.e. the length of the
+%     entire probe). Distances are measured along the probe's axis of
+%     cylindrical symmetry.
 % - widths: Width of the probe at the edges of bands. Widths must include
-%     the ends of the probe, except for ends that taper to points. The
-%     elements of 'widths' should correspond to elements of 'lengths'
-%     (although, if the probe tips taper to points, the first and/or last
-%     elements of 'lengths' will not match any elements of 'widths').
+%     the ends of the probe, with values of zero for ends that taper to
+%     points. The elements of 'widths' should correspond to elements of
+%     'lengths' as follows:
+%     1) Active tip of probe.
+%     2) `2 * (length(probe.lengths) - 2)` measurements: One for each side
+%        of each edge between bands, to disambiguate between conical and
+%        cylindrical sections and to allow for junctions with slightly different
+%        radii on either side. Measurements are in order of distance from
+%        the active tip of the probe.
+%     3) Other end of the probe.
 %
 % Units are arbitrary, but should be consistent with the units of any
 % partial reconstruction of an object that the probe is used to refine.
@@ -59,7 +65,11 @@
 % A single interest point should be marked for each end of the probe that
 % tapers to a point. Two interest points should be marked for the edges of
 % coloured bands on the probe, corresponding to their intersections with
-% the probe's contour in the image.
+% the probe's contour in the image. For junctions between coloured bands of
+% different radii, two interest points should be marked on the same side
+% of the junction. Assuming the difference in radii is not significant, the
+% choice of side should not matter with respect to the determination of the
+% average colour on each side of the junction.
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang
@@ -81,11 +91,16 @@ annotation_corner_search_width = 4; % Set to zero to use centers of user-marked 
 % Parameters for interpreting annotated points
 point_alignment_outlier_threshold = 3;
 
+% Parameters for matching annotated points with the probe measurements
+subject_gap_cost = -0.1;
+query_gap_cost = 0;
+
 % Debugging tools
 display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
 display_model_from_image = false;
+verbose_point_sequence_matching = false;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -185,84 +200,15 @@ if ~exist('probe', 'var')
     error('No variable called ''probe'' is loaded (which would contain probe measurements).')
 end
 
-% The cross ratio is invariant under projective transformations
-% See https://en.wikipedia.org/wiki/Cross-ratio
-%
-% Without knowing the pose of the probe in 3D space, it is only possible to
-% compare the cross ratios of points along the probe with the cross ratios
-% of points along the image of the probe. Lengths and length ratios cannot
-% be compared directly.
-
-% Computing the cross ratio requires 4 points
-if length(probe.lengths) < 4
-    error('Insufficient points given in the probe model to compute cross ratios.')
+image_lengths = mean([model_from_image.above(:, 1), model_from_image.below(:, 1)], 2);
+if isfield(model_from_image, 'head')
+    image_lengths = [model_from_image.head(1); image_lengths];
 end
-if n_boundary_points < 4
-    error('Insufficient segments extracted from the image to compute cross ratios.')
+if isfield(model_from_image, 'tail')
+    image_lengths = [image_lengths; model_from_image.tail(1)];
 end
-
-% Compute all possible cross ratios of the image segments and probe points
-% Note that 'nchoosek' preserves the order of the items being chosen.
-image_combinations = nchoosek(1:n_boundary_points, 4);
-n_image_cross_ratios = size(image_combinations, 1);
-image_cross_ratios = zeros(n_image_cross_ratios, 1);
-for i = 1:n_image_cross_ratios
-    points = boundary_points(image_combinations(i, :), 1);
-    image_cross_ratios(i) = crossRatio(points);
-end
-
-probe_lengths = probe.lengths;
-n_probe_lengths = length(probe_lengths);
-probe_combinations = nchoosek(1:n_probe_lengths, 4);
-n_probe_cross_ratios = size(probe_combinations, 1);
-probe_cross_ratios = zeros(n_probe_cross_ratios, 1);
-for i = 1:n_probe_cross_ratios
-    points = probe_lengths(probe_combinations(i, :), 1);
-    probe_cross_ratios(i) = crossRatio(points);
-end
-
-% Plot cross ratios
-figure;
-hold on
-plot(image_cross_ratios, 'r.');
-plot(probe_cross_ratios, 'g.');
-hold off
-title('Cross ratios')
-xlabel('Combination index')
-ylabel('Cross ratio')
-legend('Image cross ratios', 'Measured probe cross ratios')
-
-% Group cross ratios into closest pairs
-min_cross_ratio_image_to_probe = zeros(n_image_cross_ratios, 1);
-min_cross_ratio_image_to_probe_indices = zeros(n_image_cross_ratios, 1);
-for i = 1:n_image_cross_ratios
-    [min_cross_ratio_image_to_probe(i), min_cross_ratio_image_to_probe_indices(i)] =...
-        min(abs(probe_cross_ratios - image_cross_ratios(i)));
-end
-
-min_cross_ratio_probe_to_image = zeros(n_probe_cross_ratios, 1);
-min_cross_ratio_probe_to_image_indices = zeros(n_probe_cross_ratios, 1);
-for i = 1:n_probe_cross_ratios
-    [min_cross_ratio_probe_to_image(i), min_cross_ratio_probe_to_image_indices(i)] =...
-        min(abs(image_cross_ratios - probe_cross_ratios(i)));
-end
-
-% Identify potentially mismatched cross ratios based on mutual selection
-% This will filter out a lot of valid matches due to the large number of 
-inliers_image_to_probe_filter = (...
-        min_cross_ratio_probe_to_image_indices(min_cross_ratio_image_to_probe_indices)...
-        == (1:n_image_cross_ratios).' ...
-    );
-
-% Final matching of cross ratios
-inlier_image_combinations = image_combinations(inliers_image_to_probe_filter, :);
-inlier_probe_combinations = probe_combinations(min_cross_ratio_image_to_probe_indices(inliers_image_to_probe_filter), :);
-
-% For each pairing of cross ratios, increment the vote for a match between
-% the corresponding probe and image points
-%
-% This needs to be done twice, because the cross ratio is the same for
-% points in reverse order.
-image_to_probe_match_votes = zeros(n_boundary_points, n_probe_lengths);
-reversed_image_to_probe_match_votes = zeros(n_boundary_points, n_probe_lengths);
-reversed_inlier_image_combinations = fliplr(inlier_image_combinations);
+    
+image_to_measured_matches = matchPointsByCrossRatios(...
+  probe.lengths, image_lengths, subject_gap_cost, query_gap_cost,...
+  verbose_point_sequence_matching...
+);
