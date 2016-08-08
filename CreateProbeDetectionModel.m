@@ -101,6 +101,7 @@ display_annotations_image = false;
 display_extracted_annotations = false;
 display_model_from_image = false;
 verbose_point_sequence_matching = false;
+display_probe_band_masks = false;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -212,3 +213,74 @@ image_to_measured_matches = matchPointsByCrossRatios(...
   probe.lengths, image_lengths, subject_gap_cost, query_gap_cost,...
   verbose_point_sequence_matching...
 );
+
+% Validate the matching, and flip the model extracted from the image if necessary
+if any(~image_to_measured_matches)
+    error('Some interest points in the image were not matched to known probe measurements.')
+else
+    image_to_measured_matches_expected = (1:length(image_to_measured_matches)).';
+    aligned_forward = all(image_to_measured_matches == image_to_measured_matches_expected);
+    aligned_reverse = all(image_to_measured_matches == flipud(image_to_measured_matches_expected));
+    if ~xor(aligned_forward, aligned_reverse)
+        error('Failed to find an ordered one-to-one mapping between interest points in the image and known probe measurements.')
+    elseif aligned_reverse
+        model_from_image_new = model_from_image;
+        if isfield(model_from_image, 'head')
+            model_from_image_new.tail = model_from_image.head(1);
+        end
+        if isfield(model_from_image, 'tail')
+            model_from_image_new.head = model_from_image.tail(1);
+        end
+        model_from_image_new.above = flipud(model_from_image_new.above);
+        model_from_image_new.below = flipud(model_from_image_new.below);
+        model_from_image = model_from_image_new;
+    end
+end
+
+%% Create photometric invariant representations of the probe bands
+
+% Express the model in pixel coordinates as polygonal sections
+n_bands = length(probe.lengths) - 1;
+above = [model_from_image.above, ones(size(model_from_image.above, 1), 1)] * model_to_image_transform;
+below = [model_from_image.below, ones(size(model_from_image.below, 1), 1)] * model_to_image_transform;
+model_from_image_polygons = cell(n_bands, 1);
+start_offset = 0;
+if isfield(model_from_image, 'head')
+    head = [model_from_image.head, 1] * model_to_image_transform;
+    model_from_image_polygons{1} = [
+            head(1:2);
+            above(1, 1:2);
+            below(1, 1:2)
+        ];
+    start_offset = 1;
+end
+for i = 1:(size(above, 1) - 1)
+    model_from_image_polygons{i + start_offset} = [
+            above(i:(i+1), 1:2);
+            below((i+1):-1:i, 1:2)
+        ];
+end
+if isfield(model_from_image, 'tail')
+    tail = [model_from_image.tail, 1] * model_to_image_transform;
+    model_from_image_polygons{end} = [
+        above(end, 1:2);
+        tail(1:2);
+        below(end, 1:2);
+    ];
+end
+
+% Obtain a mask for each section
+probe_band_masks = false(image_height, image_width, n_bands);
+for i = 1:n_bands
+    probe_band_masks(:, :, i) = roipoly(...
+            I, model_from_image_polygons{i}(:, 1), model_from_image_polygons{i}(:, 2)...
+        );
+end
+
+if display_probe_band_masks
+    for i = 1:n_bands
+        figure
+        imshow(probe_band_masks(:, :, i));
+        title(sprintf('Mask for probe band %d', i))
+    end
+end
