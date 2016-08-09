@@ -31,6 +31,8 @@ function [ H ] = rgb2hue( I )
 %   Analysis and Machine Intelligence, vol. 26, no. 1, pp. 113-118, Jan.
 %   2004.
 % - https://en.wikipedia.org/wiki/Hue
+%
+% See also rgb2hsv
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

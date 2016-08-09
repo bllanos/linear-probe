@@ -19,10 +19,13 @@
 %   of polynomials fitted to `(mean(channel_values),std(channel_values))`
 %   pairs. 'n' is the degree of the polynomials, and 'n_channels' is 3 (for
 %   Red, Green, Blue, in that order). 'rgb_sigma_polyfit' describes the
-%   relationship between color channel values and color channel noise, as
+%   relationship between colour channel values and colour channel noise, as
 %   calculated using MATLAB's `polyfit` function. Specifically, each column
 %   of 'rgb_sigma_polyfit' corresponds to the first output argument, 'p',
 %   of `polyfit`.
+%
+%   Note that colour channel values are in the range [0, 1] (and standard
+%   deviations correspond to this range as well, therefore).
 %
 % ## References
 % - T. Gevers and H. Stokman. "Robust Histogram Construction from Color
