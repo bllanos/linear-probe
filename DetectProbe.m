@@ -72,6 +72,7 @@ display_original_image = false;
 display_hue_image = false;
 plot_global_hue_estimator = false;
 plot_ratio_estimators = false;
+display_ratio_distribution_backprojections = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -170,4 +171,23 @@ if plot_ratio_estimators
     title('Ratio hue variable kernel density estimators for bands on the probe')
     xlabel('Hue, \theta (range [0, 1])')
     ylabel('Density, P(\theta)')
+end
+
+% Histogram backprojection
+ratio_color_distributions_backprojected = zeros(image_height, image_width, n_bands);
+for i = 1:n_bands
+    ratio_color_distributions_backprojected(:, :, i) = queryDiscretized1DFunction(...
+            H, ratio_color_distributions(:, i), I_color_distribution_increment...
+        );
+end
+
+if display_ratio_distribution_backprojections
+    for i = 1:n_bands %#ok<UNRCH>
+        figure
+        imshow(...
+                ratio_color_distributions_backprojected(:, :, i) /...
+                max(max(ratio_color_distributions_backprojected(:, :, i)))...
+            );
+        title(sprintf('Ratio distribution backprojection for probe band %d', i))
+    end
 end

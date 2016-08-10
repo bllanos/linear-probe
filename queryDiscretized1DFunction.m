@@ -12,7 +12,7 @@ function [ val ] = queryDiscretized1DFunction( x, f, inc, varargin )
 % ## Input Arguments
 %
 % x -- Query values
-%   An vector of length n containing the values at which to sample the
+%   An array (of any dimensions) containing the values at which to sample the
 %   function discretization.
 %
 % f -- Evaluated function
@@ -35,7 +35,7 @@ function [ val ] = queryDiscretized1DFunction( x, f, inc, varargin )
 % ## Output Arguments
 %
 % val -- Approximate function evaluation
-%   A vector with the same dimensions as `x` containing the values from `f`
+%   An array with the same dimensions as `x` containing the values from `f`
 %   corresponding to the closest points to the points in `x` at which the
 %   function was evaluated.
 %
@@ -57,7 +57,13 @@ else
     offset = 0;
 end
 
-val = f(floor(((x - offset) / inc) + 0.5) + 1);
+x_vector = x(:);
+indices = floor(((x_vector - offset) / inc) + 0.5) + 1;
+if any(indices < 0 | indices > length(f))
+    error('Some of the query values in input `x` are out of the domain sampled to construct input `f`.')
+end
+val = f(indices);
+val = reshape(val, size(x));
 
 end
 
