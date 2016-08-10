@@ -75,9 +75,10 @@
 % A '.mat' file containing a 'rgb_sigma_polyfit' variable, as output by the
 % script '.\EstimateRGBStandardDeviations.m'. 'rgb_sigma_polyfit' describes
 % the variation in RGB channel standard deviations with RGB values in the
-% images. This information should have been computed from images taken
-% under the same conditions and with the same camera parameters as the
-% images used for probe modeling and, later, probe detection.
+% image. This information should be computed from images taken under the
+% same conditions and with the same camera parameters as the image used for
+% probe modeling, if not computed from the same image used for probe
+% modeling.
 %
 % ## Output
 %
