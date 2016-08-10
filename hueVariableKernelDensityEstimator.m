@@ -116,6 +116,10 @@ function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, st
         % Enforce a maximum value for numerical stability
         s(s > 0.5) = 0.5;
         s(isnan(s)) = 0.5; % Assume worst case for NaN values
+        
+        % Values of zero actually correspond to worst-case values as well;
+        % The result of zero as opposed to NaN is due to numerical error
+        s(s == 0) = 0.5;
     end
 
 nargoutchk(2, 2);

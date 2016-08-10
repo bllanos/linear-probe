@@ -69,6 +69,9 @@ rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\2016
 
 % Debugging tools
 display_original_image = false;
+display_hue_image = false;
+plot_global_hue_estimator = false;
+plot_ratio_estimators = false;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -83,4 +86,88 @@ if display_original_image
     figure; %#ok<UNRCH>
     imshow(I);
     title('Base image');
+end
+
+%% Load the probe detection model
+model_variables_required = {...
+        'probe_band_color_distribution_resolution',...
+        'probe',...
+        'probe_band_color_distributions',...
+        'probe_band_color_distribution_increment'...
+    };
+load(detection_model_filename, model_variables_required{:});
+if ~all(ismember(model_variables_required, who))
+    error('One or more of the probe detection model variables is not loaded.')
+end
+
+%% Compute the hue variable kernel density estimator for the image
+
+% Obtain hue values
+H = rgb2hue(I);
+    
+if display_hue_image
+    figure %#ok<UNRCH>
+    imshow(H);
+    title('Hue channel of original image')
+end
+
+% Compute hue variable kernel density estimators from probe bands
+load(rgb_sigma_filename, 'rgb_sigma_polyfit');
+if ~exist('rgb_sigma_polyfit', 'var')
+    error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
+end
+
+I_double = im2double(I);
+R = I_double(:, :, 1);
+G = I_double(:, :, 2);
+B = I_double(:, :, 3);
+[...
+    I_color_distribution,...
+    I_color_distribution_increment...
+] = hueVariableKernelDensityEstimator(...
+    H, R, G, B, true(image_height, image_width),...
+    rgb_sigma_polyfit, probe_band_color_distribution_resolution...
+);
+
+if plot_global_hue_estimator
+    x = 0:I_color_distribution_increment:1; %#ok<UNRCH>
+    figure
+    plot(x, I_color_distribution)
+    title('Hue variable kernel density estimators for the entire image')
+    xlabel('Hue, \theta (range [0, 1])')
+    ylabel('Density, P(\theta)')
+end
+
+%% Transform the image using histogram backprojection
+n_bands = size(probe_band_color_distributions, 2);
+
+ratio_color_distributions = zeros(...
+        probe_band_color_distribution_resolution, n_bands...
+    );
+for i = 1:n_bands
+    ratio_color_distributions(:, i) = ratioDistribution(...
+            probe_band_color_distributions(:, i), I_color_distribution...
+        );
+end
+
+if plot_ratio_estimators
+    x = 0:probe_band_color_distribution_increment:1; %#ok<UNRCH>
+    line_styles = {'-', '--', ':', '-.'};
+    legend_names = cell(n_bands, 1);
+    plot_colors = jet(n_bands);
+    figure
+    hold on
+    for i = 1:n_bands
+        legend_names{i} = sprintf('Probe band %d', i);
+        plot(...
+                x, ratio_color_distributions(:, i),...
+                'Color', plot_colors(i, :),...
+                'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
+            )
+    end
+    hold off
+    legend(legend_names{:});
+    title('Ratio hue variable kernel density estimators for bands on the probe')
+    xlabel('Hue, \theta (range [0, 1])')
+    ylabel('Density, P(\theta)')
 end
