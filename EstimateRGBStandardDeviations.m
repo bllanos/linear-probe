@@ -14,7 +14,7 @@
 % ## Output
 %
 % ### Probe detection model
-% A '.mat' file containing the following variable:
+% A '.mat' file containing the following variables:
 % - 'rgb_sigma_polyfit': An n x n_channels array, containing the coefficients
 %   of polynomials fitted to `(mean(channel_values),std(channel_values))`
 %   pairs. 'n' is the degree of the polynomials, and 'n_channels' is 3 (for
@@ -26,6 +26,14 @@
 %
 %   Note that colour channel values are in the range [0, 1] (and standard
 %   deviations correspond to this range as well, therefore).
+% - 'image_filenames': A cell vector containing the full filepaths of the
+%   images used to compute the RGB noise model, for reference.
+% - 'image_roi_polygons': A cell vector with the same length as
+%   'image_filenames', where the i-th element is a cell vector of k x 2 arrays
+%   representing the polygonal regions of interest used to calculate RGB
+%   noise datapoints from the image `image_filenames{i}`. 'k' is the number
+%   of vertices in the polygon, and the two columns store pixel x and y
+%   coordinates, respectively.
 %
 % ## References
 % - T. Gevers and H. Stokman. "Robust Histogram Construction from Color
@@ -55,6 +63,8 @@ if ~exist('choice', 'var') || ~strcmpi(choice, 'z')
         polyfit_degree = polyfit_degree_default;
     end
     n_points_desired = polyfit_degree + 1;
+    image_filenames = {};
+    image_roi_polygons = {};
 else
     disp('Enter the next region of interest on the figure.')
     choice = [];
@@ -74,7 +84,8 @@ while size(mu, 1) < n_points_desired || ~strcmpi(choice, 'n')
         if ~filename
             break
         end
-        I = imread(fullfile(pathname, filename));
+        image_filenames{end + 1} = fullfile(pathname, filename); %#ok<SAGROW>
+        I = imread(image_filenames{end});
         if size(I, 3) ~= n_channels
             error('Expected a 3-channel RGB image.')
         else
@@ -92,7 +103,7 @@ while size(mu, 1) < n_points_desired || ~strcmpi(choice, 'n')
             figure(fg);
             title(sprintf('Select region %d (of at least %d) of constant colour (Esc, etc., to cancel)',...
             size(mu, 1) + 1, n_points_desired))
-            mask = roipoly;
+            [mask, x_poly, y_poly] = roipoly;
             if ~isempty(mask)
                 mu(end + 1, :) = zeros(1, 3); %#ok<SAGROW>
                 sigma(end + 1, :) = zeros(1, 3); %#ok<SAGROW>
@@ -100,6 +111,11 @@ while size(mu, 1) < n_points_desired || ~strcmpi(choice, 'n')
                     px = channels{i}(mask);
                     mu(end, i) = mean(px);
                     sigma(end, i) = std(px);
+                end
+                if length(image_roi_polygons) < length(image_filenames)
+                    image_roi_polygons{length(image_filenames)} = {[x_poly, y_poly]}; %#ok<SAGROW>
+                else
+                    image_roi_polygons{end}{end + 1} = [x_poly, y_poly];
                 end
             else
                 % 'Resume after adjusting view' allows the user to zoom into the
@@ -159,5 +175,5 @@ else
     ylabel('Standard deviation')
     
     % Save to a file
-    uisave('rgb_sigma_polyfit','rgbStddev')
+    uisave({'rgb_sigma_polyfit', 'image_filenames', 'image_roi_polygons'},'rgbStddev')
 end
