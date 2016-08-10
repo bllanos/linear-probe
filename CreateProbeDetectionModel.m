@@ -70,6 +70,49 @@
 % of the junction. Assuming the difference in radii is not significant, the
 % choice of side should not matter with respect to the determination of the
 % average colour on each side of the junction.
+%
+% ### Colour noise parameters
+% A '.mat' file containing a 'rgb_sigma_polyfit' variable, as output by the
+% script '.\EstimateRGBStandardDeviations.m'. 'rgb_sigma_polyfit' describes
+% the variation in RGB channel standard deviations with RGB values in the
+% images. This information should have been computed from images taken
+% under the same conditions and with the same camera parameters as the
+% images used for probe modeling and, later, probe detection.
+%
+% ## Output
+%
+% ### Probe detection model
+% A '.mat' file containing the following variables:
+% - 'probe': A copy of the 'probe' variable loaded from the probe
+%   measurements file, for convenience.
+% - 'probe_band_color_distributions': Discretized variable kernel density
+%   estimators of image hue values corresponding to the different coloured
+%   bands on the probe, in the same order (starting from the active tip of
+%   the probe). The i-th column of this 2D array stores the estimator for
+%   the i-th probe segment.
+% - 'probe_band_color_distribution_increment': A scalar equal to the spacing
+%   between the samples of hue values in the range [0, 1] at which the
+%   variable kernel density estimators have been evaluated to produce
+%   'probe_band_color_distributions'. To find the approximate value of the
+%   i-th estimator at a query value 'x' in the range [0, 1], use:
+%
+%   ```
+%     queryDiscretized1DFunction(...
+%       x, probe_band_color_distributions(:, i),...
+%       probe_band_color_distribution_increment...
+%     )
+%   ```
+%
+% Additionally, the output file contains the values of all parameters in
+% the first section of the script below, for reference. (Specifically,
+% those listed in `parameters_list`, which should be updated if the set of
+% parameters is changed.)
+%
+% ## References
+% - T. Gevers and H. Stokman. "Robust Histogram Construction from Color
+%   Invariants for Object Recognition". IEEE Transactions on Pattern
+%   Analysis and Machine Intelligence, vol. 26, no. 1, pp. 113-118, Jan.
+%   2004.
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang
@@ -78,12 +121,27 @@
 
 %% Input data and parameters
 
+% List of parameters to save with results
+parameters_list = {
+        'model_filename',...
+        'I_filename',...
+        'I_annotations_filename',...
+        'rgb_sigma_filename',...
+        'annotation_corner_search_width',...
+        'point_alignment_outlier_threshold',...
+        'subject_gap_cost',...
+        'query_gap_cost',...
+        'probe_band_color_distribution_resolution'
+    };
+
 % Probe measurements
 model_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\redPen.mat';
 % Image of probe
 I_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\original\redPen_white_b_1.bmp';
 % Annotations for image of probe
 I_annotations_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\annotated\redPen_white_b_1.png';
+% RGB noise parameters
+rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\20160809_rgbStddev_redPen_bottomCamera.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 4; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
@@ -95,6 +153,9 @@ point_alignment_outlier_threshold = 3;
 subject_gap_cost = -0.1;
 query_gap_cost = 0;
 
+% Number of points at which to evaluate hue variable kernel density estimators
+probe_band_color_distribution_resolution = 180;
+
 % Debugging tools
 display_original_image = false;
 display_annotations_image = false;
@@ -102,12 +163,18 @@ display_extracted_annotations = false;
 display_model_from_image = false;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
+display_hue_image = false;
+plot_hue_estimators = false;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
 I = imread(I_filename);
 image_width = size(I, 2);
 image_height = size(I, 1);
+image_n_channels = size(I, 3);
+if image_n_channels ~= 3
+    error('A 3-channel RGB image is required.')
+end
 if display_original_image
     figure; %#ok<UNRCH>
     imshow(I);
@@ -196,7 +263,7 @@ if display_model_from_image
 end
 
 %% Match model extracted from the image to the user-supplied measurements of the probe
-load(model_filename);
+load(model_filename, 'probe');
 if ~exist('probe', 'var')
     error('No variable called ''probe'' is loaded (which would contain probe measurements).')
 end
@@ -278,9 +345,72 @@ for i = 1:n_bands
 end
 
 if display_probe_band_masks
-    for i = 1:n_bands
+    for i = 1:n_bands %#ok<UNRCH>
         figure
         imshow(probe_band_masks(:, :, i));
         title(sprintf('Mask for probe band %d', i))
     end
 end
+
+% Obtain hue values
+H = rgb2hue(I);
+    
+if display_hue_image
+    figure %#ok<UNRCH>
+    imshow(H);
+    title('Hue channel of original image')
+end
+
+% Compute hue variable kernel density estimators from probe bands
+load(rgb_sigma_filename, 'rgb_sigma_polyfit');
+if ~exist('rgb_sigma_polyfit', 'var')
+    error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
+end
+
+probe_band_color_distributions = zeros(...
+        probe_band_color_distribution_resolution, n_bands...
+    );
+I_double = im2double(I);
+R = I_double(:, :, 1);
+G = I_double(:, :, 2);
+B = I_double(:, :, 3);
+for i = 1:n_bands
+    [...
+        probe_band_color_distributions(:, i),...
+        probe_band_color_distribution_increment...
+    ] = hueVariableKernelDensityEstimator(...
+        H, R, G, B, probe_band_masks(:, :, i),...
+        rgb_sigma_polyfit, probe_band_color_distribution_resolution...
+    );
+end
+
+if plot_hue_estimators
+    x = 0:probe_band_color_distribution_increment:1; %#ok<UNRCH>
+    line_styles = {'-', '--', ':', '-.'};
+    legend_names = cell(n_bands, 1);
+    plot_colors = jet(n_bands);
+    figure
+    hold on
+    for i = 1:n_bands
+        legend_names{i} = sprintf('Probe band %d', i);
+        plot(...
+                x, probe_band_color_distributions(:, i),...
+                'Color', plot_colors(i, :),...
+                'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
+            )
+    end
+    hold off
+    legend(legend_names{:});
+    title('Hue variable kernel density estimators for bands on the probe')
+    xlabel('Hue, \theta (range [0, 1])')
+    ylabel('Density, P(\theta)')
+end
+
+%% Save results to a file
+save_variables_list = [ parameters_list, {...
+        'probe',...
+        'probe_band_color_distributions',...
+        'probe_band_color_distribution_increment'...
+    } ];
+uisave(save_variables_list,'probeDetectionModel')
+disp('Reminder: The output model is specific to the probe, camera, and camera parameters.')
