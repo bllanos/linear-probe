@@ -7,6 +7,8 @@
 %   below, then run.
 %
 % ## Probe Detection Assumptions and Limitations
+% - The image contains fairly saturated colours throughout, to assist with
+%   hue-based colour discrimination.
 % - The image only contains a single instance of the probe.
 % - The probe may be occluded in one or more places. However, it can be
 %   detected if at least 5 transition lines between pairs of coloured bands
@@ -72,7 +74,7 @@ display_original_image = false;
 display_hue_image = false;
 plot_global_hue_estimator = false;
 plot_ratio_estimators = false;
-display_ratio_distribution_backprojections = true;
+display_ratio_distribution_backprojections = false;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -112,7 +114,7 @@ if display_hue_image
     title('Hue channel of original image')
 end
 
-% Compute hue variable kernel density estimators from probe bands
+% Compute the hue variable kernel density estimator for the image
 load(rgb_sigma_filename, 'rgb_sigma_polyfit');
 if ~exist('rgb_sigma_polyfit', 'var')
     error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
@@ -142,11 +144,12 @@ end
 %% Transform the image using histogram backprojection
 n_bands = size(probe_band_color_distributions, 2);
 
-ratio_color_distributions = zeros(...
+% Ratio distributions with respect to the background
+ratio_distributions_bg = zeros(...
         probe_band_color_distribution_resolution, n_bands...
     );
 for i = 1:n_bands
-    ratio_color_distributions(:, i) = ratioDistribution(...
+    ratio_distributions_bg(:, i) = ratioDistribution(...
             probe_band_color_distributions(:, i), I_color_distribution...
         );
 end
@@ -161,23 +164,23 @@ if plot_ratio_estimators
     for i = 1:n_bands
         legend_names{i} = sprintf('Probe band %d', i);
         plot(...
-                x, ratio_color_distributions(:, i),...
+                x, ratio_distributions_bg(:, i),...
                 'Color', plot_colors(i, :),...
                 'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
             )
     end
     hold off
     legend(legend_names{:});
-    title('Ratio hue variable kernel density estimators for bands on the probe')
+    title('Ratio hue variable kernel density estimators for bands on the probe with respect to the background')
     xlabel('Hue, \theta (range [0, 1])')
     ylabel('Density, P(\theta)')
 end
 
 % Histogram backprojection
-ratio_color_distributions_backprojected = zeros(image_height, image_width, n_bands);
+ratio_distributions_backprojected_bg = zeros(image_height, image_width, n_bands);
 for i = 1:n_bands
-    ratio_color_distributions_backprojected(:, :, i) = queryDiscretized1DFunction(...
-            H, ratio_color_distributions(:, i), I_color_distribution_increment...
+    ratio_distributions_backprojected_bg(:, :, i) = queryDiscretized1DFunction(...
+            H, ratio_distributions_bg(:, i), I_color_distribution_increment...
         );
 end
 
@@ -185,9 +188,9 @@ if display_ratio_distribution_backprojections
     for i = 1:n_bands %#ok<UNRCH>
         figure
         imshow(...
-                ratio_color_distributions_backprojected(:, :, i) /...
-                max(max(ratio_color_distributions_backprojected(:, :, i)))...
+                ratio_distributions_backprojected_bg(:, :, i) /...
+                max(max(ratio_distributions_backprojected_bg(:, :, i)))...
             );
-        title(sprintf('Ratio distribution backprojection for probe band %d', i))
+        title(sprintf('Ratio distribution backprojection for probe band %d with respect to the background', i))
     end
 end
