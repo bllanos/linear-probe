@@ -121,6 +121,8 @@ function [ alignment, score ] = swSequenceAlignment( subject, query, f_similarit
 % - Reference used for algorithm behaviour in the global and semi-global
 %   alignment cases:
 %   http://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-096-algorithms-for-computational-biology-spring-2005/lecture-notes/lecture5_newest.pdf
+%
+% See also swSequenceAlignmentAffine
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

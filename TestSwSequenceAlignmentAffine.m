@@ -1,9 +1,9 @@
-%% Test cases for swSequenceAlignment
+%% Test cases for swSequenceAlignmentAffine
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang
 % University of Alberta, Department of Computing Science
-% File created August 4, 2016
+% File created August 12, 2016
 
 %% Local sequence alignment
 % Example from https://en.wikipedia.org/wiki/Smith%E2%80%93Waterman_algorithm
@@ -13,9 +13,9 @@ subject = [1 3 2 1 2 1 2 1];
 query = [1 2 1 2 1 2 4 1];
 f_similarity = @(x, y) (x == y) * 2 + (x ~= y) * -1;
 threshold = 0;
-f_subject_gap = @(x) -1;
-f_query_gap = @(x) -1;
-[ alignment, score ] = swSequenceAlignment( subject, query, f_similarity, threshold, f_subject_gap, f_query_gap, 'Local' );
+subject_gap_penalty = [-1 0];
+query_gap_penalty = [-1 0];
+[ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, 'Local' );
 alignment_expected = [
         1     1;
         2     0;
@@ -48,9 +48,9 @@ subject = [1 1 1 2];
 query = [1 3 2];
 f_similarity = @(x, y) (x == y) * 1 + (x ~= y) * -1;
 threshold = -Inf;
-f_subject_gap = @(x) -2 * x;
-f_query_gap = @(x) -2 * x;
-[ alignment, score ] = swSequenceAlignment( subject, query, f_similarity, threshold, f_subject_gap, f_query_gap, 'Global' );
+subject_gap_penalty = [-2 -2];
+query_gap_penalty = [-2 -2];
+[ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, 'Global' );
 alignment_expected = [
         2 1;
         3 2;
@@ -77,9 +77,9 @@ subject = [1 1 3 2];
 query = [1 3 4];
 f_similarity = @(x, y) (x == y) * 1 + (x ~= y) * -1;
 threshold = -Inf;
-f_subject_gap = @(x) -2 * x;
-f_query_gap = @(x) -2 * x;
-[ alignment, score ] = swSequenceAlignment( subject, query, f_similarity, threshold, f_subject_gap, f_query_gap, 'SemiGlobal' );
+subject_gap_penalty = [-2 -2];
+query_gap_penalty = [-2 -2];
+[ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, 'SemiGlobal' );
 alignment_expected = [
         2 1;
         3 2;
@@ -106,9 +106,9 @@ subject = [2 1 3 2 1 2 4 4 3 3 1 4 4 2 4 2 3 3];
 query = [2 1 3 2 3 4 3 3];
 f_similarity = @(x, y) (x == y) * 1 + (x ~= y) * -1;
 threshold = -Inf;
-f_subject_gap = @(x) -2 * x;
-f_query_gap = @(x) -2 * x;
-[ alignment, score ] = swSequenceAlignment( subject, query, f_similarity, threshold, f_subject_gap, f_query_gap, 'SemiGlobal' );
+subject_gap_penalty = [-2 -2];
+query_gap_penalty = [-2 -2];
+[ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, 'SemiGlobal' );
 alignment_expected = [
         4 1;
         5 2;
@@ -140,9 +140,9 @@ subject = [4 4 1 1 3];
 query = [1 1 3 1];
 f_similarity = @(x, y) (x == y) * 1 + (x ~= y) * -1;
 threshold = 0;
-f_subject_gap = @(x) -2 * x;
-f_query_gap = @(x) -2 * x;
-[ alignment, score ] = swSequenceAlignment( subject, query, f_similarity, threshold, f_subject_gap, f_query_gap, 'Local' );
+subject_gap_penalty = [-2 -2];
+query_gap_penalty = [-2 -2];
+[ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, 'Local' );
 alignment_expected = [
         3 1;
         4 2;
@@ -169,9 +169,9 @@ subject = [1 1 4];
 query = [1 2 1 2 4];
 f_similarity = @(x, y) (x == y) * 1 + (x ~= y) * -1;
 threshold = -Inf;
-f_subject_gap = @(x) -3 - x;
-f_query_gap = @(x) -3 - x;
-[ alignment, score ] = swSequenceAlignment( subject, query, f_similarity, threshold, f_subject_gap, f_query_gap, 'Global' );
+subject_gap_penalty = [-4 -1];
+query_gap_penalty = [-4 -1];
+[ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, 'Global' );
 alignment_expected = [
         1 3;
         2 4;
