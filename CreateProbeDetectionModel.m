@@ -136,23 +136,24 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\redPen.mat';
+model_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
 % Image of probe
-I_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\original\redPen_white_b_1.bmp';
+I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\original\probePrePaperOcclusion_1_b.bmp';
 % Annotations for image of probe
-I_annotations_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\annotated\redPen_white_b_1.png';
+I_annotations_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\annotated\probePrePaperOcclusion_1_b.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\20160809_rgbStddev_redPen_bottomCamera.mat';
+rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 4; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
 
 % Parameters for interpreting annotated points
-point_alignment_outlier_threshold = 3;
+point_alignment_outlier_threshold = 5;
 
 % Parameters for matching annotated points with the probe measurements
 subject_gap_cost = -0.1;
 query_gap_cost = 0;
+n_samples_sequence_alignment = 4;
 
 % Number of points at which to evaluate hue variable kernel density estimators
 probe_band_color_distribution_resolution = 180;
@@ -162,10 +163,10 @@ display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
 display_model_from_image = false;
-verbose_point_sequence_matching = false;
+verbose_point_sequence_matching = true;
 display_probe_band_masks = false;
-display_hue_image = false;
-plot_hue_estimators = false;
+display_hue_image = true;
+plot_hue_estimators = true;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -224,16 +225,6 @@ end
     interest_points, point_alignment_outlier_threshold, true...
 );
 
-% The probe tips are marked with single points. All other probe segments
-% must be marked with a point along each side of the probe.
-%
-% Since we are performing calibration, failure to satisfy this condition is
-% an error. In a detection scenario, we would just eliminate the outlier
-% points and continue.
-if ~isempty(model_from_image.unmatched)
-    error('Not all probe color band junctions are marked with two points - One on each edge of the probe.');
-end
-
 if display_model_from_image
     figure; %#ok<UNRCH>
     imshow(I);
@@ -263,6 +254,17 @@ if display_model_from_image
     hold off
 end
 
+% The probe tips are marked with single points. All other probe segments
+% must be marked with a point along each side of the probe.
+%
+% Since we are performing calibration, failure to satisfy this condition is
+% an error. In a detection scenario, we would just eliminate the outlier
+% points and continue.
+if ~isempty(model_from_image.unmatched)
+    error(sprintf(['Not all probe color band junctions are marked with two points - One on each edge of the probe.\n',...
+        'Consider increasing the outlier detection threshold used when pairing points.'])); %#ok<SPERR>
+end
+
 %% Match model extracted from the image to the user-supplied measurements of the probe
 load(model_filename, 'probe');
 if ~exist('probe', 'var')
@@ -279,7 +281,7 @@ end
     
 image_to_measured_matches = matchPointsByCrossRatios(...
   probe.lengths, image_lengths, subject_gap_cost, query_gap_cost,...
-  verbose_point_sequence_matching...
+  n_samples_sequence_alignment, verbose_point_sequence_matching...
 );
 
 % Validate the matching, and flip the model extracted from the image if necessary

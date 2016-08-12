@@ -3,12 +3,12 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 %
 % ## Syntax
 % subject_match_indices = matchPointsByCrossRatios(...
-%   subject_line, query_line, subject_gap_cost, query_gap_cost [, verbose]...
+%   subject_line, query_line, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
 % )
 %
 % ## Description
 % subject_match_indices = matchPointsByCrossRatios(...
-%   subject_line, query_line, subject_gap_cost, query_gap_cost [, verbose]...
+%   subject_line, query_line, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
 %   points in the query sequence.
@@ -34,6 +34,15 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 %   The score to assign to gaps of any length in the query sequence in
 %   the alignment of the subject and query sequences. This value is used
 %   indirectly by `swSequenceAlignment()`.
+%
+% n_samples - Reduce problem size
+%   An integer value from zero to 'n - 1'. If greater than zero, the function
+%   will perform fewer computations. The result will be the same provided
+%   that the input sequences are composed of points with strongly
+%   distinguishable spacings. See below concerning the description of the
+%   algorithm for details.
+%
+%   Defaults to zero if not passed.
 %
 % verbose -- Debugging flag
 %   If true, graphical and console output will be generated for debugging
@@ -65,8 +74,16 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 % not penalize the extension of `subject` outside the aligned region.
 % Lastly, each pair of matched cross ratios in the alignment is used to
 % vote for matches between the corresponding points. The final point
-% matches are those with the most votes, according to a simple priority
-% scheme that prevents many-to-one matching.
+% matches are produced using a sequence alignment procedure (semi-global
+% alignment with `swSequenceAlignment`), where the votes are matching scores
+% for pairs of points.
+%
+% If `n_samples` is nonzero, then the sequence of cross ratios generated
+% for `query` is constructed as follows, rather than consisting of all
+% possible cross ratios: For each point in `query`, a cross ratio is
+% computed for the point and a random three other points from `query`. This
+% is repeated `n_samples` times, so in total, `n_samples * n` cross ratios are
+% used for sequence alignment.
 %
 % Note that cross ratios are matched with dynamic programming as opposed to
 % a closest-pair scheme because a closest-pair scheme would not enforce the
@@ -81,10 +98,14 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 % University of Alberta, Department of Computing Science
 % File created August 5, 2016
 
-    function [ score ] = f_similarity(s, q)
+    function [ score ] = f_similarity_cross_ratios(s, q)
         s_val = subject_cross_ratios(s);
         q_val = query_cross_ratios(q);
         score = 1 - abs((q_val - s_val) / s_val);
+    end
+
+    function [ score ] = f_similarity_points(s, q)
+        score = match_votes(s, q);
     end
 
     function [ score ] = f_subject_gap(~)
@@ -96,16 +117,24 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
     end
 
 nargoutchk(1, 1);
-narginchk(4, 5);
-
-if ~isempty(varargin)
-    verbose = varargin{1};
-else
-    verbose = false;
-end
+narginchk(4, 6);
 
 n_subject = length(subject_line);
 n_query = length(query_line);
+
+if ~isempty(varargin)
+    n_samples = varargin{1};
+    if n_samples < 0 || n_samples > (n_query - 1) || round(n_samples) ~= n_samples
+        error('The `n_samples` input argument must be an integer from %d to %d.', 0, n_query - 1)
+    end
+else
+    n_samples = 0;
+end
+if length(varargin) > 1
+    verbose = varargin{2};
+else
+    verbose = false;
+end
 
 % Computing the cross ratio requires 4 points. Disambiguating between
 % sequence orientations requires 5 points, because the cross ratio is
@@ -134,8 +163,34 @@ for i = 1:n_subject_cross_ratios
     subject_cross_ratios(i) = crossRatio(points);
 end
 
-query_combinations = nchoosek(1:n_query, 4);
-n_query_cross_ratios = size(query_combinations, 1);
+if n_samples
+    
+    % Take a random sample of combinations of 4 points
+    n_query_cross_ratios = n_samples * n_query;
+    triplets = nchoosek(1:(n_query - 1), 3);
+    n_triplets = size(triplets, 1);
+    sampled_triplets = triplets(randi(n_triplets, n_query_cross_ratios, 1), :);
+    query_combinations = zeros(n_query_cross_ratios, 4);
+    j = 1;
+    for i = 1:n_query
+        for k = j:(j + n_samples - 1);
+            triplet = sampled_triplets(k, :);
+            triplet_filter = triplet < i;
+            query_combinations(k, :) = [
+                    triplet(triplet_filter),...
+                    i,...
+                    triplet(~triplet_filter) + 1
+                ];
+        end
+        j = j + n_samples;
+    end
+    query_combinations = sortrows(query_combinations, 1:4);
+else
+    
+    % Take all combinations of 4 points
+    query_combinations = nchoosek(1:n_query, 4);
+    n_query_cross_ratios = size(query_combinations, 1);
+end
 query_cross_ratios = zeros(n_query_cross_ratios, 1);
 for i = 1:n_query_cross_ratios
     points = query_line(query_combinations(i, :), 1);
@@ -161,21 +216,23 @@ query_sequence_forward = 1:n_query_cross_ratios;
 threshold = -Inf;
 [ alignment_forward, score_forward ] = swSequenceAlignment(...
         subject_sequence, query_sequence_forward,...
-        @f_similarity, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
-    );
-
-% Match sequences in the reverse directions with dynamic programming
-query_sequence_reverse = n_query_cross_ratios:-1:1;
-threshold = -Inf;
-[ alignment_reverse, score_reverse ] = swSequenceAlignment(...
-        subject_sequence, query_sequence_reverse,...
-        @f_similarity, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
+        @f_similarity_cross_ratios, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
     );
 
 if verbose
-    disp('Forward sequence alignment score:');
+    disp('Forward cross ratio sequence alignment score:');
     disp(score_forward);
-    disp('Reverse sequence alignment score:');
+end
+
+% Match sequences in the reverse directions with dynamic programming
+query_sequence_reverse = n_query_cross_ratios:-1:1;
+[ alignment_reverse, score_reverse ] = swSequenceAlignment(...
+        subject_sequence, query_sequence_reverse,...
+        @f_similarity_cross_ratios, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
+    );
+
+if verbose
+    disp('Reverse cross ratio sequence alignment score:');
     disp(score_reverse);
 end
 
@@ -202,16 +259,26 @@ if verbose
     disp(match_votes);
 end
 
+subject_sequence = 1:n_subject;
+query_sequence = 1:n_query;
+[ alignment, score ] = swSequenceAlignment(...
+        subject_sequence, query_sequence,...
+        @f_similarity_points, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
+    );
+
+if verbose
+    disp('Forward point sequence alignment:');
+    disp(alignment);
+    disp('Forward point sequence alignment score:');
+    disp(score);
+end
+
 subject_match_indices = zeros(n_query, 1);
 for i = 1:n_query
-    [ max_column_votes, row_indices ] = max(match_votes);
-    [ max_vote, col ] = max(max_column_votes);
-    row = row_indices(col);
-    if max_vote > 0
-        subject_match_indices(col) = row;
+    match_in_subject = alignment(alignment(:, 2) == i, 1);
+    if match_in_subject
+        subject_match_indices(i) = match_in_subject;
     end
-    match_votes(:, col) = -1;
-    match_votes(row, :) = -1;
 end
 
 end
