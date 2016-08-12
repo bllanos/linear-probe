@@ -28,12 +28,12 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 % subject_gap_cost -- Score for gaps in the subject sequence
 %   The score to assign to gaps of any length in the subject sequence in
 %   the alignment of the subject and query sequences. This value is used
-%   indirectly by `swSequenceAlignment()`.
+%   indirectly by `swSequenceAlignmentAffine()`.
 %
 % query_gap_cost -- Score for gaps in the query sequence
 %   The score to assign to gaps of any length in the query sequence in
 %   the alignment of the subject and query sequences. This value is used
-%   indirectly by `swSequenceAlignment()`.
+%   indirectly by `swSequenceAlignmentAffine()`.
 %
 % n_samples - Reduce problem size
 %   An integer value from zero to 'n - 1'. If greater than zero, the function
@@ -66,17 +66,17 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 % 
 % First, the sequences of all possible cross ratios (from all possible
 % combinations of points) are generated for the two sets of points. These
-% sequences of cross ratios are then aligned using `swSequenceAlignment`. A
-% semi-global alignment scheme is used, as `query` is assumed to contain
-% only valid points, but possibly be missing points, whereas `subject` is
-% assumed to be the sequence of all valid points. Consequently, the
-% complete alignment of `query` will be favoured, whereas the process will
-% not penalize the extension of `subject` outside the aligned region.
-% Lastly, each pair of matched cross ratios in the alignment is used to
-% vote for matches between the corresponding points. The final point
-% matches are produced using a sequence alignment procedure (semi-global
-% alignment with `swSequenceAlignment`), where the votes are matching scores
-% for pairs of points.
+% sequences of cross ratios are then aligned using
+% `swSequenceAlignmentAffine`. A semi-global alignment scheme is used, as
+% `query` is assumed to contain only valid points, but possibly be missing
+% points, whereas `subject` is assumed to be the sequence of all valid
+% points. Consequently, the complete alignment of `query` will be favoured,
+% whereas the process will not penalize the extension of `subject` outside
+% the aligned region. Lastly, each pair of matched cross ratios in the
+% alignment is used to vote for matches between the corresponding points.
+% The final point matches are produced using a sequence alignment procedure
+% (semi-global alignment with `swSequenceAlignmentAffine`), where the votes
+% are matching scores for pairs of points.
 %
 % If `n_samples` is nonzero, then the sequence of cross ratios generated
 % for `query` is constructed as follows, rather than consisting of all
@@ -88,32 +88,30 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 % Note that cross ratios are matched with dynamic programming as opposed to
 % a closest-pair scheme because a closest-pair scheme would not enforce the
 % relative orderings of quadruplets of points on the two lines. The dynamic
-% programming algorithm in `swSequenceAlignment` allows for combinations of
-% points to be inserted or deleted, but not transposed.
+% programming algorithm in `swSequenceAlignmentAffine` allows for
+% combinations of points to be inserted or deleted, but not transposed.
 %
-% See also crossRatio, swSequenceAlignment
+% See also crossRatio, swSequenceAlignmentAffine
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang
 % University of Alberta, Department of Computing Science
 % File created August 5, 2016
 
-    function [ score ] = f_similarity_cross_ratios(s, q)
+    function [ score ] = f_similarity_cross_ratios_forward(s, q)
         s_val = subject_cross_ratios(s);
-        q_val = query_cross_ratios(q);
+        q_val = query_cross_ratios_forward(q);
+        score = 1 - abs((q_val - s_val) / s_val);
+    end
+
+    function [ score ] = f_similarity_cross_ratios_reverse(s, q)
+        s_val = subject_cross_ratios(s);
+        q_val = query_cross_ratios_reverse(q);
         score = 1 - abs((q_val - s_val) / s_val);
     end
 
     function [ score ] = f_similarity_points(s, q)
         score = match_votes(s, q);
-    end
-
-    function [ score ] = f_subject_gap(~)
-        score = subject_gap_cost;
-    end
-
-    function [ score ] = f_query_gap(~)
-        score = query_gap_cost;
     end
 
 nargoutchk(1, 1);
@@ -191,10 +189,18 @@ else
     query_combinations = nchoosek(1:n_query, 4);
     n_query_cross_ratios = size(query_combinations, 1);
 end
-query_cross_ratios = zeros(n_query_cross_ratios, 1);
+
+query_cross_ratios_forward = zeros(n_query_cross_ratios, 1);
 for i = 1:n_query_cross_ratios
     points = query_line(query_combinations(i, :), 1);
-    query_cross_ratios(i) = crossRatio(points);
+    query_cross_ratios_forward(i) = crossRatio(points);
+end
+
+query_reverse_map = n_query:(-1):1;
+query_cross_ratios_reverse = zeros(n_query_cross_ratios, 1);
+for i = 1:n_query_cross_ratios
+    points = query_line(query_reverse_map(query_combinations(i, :)), 1);
+    query_cross_ratios_reverse(i) = crossRatio(points);
 end
 
 if verbose
@@ -202,7 +208,7 @@ if verbose
     figure;
     hold on
     plot(subject_cross_ratios, 'g-');
-    plot(query_cross_ratios, 'r-');
+    plot(query_cross_ratios_forward, 'r-');
     hold off
     title('Cross ratios')
     xlabel('Combination index')
@@ -210,13 +216,28 @@ if verbose
     legend('Subject sequence cross ratios', 'Query sequence cross ratios')
 end
 
+if verbose
+    % Plot cross ratios in reverse
+    figure;
+    hold on
+    plot(subject_cross_ratios, 'g-');
+    plot(query_cross_ratios_reverse, 'r-');
+    hold off
+    title('Cross ratios, with query sequence reversed')
+    xlabel('Combination index')
+    ylabel('Cross ratio')
+    legend('Subject sequence cross ratios', 'Reversed query sequence cross ratios')
+end
+
 % Match sequences in the given directions with dynamic programming
 subject_sequence = 1:n_subject_cross_ratios;
-query_sequence_forward = 1:n_query_cross_ratios;
+query_sequence = 1:n_query_cross_ratios;
 threshold = -Inf;
-[ alignment_forward, score_forward ] = swSequenceAlignment(...
-        subject_sequence, query_sequence_forward,...
-        @f_similarity_cross_ratios, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
+subject_gap_cost = [subject_gap_cost 0];
+query_gap_cost = [query_gap_cost 0];
+[ alignment_forward, score_forward ] = swSequenceAlignmentAffine(...
+        subject_sequence, query_sequence,...
+        @f_similarity_cross_ratios_forward, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
     );
 
 if verbose
@@ -225,10 +246,9 @@ if verbose
 end
 
 % Match sequences in the reverse directions with dynamic programming
-query_sequence_reverse = n_query_cross_ratios:-1:1;
-[ alignment_reverse, score_reverse ] = swSequenceAlignment(...
-        subject_sequence, query_sequence_reverse,...
-        @f_similarity_cross_ratios, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
+[ alignment_reverse, score_reverse ] = swSequenceAlignmentAffine(...
+        subject_sequence, query_sequence,...
+        @f_similarity_cross_ratios_reverse, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
     );
 
 if verbose
@@ -261,15 +281,20 @@ end
 
 subject_sequence = 1:n_subject;
 query_sequence = 1:n_query;
-[ alignment, score ] = swSequenceAlignment(...
+[ alignment, score ] = swSequenceAlignmentAffine(...
         subject_sequence, query_sequence,...
-        @f_similarity_points, threshold, @f_subject_gap, @f_query_gap, 'SemiGlobal'...
+        @f_similarity_points, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
     );
 
+if score_forward <= score_reverse
+    alignment_filter = (alignment(:, 2) ~= 0);
+    alignment(alignment_filter, 2) = query_reverse_map(alignment(alignment_filter, 2));
+end
+
 if verbose
-    disp('Forward point sequence alignment:');
+    disp('Point sequence alignment:');
     disp(alignment);
-    disp('Forward point sequence alignment score:');
+    disp('Point sequence alignment score:');
     disp(score);
 end
 

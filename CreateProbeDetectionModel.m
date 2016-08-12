@@ -142,7 +142,7 @@ I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\origina
 % Annotations for image of probe
 I_annotations_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\annotated\probePrePaperOcclusion_1_b.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
+rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 4; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
@@ -153,7 +153,7 @@ point_alignment_outlier_threshold = 5;
 % Parameters for matching annotated points with the probe measurements
 subject_gap_cost = -0.1;
 query_gap_cost = 0;
-n_samples_sequence_alignment = 4;
+n_samples_sequence_alignment = 12;
 
 % Number of points at which to evaluate hue variable kernel density estimators
 probe_band_color_distribution_resolution = 180;
@@ -163,8 +163,8 @@ display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
 display_model_from_image = false;
-verbose_point_sequence_matching = true;
-display_probe_band_masks = false;
+verbose_point_sequence_matching = false;
+display_probe_band_masks = true;
 display_hue_image = true;
 plot_hue_estimators = true;
 
@@ -296,10 +296,14 @@ else
     elseif aligned_reverse
         model_from_image_new = model_from_image;
         if isfield(model_from_image, 'head')
-            model_from_image_new.tail = model_from_image.head(1);
+            model_from_image_new.tail = model_from_image.head;
+        else
+            model_from_image_new = rmfield(model_from_image_new, 'tail');
         end
         if isfield(model_from_image, 'tail')
-            model_from_image_new.head = model_from_image.tail(1);
+            model_from_image_new.head = model_from_image.tail;
+        else
+            model_from_image_new = rmfield(model_from_image_new, 'head');
         end
         model_from_image_new.above = flipud(model_from_image_new.above);
         model_from_image_new.below = flipud(model_from_image_new.below);
