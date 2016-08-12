@@ -29,6 +29,12 @@
 %     distance for the other end of the probe (i.e. the length of the
 %     entire probe). Distances are measured along the probe's axis of
 %     cylindrical symmetry.
+% - colors: A vector with `length(lengths) - 1` elements specifying colour
+%   indices for the bands of the probe. Colour indices should be
+%   consecutive integers starting at 1. They indicate how the bands of
+%   the probe are grouped based on mutually-distinguishable colours,
+%   allowing bands to have non-unique colours. The specific index assigned
+%   to a given band is unimportant.
 % - widths: Width of the probe at the edges of bands. Widths must include
 %     the ends of the probe, with values of zero for ends that taper to
 %     points. The elements of 'widths' should correspond to elements of
@@ -132,7 +138,7 @@ parameters_list = {
         'point_alignment_outlier_threshold',...
         'subject_gap_cost',...
         'query_gap_cost',...
-        'probe_band_color_distribution_resolution'
+        'probe_color_distribution_resolution'
     };
 
 % Probe measurements
@@ -156,7 +162,7 @@ query_gap_cost = 0;
 n_samples_sequence_alignment = 12;
 
 % Number of points at which to evaluate hue variable kernel density estimators
-probe_band_color_distribution_resolution = 180;
+probe_color_distribution_resolution = 180;
 
 % Debugging tools
 display_original_image = false;
@@ -164,7 +170,8 @@ display_annotations_image = false;
 display_extracted_annotations = false;
 display_model_from_image = false;
 verbose_point_sequence_matching = false;
-display_probe_band_masks = true;
+display_probe_band_masks = false;
+display_probe_color_masks = true;
 display_hue_image = true;
 plot_hue_estimators = true;
 
@@ -311,7 +318,7 @@ else
     end
 end
 
-%% Create photometric invariant representations of the probe bands
+%% Locate regions corresponding to probe bands and probe colours
 
 % Express the model in pixel coordinates as polygonal sections
 n_bands = length(probe.lengths) - 1;
@@ -343,7 +350,7 @@ if isfield(model_from_image, 'tail')
     ];
 end
 
-% Obtain a mask for each section
+% Obtain a mask for each band
 probe_band_masks = false(image_height, image_width, n_bands);
 for i = 1:n_bands
     probe_band_masks(:, :, i) = roipoly(...
@@ -359,6 +366,25 @@ if display_probe_band_masks
     end
 end
 
+% Group bands by colour
+probe_colors = unique(probe.colors);
+n_colors = length(probe_colors);
+probe_color_masks = false(image_height, image_width, n_colors);
+for i = 1:n_bands
+    probe_color_masks(:, :, probe.colors(i)) =...
+        probe_color_masks(:, :, probe.colors(i)) | probe_band_masks(:, :, i);
+end
+
+if display_probe_color_masks
+    for i = 1:n_colors %#ok<UNRCH>
+        figure
+        imshow(probe_color_masks(:, :, i));
+        title(sprintf('Mask for probe colour %d', i))
+    end
+end
+
+%% Create photometric invariant representations of the probe colours
+
 % Obtain hue values
 H = rgb2hue(I);
     
@@ -368,47 +394,47 @@ if display_hue_image
     title('Hue channel of original image')
 end
 
-% Compute hue variable kernel density estimators from probe bands
+% Compute hue variable kernel density estimators from probe colors
 load(rgb_sigma_filename, 'rgb_sigma_polyfit');
 if ~exist('rgb_sigma_polyfit', 'var')
     error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
 end
 
-probe_band_color_distributions = zeros(...
-        probe_band_color_distribution_resolution, n_bands...
+probe_color_distributions = zeros(...
+        probe_color_distribution_resolution, n_colors...
     );
 I_double = im2double(I);
 R = I_double(:, :, 1);
 G = I_double(:, :, 2);
 B = I_double(:, :, 3);
-for i = 1:n_bands
+for i = 1:n_colors
     [...
-        probe_band_color_distributions(:, i),...
-        probe_band_color_distribution_increment...
+        probe_color_distributions(:, i),...
+        probe_color_distribution_increment...
     ] = hueVariableKernelDensityEstimator(...
-        H, R, G, B, probe_band_masks(:, :, i),...
-        rgb_sigma_polyfit, probe_band_color_distribution_resolution...
+        H, R, G, B, probe_color_masks(:, :, i),...
+        rgb_sigma_polyfit, probe_color_distribution_resolution...
     );
 end
 
 if plot_hue_estimators
-    x = 0:probe_band_color_distribution_increment:1; %#ok<UNRCH>
+    x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
     line_styles = {'-', '--', ':', '-.'};
-    legend_names = cell(n_bands, 1);
-    plot_colors = jet(n_bands);
+    legend_names = cell(n_colors, 1);
+    plot_colors = jet(n_colors);
     figure
     hold on
-    for i = 1:n_bands
-        legend_names{i} = sprintf('Probe band %d', i);
+    for i = 1:n_colors
+        legend_names{i} = sprintf('Probe color %d', i);
         plot(...
-                x, probe_band_color_distributions(:, i),...
+                x, probe_color_distributions(:, i),...
                 'Color', plot_colors(i, :),...
                 'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
             )
     end
     hold off
     legend(legend_names{:});
-    title('Hue variable kernel density estimators for bands on the probe')
+    title('Hue variable kernel density estimators for colors on the probe')
     xlabel('Hue, \theta (range [0, 1])')
     ylabel('Density, P(\theta)')
 end
@@ -416,8 +442,8 @@ end
 %% Save results to a file
 save_variables_list = [ parameters_list, {...
         'probe',...
-        'probe_band_color_distributions',...
-        'probe_band_color_distribution_increment'...
+        'probe_color_distributions',...
+        'probe_color_distribution_increment'...
     } ];
 uisave(save_variables_list,'probeDetectionModel')
 disp('Reminder: The output model is specific to the probe, camera, and camera parameters.')
