@@ -72,13 +72,18 @@ rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe
 % Radius for eroding images used to find initial bounds for the probe
 erosion_radius_initial = 5;
 
+% Radius used to filter candidate probe colour regions to those close to
+% regions for other colours
+radius_adj = 2 * erosion_radius_initial + 10;
+
 % Debugging tools
 display_original_image = false;
 display_hue_image = false;
 plot_global_hue_estimator = false;
-plot_ratio_estimators = true;
+plot_ratio_estimators = false;
 display_ratio_distribution_backprojections = true;
 verbose_initial_region_extraction = true;
+verbose_initial_region_filtering = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -199,10 +204,20 @@ if display_ratio_distribution_backprojections
     end
 end
 
-%% Find an initial bound for the probe
+%% Find an initial bounding area for the probe
 
-probe_color_regions_initial = extractBinaryRegions(...
+[ probe_color_regions_initial, probe_color_regions_bw_initial] = extractBinaryRegions(...
         ratio_distributions_backprojected_bg,...
         erosion_radius_initial,...
         verbose_initial_region_extraction...
+    );
+
+[
+    probe_color_regions_initial_filtered,...
+    probe_color_regions_bw_initial_filtered...
+] = detectProbeBinaryRegions(...
+        probe_color_regions_initial,...
+        probe_color_regions_bw_initial,...
+        radius_adj,...
+        verbose_initial_region_filtering...
     );

@@ -1,13 +1,17 @@
-function [ regions ] = extractBinaryRegions( backprojected_distributions, radius, varargin )
+function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, radius, varargin )
 % EXTRACTBINARYREGIONS  Threshold and obtain binary regions after filtering out poorly-distinguished pixels
 %
 % ## Syntax
 % regions = extractBinaryRegions( backprojected_distributions, radius [, verbose] )
+% [ regions, bw ] = extractBinaryRegions( backprojected_distributions, radius [, verbose] )
 %
 % ## Description
 % regions = extractBinaryRegions( backprojected_distributions, radius [, verbose] )
 %   Returns binary regions corresponding to each input backprojected
 %   probability distribution.
+%
+% [ regions, bw ] = extractBinaryRegions( backprojected_distributions, radius [, verbose] )
+%   Additionally returns binary images corresponding to the binary regions.
 %
 % ## Input Arguments
 %
@@ -37,6 +41,11 @@ function [ regions ] = extractBinaryRegions( backprojected_distributions, radius
 %   regions corresponding to the i-th colour. Each element is of the form
 %   of the output argument of `bwconncomp`.
 %
+% bw - Binary images
+%   An image_height x image_width x n logical array, where `bw(:,:,i)` is
+%   the binary image consisting of the connected components in
+%   `regions(i)`.
+%
 % ## Algorithm
 % 
 % To extract the regions which appear to correspond to a given colour
@@ -59,7 +68,7 @@ function [ regions ] = extractBinaryRegions( backprojected_distributions, radius
 % University of Alberta, Department of Computing Science
 % File created August 15, 2016
 
-nargoutchk(1, 1);
+nargoutchk(1, 2);
 narginchk(2, 3);
 
 if ~isempty(varargin)
@@ -89,6 +98,9 @@ end
 % For the pixels that remain, use Otsu's method to obtain binary regions.
 regions = struct('Connectivity', cell(n, 1), 'ImageSize', cell(n, 1),...
     'NumObjects', cell(n, 1), 'PixelIdxList', cell(n, 1));
+if nargout > 1
+    bw = false(image_height, image_width, n);
+end
 for i = 1:n
     mask_i = pair_differentiation_masks(:, :, i);
     backprojected_distributions_i = backprojected_distributions(:, :, i);
@@ -103,6 +115,9 @@ for i = 1:n
         title(sprintf('Binary image obtained for colour class %d', i))
     end
     regions(i) = bwconncomp(bw_i);
+    if nargout > 1
+        bw(:, :, i) = bw_i;
+    end
 end
 
 end
