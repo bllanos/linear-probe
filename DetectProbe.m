@@ -69,12 +69,16 @@ I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\origina
 % RGB noise parameters
 rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
+% Radius for eroding images used to find initial bounds for the probe
+erosion_radius_initial = 5;
+
 % Debugging tools
-display_original_image = true;
-display_hue_image = true;
-plot_global_hue_estimator = true;
+display_original_image = false;
+display_hue_image = false;
+plot_global_hue_estimator = false;
 plot_ratio_estimators = true;
 display_ratio_distribution_backprojections = true;
+verbose_initial_region_extraction = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -194,3 +198,11 @@ if display_ratio_distribution_backprojections
         title(sprintf('Ratio distribution backprojection for probe band %d with respect to the background', i))
     end
 end
+
+%% Find an initial bound for the probe
+
+probe_color_regions_initial = extractBinaryRegions(...
+        ratio_distributions_backprojected_bg,...
+        erosion_radius_initial,...
+        verbose_initial_region_extraction...
+    );
