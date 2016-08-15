@@ -138,6 +138,7 @@ parameters_list = {
         'point_alignment_outlier_threshold',...
         'subject_gap_cost',...
         'query_gap_cost',...
+        'n_samples_sequence_alignment',...
         'probe_color_distribution_resolution'
     };
 
@@ -159,7 +160,7 @@ point_alignment_outlier_threshold = 5;
 % Parameters for matching annotated points with the probe measurements
 subject_gap_cost = -0.1;
 query_gap_cost = 0;
-n_samples_sequence_alignment = 12;
+n_samples_sequence_alignment = 8;
 
 % Number of points at which to evaluate hue variable kernel density estimators
 probe_color_distribution_resolution = 180;
@@ -171,9 +172,9 @@ display_extracted_annotations = false;
 display_model_from_image = false;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
-display_probe_color_masks = true;
-display_hue_image = true;
-plot_hue_estimators = true;
+display_probe_color_masks = false;
+display_hue_image = false;
+plot_hue_estimators = false;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 

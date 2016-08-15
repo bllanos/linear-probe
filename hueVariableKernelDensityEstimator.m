@@ -135,7 +135,13 @@ x = linspace(0, 1, resolution);
 dist = zeros(resolution, 1);
 inc = 1 / (resolution - 1);
 for i = 1:resolution
-    deviation = mod(x(i) - h, 0.5);
+    % Theo Gevers and Harro Stokman use the following:
+    %   `deviation = mod(x(i) - h, 0.5);`
+    % This seems incorrect, and results in two peaks in the distribution
+    % for each `h`.
+    deviation = abs(x(i) - h);
+    filter = deviation > 0.5;
+    deviation(filter) = 1.0 - deviation(filter);
     p = normpdf(deviation, 0, s);
     dist(i) = sum(p);
 end

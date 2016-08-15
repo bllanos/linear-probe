@@ -120,6 +120,11 @@ while size(mu, 1) < n_points_desired || ~strcmpi(choice, 'n')
             else
                 % 'Resume after adjusting view' allows the user to zoom into the
                 % image, then re-run the script to continue data collection.
+                %
+                % While more complicated, a GUI to display the image and
+                % offer buttons for adjusting the region of the image being
+                % displayed and for marking regions of interest would be
+                % ideal for this purpose.
                 choice = input('New image? (y), Resume after adjusting view (z), or Stop data collection? (n): ', 's');
                 if strcmpi(choice, 'z')
                     break
