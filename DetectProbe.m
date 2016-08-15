@@ -37,7 +37,7 @@
 % image. This information should be computed from images taken
 % under the same conditions and with the same camera parameters as the
 % image in which the probe is to be detected, if not computed from this
-% image.
+% same image.
 %
 % ## Output
 %
@@ -63,18 +63,18 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\20160810_redPen_probeDetectionModel_bottomCamera.mat';
+detection_model_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160815_bambooSkewer_orangeBlue_probeDetectionModel_bottomCamera.mat';
 % Image of probe in an unknown pose
-I_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\probesAgainstWhiteBox\original\redPen_white_b_1.bmp';
+I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\original\probePrePaperOcclusion_1_b.bmp';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160725_probes_lotus\20160809_rgbStddev_redPen_bottomCamera.mat';
+rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Debugging tools
-display_original_image = false;
-display_hue_image = false;
-plot_global_hue_estimator = false;
-plot_ratio_estimators = false;
-display_ratio_distribution_backprojections = false;
+display_original_image = true;
+display_hue_image = true;
+plot_global_hue_estimator = true;
+plot_ratio_estimators = true;
+display_ratio_distribution_backprojections = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -93,10 +93,10 @@ end
 
 %% Load the probe detection model
 model_variables_required = {...
-        'probe_band_color_distribution_resolution',...
+        'probe_color_distribution_resolution',...
         'probe',...
-        'probe_band_color_distributions',...
-        'probe_band_color_distribution_increment'...
+        'probe_color_distributions',...
+        'probe_color_distribution_increment'...
     };
 load(detection_model_filename, model_variables_required{:});
 if ~all(ismember(model_variables_required, who))
@@ -129,40 +129,40 @@ B = I_double(:, :, 3);
     I_color_distribution_increment...
 ] = hueVariableKernelDensityEstimator(...
     H, R, G, B, true(image_height, image_width),...
-    rgb_sigma_polyfit, probe_band_color_distribution_resolution...
+    rgb_sigma_polyfit, probe_color_distribution_resolution...
 );
 
 if plot_global_hue_estimator
     x = 0:I_color_distribution_increment:1; %#ok<UNRCH>
     figure
     plot(x, I_color_distribution)
-    title('Hue variable kernel density estimators for the entire image')
+    title('Hue variable kernel density estimator for the entire image')
     xlabel('Hue, \theta (range [0, 1])')
     ylabel('Density, P(\theta)')
 end
 
 %% Transform the image using histogram backprojection
-n_bands = size(probe_band_color_distributions, 2);
+n_colors = size(probe_color_distributions, 2);
 
 % Ratio distributions with respect to the background
 ratio_distributions_bg = zeros(...
-        probe_band_color_distribution_resolution, n_bands...
+        probe_color_distribution_resolution, n_colors...
     );
-for i = 1:n_bands
+for i = 1:n_colors
     ratio_distributions_bg(:, i) = ratioDistribution(...
-            probe_band_color_distributions(:, i), I_color_distribution...
+            probe_color_distributions(:, i), I_color_distribution...
         );
 end
 
 if plot_ratio_estimators
-    x = 0:probe_band_color_distribution_increment:1; %#ok<UNRCH>
+    x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
     line_styles = {'-', '--', ':', '-.'};
-    legend_names = cell(n_bands, 1);
-    plot_colors = jet(n_bands);
+    legend_names = cell(n_colors, 1);
+    plot_colors = jet(n_colors);
     figure
     hold on
-    for i = 1:n_bands
-        legend_names{i} = sprintf('Probe band %d', i);
+    for i = 1:n_colors
+        legend_names{i} = sprintf('Probe colour %d', i);
         plot(...
                 x, ratio_distributions_bg(:, i),...
                 'Color', plot_colors(i, :),...
@@ -171,21 +171,21 @@ if plot_ratio_estimators
     end
     hold off
     legend(legend_names{:});
-    title('Ratio hue variable kernel density estimators for bands on the probe with respect to the background')
+    title('Ratio hue variable kernel density estimators for probe colours with respect to the background')
     xlabel('Hue, \theta (range [0, 1])')
     ylabel('Density, P(\theta)')
 end
 
 % Histogram backprojection
-ratio_distributions_backprojected_bg = zeros(image_height, image_width, n_bands);
-for i = 1:n_bands
+ratio_distributions_backprojected_bg = zeros(image_height, image_width, n_colors);
+for i = 1:n_colors
     ratio_distributions_backprojected_bg(:, :, i) = queryDiscretized1DFunction(...
             H, ratio_distributions_bg(:, i), I_color_distribution_increment...
         );
 end
 
 if display_ratio_distribution_backprojections
-    for i = 1:n_bands %#ok<UNRCH>
+    for i = 1:n_colors %#ok<UNRCH>
         figure
         imshow(...
                 ratio_distributions_backprojected_bg(:, :, i) /...
