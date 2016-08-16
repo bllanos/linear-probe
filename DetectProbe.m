@@ -30,6 +30,8 @@
 % conditions in the image are similar to those in the context of which the
 % detection model was created.
 %
+% The image should have been corrected for lens distortion.
+%
 % ### Colour noise parameters
 % A '.mat' file containing a 'rgb_sigma_polyfit' variable, as output by the
 % script '.\EstimateRGBStandardDeviations.m'. 'rgb_sigma_polyfit' describes
@@ -70,6 +72,8 @@ I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\origina
 rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Determination of the probe's bounding region
+% Threshold for identifying noise pixels in initial histogram backprojections
+noise_threshold_initial = []; % Select automatically using Otsu's method
 % Radius for eroding images used to find initial bounds for the probe
 erosion_radius_initial = 5;
 % Radius used to filter candidate probe colour regions to those close to
@@ -86,15 +90,33 @@ dilation_radius_initial = 4 * erosion_radius_initial;
 initial_region_expansion_factor_length = 1.1;
 initial_region_expansion_factor_width = 1.5;
 
+% Determination of refined probe colour regions
+% Threshold for identifying noise pixels in final histogram backprojections
+noise_threshold_final = 0.2;
+% Radius for eroding images
+erosion_radius_final = 1;
+% Radius used to filter probe colour regions to those close to regions for
+% other colours
+radius_adj_final = 2 * erosion_radius_final + 10;
+% Number of standard deviations from the estimate of the probe axis beyond
+% which a region is determined to be distinct from the probe
+axis_distance_outlier_threshold_final = 3;
+
 % Debugging tools
 display_original_image = false;
 display_hue_image = false;
 plot_global_hue_estimator = false;
-plot_ratio_estimators = false;
-display_ratio_distribution_backprojections = false;
+plot_initial_ratio_estimators = false;
+display_initial_ratio_distribution_backprojections = false;
 verbose_initial_region_extraction = false;
-verbose_initial_region_filtering = true;
-display_initial_region_expansion = true;
+verbose_initial_region_filtering = false;
+display_initial_region_expansion = false;
+
+plot_bounding_area_hue_estimator = false;
+plot_final_ratio_estimators = false;
+display_final_ratio_distribution_backprojections = false;
+verbose_final_region_extraction = false;
+verbose_final_region_filtering = false;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -174,7 +196,7 @@ for i = 1:n_colors
         );
 end
 
-if plot_ratio_estimators
+if plot_initial_ratio_estimators
     x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
     line_styles = {'-', '--', ':', '-.'};
     legend_names = cell(n_colors, 1);
@@ -204,7 +226,7 @@ for i = 1:n_colors
         );
 end
 
-if display_ratio_distribution_backprojections
+if display_initial_ratio_distribution_backprojections
     for i = 1:n_colors %#ok<UNRCH>
         figure
         imshow(...
@@ -219,12 +241,14 @@ end
 
 [ probe_regions_initial, probe_regions_bw_initial] = extractBinaryRegions(...
         ratio_distributions_backprojected_bg,...
+        noise_threshold_initial,...
         erosion_radius_initial,...
+        [],...
         verbose_initial_region_extraction...
     );
 
 [
-    probe_regions_initial_filtered,...
+    ~,...
     probe_regions_bw_initial_filtered...
 ] = detectProbeBinaryRegions(...
         probe_regions_initial,...
@@ -237,7 +261,7 @@ end
 % Obtain an upper bound on the probe's area
 probe_regions_bw_initial_all = any(probe_regions_bw_initial_filtered, 3);
 if display_initial_region_expansion
-    figure
+    figure %#ok<UNRCH>
     imshow(probe_regions_bw_initial_all);
     title('Initial probe colour regions prior to expansion')
 end
@@ -272,11 +296,104 @@ for i = 1:n_initial_regions
         );
 end
 if display_initial_region_expansion
-    figure
+    figure %#ok<UNRCH>
     probe_regions_bw_initial_all_display = repmat(probe_regions_bw_initial_all, 1, 1, 3);
     probe_regions_bw_initial_all_display(:, :, 1) =...
         probe_regions_bw_initial_all_display(:, :, 1) |...
-        bwmorph(bwperim(probe_mask_initial), 'thicken', 2);
+        imdilate(bwperim(probe_mask_initial), strel('disk', 2));
     imshow(double(probe_regions_bw_initial_all_display));
     title('Initial probe colour regions after dilation, with outline of initial mask')
 end
+
+%% Compute the hue variable kernel density estimator for the bounding region
+
+[...
+    bound_color_distribution,...
+    bound_color_distribution_increment...
+] = hueVariableKernelDensityEstimator(...
+    H, R, G, B, probe_mask_initial,...
+    rgb_sigma_polyfit, probe_color_distribution_resolution...
+);
+
+if plot_bounding_area_hue_estimator
+    x = 0:bound_color_distribution_increment:1; %#ok<UNRCH>
+    figure
+    plot(x, bound_color_distribution)
+    title('Hue variable kernel density estimator for the initial bounding area')
+    xlabel('Hue, \theta (range [0, 1])')
+    ylabel('Density, P(\theta)')
+end
+
+%% Transform the image using histogram backprojection for the bounding region
+
+% Ratio distributions with respect to the background
+ratio_distributions_bounding = zeros(...
+        probe_color_distribution_resolution, n_colors...
+    );
+for i = 1:n_colors
+    ratio_distributions_bounding(:, i) = ratioDistribution(...
+            probe_color_distributions(:, i), bound_color_distribution...
+        );
+end
+
+if plot_final_ratio_estimators
+    x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
+    line_styles = {'-', '--', ':', '-.'};
+    legend_names = cell(n_colors, 1);
+    plot_colors = jet(n_colors);
+    figure
+    hold on
+    for i = 1:n_colors
+        legend_names{i} = sprintf('Probe colour %d', i);
+        plot(...
+                x, ratio_distributions_bounding(:, i),...
+                'Color', plot_colors(i, :),...
+                'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
+            )
+    end
+    hold off
+    legend(legend_names{:});
+    title('Ratio hue variable kernel density estimators for probe colours with respect to the bounding area')
+    xlabel('Hue, \theta (range [0, 1])')
+    ylabel('Density, P(\theta)')
+end
+
+% Histogram backprojection
+ratio_distributions_backprojected_bounding = zeros(image_height, image_width, n_colors);
+for i = 1:n_colors
+    ratio_distributions_backprojected_bounding(:, :, i) = queryDiscretized1DFunction(...
+            H, ratio_distributions_bounding(:, i), bound_color_distribution_increment...
+        );
+end
+
+if display_final_ratio_distribution_backprojections
+    for i = 1:n_colors %#ok<UNRCH>
+        figure
+        imshow(...
+                ratio_distributions_backprojected_bounding(:, :, i) /...
+                max(max(ratio_distributions_backprojected_bounding(:, :, i)))...
+            );
+        title(sprintf('Ratio distribution backprojection for probe band %d with respect to the bounding area', i))
+    end
+end
+
+%% Find final regions corresponding to probe colours
+
+[ probe_regions_final, probe_regions_bw_final] = extractBinaryRegions(...
+        ratio_distributions_backprojected_bounding,...
+        noise_threshold_final,...
+        erosion_radius_final,...
+        probe_mask_initial,...
+        verbose_final_region_extraction...
+    );
+
+[
+    probe_regions_final_filtered,...
+    probe_regions_bw_final_filtered...
+] = detectProbeBinaryRegions(...
+        probe_regions_final,...
+        probe_regions_bw_final,...
+        radius_adj_final,...
+        axis_distance_outlier_threshold_final,...
+        verbose_final_region_filtering...
+    );

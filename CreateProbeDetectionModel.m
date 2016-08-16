@@ -56,6 +56,10 @@
 % The image should depict the probe under lighting conditions that are
 % similar to the detection scenario, to facilitate colour-based detection.
 %
+% The image should not contain significant distortion, or it will be
+% difficult to automatically determine the orientation (forwards vs.
+% backwards) of the probe in the image.
+%
 % ### Annotations for probe image
 % An image in any format that can be loaded by `imread` with an alpha
 % channel that is nonzero at user-marked interest points, and zero
