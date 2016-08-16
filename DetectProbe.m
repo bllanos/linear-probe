@@ -69,12 +69,15 @@ I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\origina
 % RGB noise parameters
 rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
+% Determination of the probe's bounding region
 % Radius for eroding images used to find initial bounds for the probe
 erosion_radius_initial = 5;
-
 % Radius used to filter candidate probe colour regions to those close to
 % regions for other colours
-radius_adj = 2 * erosion_radius_initial + 10;
+radius_adj_initial = 2 * erosion_radius_initial + 10;
+% Number of standard deviations away from the initial estimate of the probe
+% axis beyond which a region is determined to be separate from the probe
+axis_distance_outlier_threshold_initial = 3;
 
 % Debugging tools
 display_original_image = false;
@@ -218,6 +221,7 @@ end
 ] = detectProbeBinaryRegions(...
         probe_color_regions_initial,...
         probe_color_regions_bw_initial,...
-        radius_adj,...
+        radius_adj_initial,...
+        axis_distance_outlier_threshold_initial,...
         verbose_initial_region_filtering...
     );
