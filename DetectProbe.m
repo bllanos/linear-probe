@@ -111,12 +111,12 @@ display_initial_ratio_distribution_backprojections = false;
 verbose_initial_region_extraction = false;
 verbose_initial_region_filtering = false;
 display_initial_region_expansion = false;
-
 plot_bounding_area_hue_estimator = false;
 plot_final_ratio_estimators = false;
 display_final_ratio_distribution_backprojections = false;
 verbose_final_region_extraction = false;
 verbose_final_region_filtering = false;
+display_final_regions_colored = false;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -397,3 +397,22 @@ end
         axis_distance_outlier_threshold_final,...
         verbose_final_region_filtering...
     );
+
+if display_final_regions_colored
+    probe_regions_bw_final_display = zeros(image_height, image_width, image_n_channels); %#ok<UNRCH>
+    for i = 1:n_colors
+        [ ~, peak_hue_index ] = max(probe_color_distributions(:, i));
+        peak_hue = (peak_hue_index - 1) * probe_color_distribution_increment;
+        peak_rgb = hsv2rgb([peak_hue, 1, 1]);
+        probe_regions_bw_final_filtered_i = probe_regions_bw_final_filtered(:, :, i);
+        probe_regions_bw_final_display = probe_regions_bw_final_display +...
+            cat(3,...
+                    peak_rgb(1) * probe_regions_bw_final_filtered_i,...
+                    peak_rgb(2) * probe_regions_bw_final_filtered_i,...
+                    peak_rgb(3) * probe_regions_bw_final_filtered_i...
+                );
+    end
+    figure
+    imshow(probe_regions_bw_final_display);
+    title('Final detected probe regions')
+end
