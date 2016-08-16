@@ -75,18 +75,26 @@ erosion_radius_initial = 5;
 % Radius used to filter candidate probe colour regions to those close to
 % regions for other colours
 radius_adj_initial = 2 * erosion_radius_initial + 10;
-% Number of standard deviations away from the initial estimate of the probe
-% axis beyond which a region is determined to be separate from the probe
+% Number of standard deviations from the initial estimate of the probe axis
+% beyond which a region is determined to be distinct from the probe
 axis_distance_outlier_threshold_initial = 3;
+% Radius for dilating the candidate probe colour regions to include some of
+% the background
+dilation_radius_initial = 4 * erosion_radius_initial;
+% Factor by which to expand oriented boxes fitted to the initial probe
+% colour regions
+initial_region_expansion_factor_length = 1.1;
+initial_region_expansion_factor_width = 1.5;
 
 % Debugging tools
 display_original_image = false;
 display_hue_image = false;
 plot_global_hue_estimator = false;
 plot_ratio_estimators = false;
-display_ratio_distribution_backprojections = true;
-verbose_initial_region_extraction = true;
+display_ratio_distribution_backprojections = false;
+verbose_initial_region_extraction = false;
 verbose_initial_region_filtering = true;
+display_initial_region_expansion = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -209,19 +217,66 @@ end
 
 %% Find an initial bounding area for the probe
 
-[ probe_color_regions_initial, probe_color_regions_bw_initial] = extractBinaryRegions(...
+[ probe_regions_initial, probe_regions_bw_initial] = extractBinaryRegions(...
         ratio_distributions_backprojected_bg,...
         erosion_radius_initial,...
         verbose_initial_region_extraction...
     );
 
 [
-    probe_color_regions_initial_filtered,...
-    probe_color_regions_bw_initial_filtered...
+    probe_regions_initial_filtered,...
+    probe_regions_bw_initial_filtered...
 ] = detectProbeBinaryRegions(...
-        probe_color_regions_initial,...
-        probe_color_regions_bw_initial,...
+        probe_regions_initial,...
+        probe_regions_bw_initial,...
         radius_adj_initial,...
         axis_distance_outlier_threshold_initial,...
         verbose_initial_region_filtering...
     );
+
+% Obtain an upper bound on the probe's area
+probe_regions_bw_initial_all = any(probe_regions_bw_initial_filtered, 3);
+if display_initial_region_expansion
+    figure
+    imshow(probe_regions_bw_initial_all);
+    title('Initial probe colour regions prior to expansion')
+end
+disk = strel('disk', dilation_radius_initial);
+probe_regions_bw_initial_all = imdilate(probe_regions_bw_initial_all, disk);
+% Find oriented bounding boxes
+initial_region_bounds = regionprops(probe_regions_bw_initial_all, {...
+    'Centroid', 'Orientation', 'MajorAxisLength', 'MinorAxisLength'...
+    });
+n_initial_regions = length(initial_region_bounds);
+initial_region_rect_corners = cell(n_initial_regions, 1);
+for i = 1:n_initial_regions
+    half_length = initial_region_bounds(i).MajorAxisLength * initial_region_expansion_factor_length / 2;
+    half_width = initial_region_bounds(i).MinorAxisLength * initial_region_expansion_factor_width / 2;
+    angle = initial_region_bounds(i).Orientation;
+    length_vector = half_length * [ cosd(angle), -sind(angle) ];
+    width_vector = half_width * [ cosd(angle + 90), -sind(angle + 90) ];
+    center = initial_region_bounds(i).Centroid;
+    initial_region_rect_corners{i} = [
+        center + length_vector + width_vector;
+        center - length_vector + width_vector;
+        center - length_vector - width_vector;
+        center + length_vector - width_vector;
+        ];
+end
+
+% Obtain a mask for the initial bounding boxes
+probe_mask_initial = false(image_height, image_width);
+for i = 1:n_initial_regions
+    probe_mask_initial = probe_mask_initial | roipoly(...
+            I, initial_region_rect_corners{i}(:, 1), initial_region_rect_corners{i}(:, 2)...
+        );
+end
+if display_initial_region_expansion
+    figure
+    probe_regions_bw_initial_all_display = repmat(probe_regions_bw_initial_all, 1, 1, 3);
+    probe_regions_bw_initial_all_display(:, :, 1) =...
+        probe_regions_bw_initial_all_display(:, :, 1) |...
+        bwmorph(bwperim(probe_mask_initial), 'thicken', 2);
+    imshow(double(probe_regions_bw_initial_all_display));
+    title('Initial probe colour regions after dilation, with outline of initial mask')
+end
