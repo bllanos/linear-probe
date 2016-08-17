@@ -94,13 +94,17 @@ initial_region_expansion_factor_width = 1.5;
 % Threshold for identifying noise pixels in final histogram backprojections
 noise_threshold_final = 0.2;
 % Radius for eroding images
-erosion_radius_final = 1;
+erosion_radius_final = 2;
 % Radius used to filter probe colour regions to those close to regions for
 % other colours
 radius_adj_final = 2 * erosion_radius_final + 10;
 % Number of standard deviations from the estimate of the probe axis beyond
 % which a region is determined to be distinct from the probe
 axis_distance_outlier_threshold_final = 3;
+
+% Location of probe edge points
+% Search distance from the probe colour regions for band junction pixels
+band_edge_distance_threshold = 2 * erosion_radius_final + 1;
 
 % Debugging tools
 display_original_image = false;
@@ -116,7 +120,8 @@ plot_final_ratio_estimators = false;
 display_final_ratio_distribution_backprojections = false;
 verbose_final_region_extraction = false;
 verbose_final_region_filtering = false;
-display_final_regions_colored = false;
+display_final_regions_colored = true;
+display_band_edge_extraction = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -415,4 +420,34 @@ if display_final_regions_colored
     figure
     imshow(probe_regions_bw_final_display);
     title('Final detected probe regions')
+end
+
+%% Extract points along the edges between coloured bands
+
+% Identify which pairs of colours can be adjacent
+probe_color_pairs = [probe.colors(1:(end - 1)), probe.colors(2:end)];
+probe_color_pairs = sort(probe_color_pairs, 2);
+probe_color_pairs = unique(probe_color_pairs, 'rows');
+n_color_pairs = size(probe_color_pairs, 1);
+
+% Find candidate edges as places where the distance to adjacent pairs of
+% colours is small
+probe_color_pairs_bwdist = zeros(image_height, image_width, n_color_pairs);
+for i = 1:n_color_pairs
+    pair = probe_color_pairs(i, :);
+    probe_regions_bw_final_filtered_1 = probe_regions_bw_final_filtered(:, :, pair(1));
+    distances_color1 = bwdist(probe_regions_bw_final_filtered_1);
+    distances_color1(probe_regions_bw_final_filtered_1) = Inf;
+    probe_regions_bw_final_filtered_2 = probe_regions_bw_final_filtered(:, :, pair(2));
+    distances_color2 = bwdist(probe_regions_bw_final_filtered_2);
+    distances_color2(probe_regions_bw_final_filtered_2) = Inf;
+    probe_color_pairs_bwdist(:, :, i) = max(distances_color1, distances_color2);
+end
+probe_color_pairs_bwdist_all = min(probe_color_pairs_bwdist, [], 3);
+probe_color_pairs_bwdist_all = (probe_color_pairs_bwdist_all <= band_edge_distance_threshold);
+
+if display_band_edge_extraction
+    figure %#ok<UNRCH>
+    imshow(probe_color_pairs_bwdist_all);
+    title(sprintf('Euclidean distances of %g or less to adjacent probe colour regions', band_edge_distance_threshold))
 end
