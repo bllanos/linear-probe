@@ -1,22 +1,26 @@
-function [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions( regions, bw, radius_adj, axis_distance_outlier_threshold, varargin )
+function [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions( regions, bw, color_pairs, radius_adj, axis_distance_outlier_threshold, varargin )
 % DETECTPROBEBINARYREGIONS  Filter binary regions to those which could belong to the probe
 %
 % ## Syntax
 % regions_filtered = detectProbeBinaryRegions(...
-%   regions, bw, radius_adj, axis_distance_outlier_threshold [, verbose]...
+%   regions, bw, color_pairs, radius_adj,...
+%   axis_distance_outlier_threshold [, verbose]...
 % )
 % [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions(...
-%   regions, bw, radius_adj, axis_distance_outlier_threshold [, verbose]...
+%   regions, bw, color_pairs, radius_adj,...
+%   axis_distance_outlier_threshold [, verbose]...
 % )
 %
 % ## Description
 % regions_filtered = detectProbeBinaryRegions(...
-%   regions, bw, radius_adj, axis_distance_outlier_threshold [, verbose]...
+%   regions, bw, color_pairs, radius_adj,...
+%   axis_distance_outlier_threshold [, verbose]...
 % )
 %   Returns binary regions that satisfy basic probe geometry constraints.
 %
 % [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions(...
-%   regions, bw, radius_adj, axis_distance_outlier_threshold [, verbose]...
+%   regions, bw, color_pairs, radius_adj,...
+%   axis_distance_outlier_threshold [, verbose]...
 % )
 %   Additionally returns binary images corresponding to the binary regions.
 %
@@ -32,9 +36,19 @@ function [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions( regions, 
 %   binary image containing the regions tentatively belonging to the i-th
 %   colour class of the probe, contained in `regions(i)`.
 %
+% color_pairs -- Colour adjacency relationships
+%   A k x 2 array, where each row contains the indices of two colour
+%   classes of the probe. A row appears in `color_pairs` if there are two
+%   adjacent bands on the probe with the corresponding colours to the row.
+%   (Bands can be in any order.)
+%
+%   `color_pairs` should not contain any duplicate pairs.
+%
 % radius_adj -- Radius for region proximity test
 %   Threshold above which regions are rejected based on their smallest
 %   distance to any region belonging to a different colour class.
+%   Specifically, the adjacent regions have the colour classes with which
+%   the colour class of the given region is paired in `colour_pairs`.
 %
 %   This test enforces the requirement that the coloured bands of the probe
 %   are adjacent. Note that bands next to occluding objects may be rejected
@@ -66,12 +80,6 @@ function [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions( regions, 
 %   `bw_filtered(:,:,i)` is the binary image consisting of the connected
 %   components in `regions_filtered(i)`.
 %
-% ## Notes
-% - Currently, the specific pattern of bands on the probe is not taken into
-%   account (nor passed in as input). The function filters regions by
-%   assuming that each probe colour is beside other probe colours, but does
-%   not use the specific adjacency relationships between colours.
-%
 % ## References
 % Section 4.7 (on RANSAC) of Hartley, Richard, and Andrew Zisserman. Multiple
 %   View Geometry In Computer Vision. Cambridge, UK: Cambridge University
@@ -86,7 +94,7 @@ function [ regions_filtered, bw_filtered ] = detectProbeBinaryRegions( regions, 
 % File created August 15, 2016
 
 nargoutchk(1, 2);
-narginchk(4, 5);
+narginchk(5, 6);
 
 if ~isempty(varargin)
     verbose = varargin{1};
@@ -101,18 +109,21 @@ n = size(bw, 3);
 regions_filtered = struct('Connectivity', cell(n, 1), 'ImageSize', cell(n, 1),...
     'NumObjects', cell(n, 1), 'PixelIdxList', cell(n, 1));
 
-% Filter regions to those within `radius_adj` of regions for a different
-% colour
+% Filter regions to those within `radius_adj` of regions for a possible
+% adjacent colour
 for i = 1:n
-    % Binary image containing all regions for all colours except the i-th
-    % colour
-    bw_all_but_i = any(bw(:, :, [1:(i-1), (i+1):n]), 3);
-    bw_distance = bwdist(bw_all_but_i);
+    adjacent_colors = [
+            color_pairs(color_pairs(:, 1) == i, 2);
+            color_pairs(color_pairs(:, 2) == i, 1)
+        ];
+    % Binary image containing all regions for all possible adjacent colours
+    bw_adj_i = any(bw(:, :, adjacent_colors), 3);
+    bw_distance = bwdist(bw_adj_i);
     bw_distance = (bw_distance <= radius_adj);
     if verbose
         figure
         imshow(bw(:, :, i) & bw_distance);
-        title(sprintf('Binary image %d AND-ed with thresholded distances to regions for other colours', i))
+        title(sprintf('Binary image %d AND-ed with thresholded distances to regions for adjacent colours', i))
     end
     bw_filtered_i = false(image_height, image_width);
     regions_i = regions(i);
