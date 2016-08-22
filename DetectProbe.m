@@ -8,7 +8,8 @@
 %
 % ## Probe Detection Assumptions and Limitations
 % - The image contains fairly saturated colours throughout, to assist with
-%   hue-based colour discrimination.
+%   hue-based colour discrimination. At minimum, unsaturated areas are far
+%   from the probe.
 % - The image only contains a single instance of the probe.
 % - The probe may be occluded in one or more places. However, it can be
 %   detected if at least 5 transition lines between pairs of coloured bands
@@ -97,7 +98,7 @@ noise_threshold_final = 0.2;
 erosion_radius_final = 2;
 % Radius used to filter probe colour regions to those close to regions for
 % other colours
-radius_adj_final = 2 * erosion_radius_final + 10;
+radius_adj_final = 2 * erosion_radius_final + 4;
 % Number of standard deviations from the estimate of the probe axis beyond
 % which a region is determined to be distinct from the probe
 axis_distance_outlier_threshold_final = 3;
@@ -154,10 +155,13 @@ end
 
 % Obtain hue values
 H = rgb2hue(I);
-    
+
 if display_hue_image
     figure %#ok<UNRCH>
-    imshow(H);
+    H_color = ones(image_height, image_width, image_n_channels);
+    H_color(:, :, 1) = H;
+    H_color = hsv2rgb(H_color);
+    imshowpair(H, H_color, 'montage');
     title('Hue channel of original image')
 end
 
@@ -238,7 +242,7 @@ if display_initial_ratio_distribution_backprojections
                 ratio_distributions_backprojected_bg(:, :, i) /...
                 max(max(ratio_distributions_backprojected_bg(:, :, i)))...
             );
-        title(sprintf('Ratio distribution backprojection for probe band %d with respect to the background', i))
+        title(sprintf('Ratio distribution backprojection for probe colour %d with respect to the background', i))
     end
 end
 

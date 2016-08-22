@@ -1,14 +1,14 @@
-function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, query_line, subject_gap_cost, query_gap_cost, varargin )
+function [ subject_match_indices ] = matchPointsByCrossRatios( subject, query, subject_gap_cost, query_gap_cost, varargin )
 % MATCHPOINTSBYCROSSRATIOS  Align sequences of points on two lines by comparing cross ratios
 %
 % ## Syntax
 % subject_match_indices = matchPointsByCrossRatios(...
-%   subject_line, query_line, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
+%   subject, query, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
 % )
 %
 % ## Description
 % subject_match_indices = matchPointsByCrossRatios(...
-%   subject_line, query_line, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
+%   subject, query, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
 %   points in the query sequence.
@@ -117,8 +117,8 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject_line, que
 nargoutchk(1, 1);
 narginchk(4, 6);
 
-n_subject = length(subject_line);
-n_query = length(query_line);
+n_subject = length(subject);
+n_query = length(query);
 
 if ~isempty(varargin)
     n_samples = varargin{1};
@@ -144,10 +144,10 @@ if n_query < 5
     error('Insufficient points given on the query line to compute cross ratios and determine forwards/backwards orientation.')
 end
 
-if ~all(subject_line == sort(subject_line))
+if ~all(subject == sort(subject))
     error('The `subject` input argument should be sorted in ascending order.');
 end
-if ~all(query_line == sort(query_line))
+if ~all(query == sort(query))
     error('The `query` input argument should be sorted in ascending order.');
 end
 
@@ -157,7 +157,7 @@ subject_combinations = nchoosek(1:n_subject, 4);
 n_subject_cross_ratios = size(subject_combinations, 1);
 subject_cross_ratios = zeros(n_subject_cross_ratios, 1);
 for i = 1:n_subject_cross_ratios
-    points = subject_line(subject_combinations(i, :), 1);
+    points = subject(subject_combinations(i, :), 1);
     subject_cross_ratios(i) = crossRatio(points);
 end
 
@@ -192,14 +192,14 @@ end
 
 query_cross_ratios_forward = zeros(n_query_cross_ratios, 1);
 for i = 1:n_query_cross_ratios
-    points = query_line(query_combinations(i, :), 1);
+    points = query(query_combinations(i, :), 1);
     query_cross_ratios_forward(i) = crossRatio(points);
 end
 
 query_reverse_map = n_query:(-1):1;
 query_cross_ratios_reverse = zeros(n_query_cross_ratios, 1);
 for i = 1:n_query_cross_ratios
-    points = query_line(query_reverse_map(query_combinations(i, :)), 1);
+    points = query(query_reverse_map(query_combinations(i, :)), 1);
     query_cross_ratios_reverse(i) = crossRatio(points);
 end
 

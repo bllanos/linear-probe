@@ -139,7 +139,7 @@ for i = 1:n
         mask_ij = imbinarize(I_diff, threshold_ij);
         pair_differentiation_masks(:, :, i) = mask_i & mask_ij;
         pair_differentiation_masks(:, :, j) = mask_j & mask_ij;
-    end    
+    end
 end
 
 % For the pixels that remain, use Otsu's method to obtain binary regions.

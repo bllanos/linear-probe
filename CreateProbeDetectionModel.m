@@ -9,15 +9,22 @@
 %
 % ## Probe Design Assumptions
 %   The probe is a cylindrically-symmetric object composed of conical or
-%   cylindrical segments. It may taper to a point at one or both ends,
-%   although only one end will be used as the active tip.
+%   cylindrical segments. Ideally, it is perfectly straight. (Some thin
+%   objects, such as wooden rods, may appear straight, but actually be
+%   curved and therefore not cylindrically symmetrical.) It may taper to a
+%   point at one or both ends, although only one end will be used as the
+%   active tip.
 %
 %   The length of the probe should be divided into different-coloured
 %   bands, and the pattern of bands should be asymmetrical, such that it is
 %   possible to uniquely determine the orientation of the probe.
 %   Specifically, asymmetry of band lengths is assumed, as opposed to colour
 %   pattern asymmetry. Band edges should be perpendicular to the probe's
-%   axis of cylindrical symmetry.
+%   axis of cylindrical symmetry. It should not be possible for the probe
+%   to self-occlude any of the edges between bands.
+%
+%   At each junction between two coloured bands, the coloured bands should
+%   have the same widths.
 %
 % ## Input
 %
@@ -177,8 +184,8 @@ display_model_from_image = false;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
 display_probe_color_masks = false;
-display_hue_image = false;
-plot_hue_estimators = false;
+display_hue_image = true;
+plot_hue_estimators = true;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -395,7 +402,10 @@ H = rgb2hue(I);
     
 if display_hue_image
     figure %#ok<UNRCH>
-    imshow(H);
+    H_color = ones(image_height, image_width, image_n_channels);
+    H_color(:, :, 1) = H;
+    H_color = hsv2rgb(H_color);
+    imshowpair(H, H_color, 'montage');
     title('Hue channel of original image')
 end
 
