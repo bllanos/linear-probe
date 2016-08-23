@@ -107,6 +107,20 @@ axis_distance_outlier_threshold_final = 3;
 % Search distance from the probe colour regions for band junction pixels
 band_edge_distance_threshold = 2 * erosion_radius_final + 1;
 
+% Location of probe edge endpoints
+% Characteristic edge width
+edge_refinement_edge_width = band_edge_distance_threshold;
+% Standard deviation for the Gaussian filter applied to edge orientations
+edge_refinement_angle_std = pi / 12;
+% Threshold for the filtered edge image
+edge_refinement_filter_threshold = 0.3;
+
+% Matching edge endpoints to probe measurements
+detected_point_alignment_outlier_threshold = 5;
+subject_gap_cost_detection = -0.1;
+query_gap_cost_detection = 0;
+n_samples_sequence_alignment_detection = 12;
+
 % Debugging tools
 display_original_image = false;
 display_hue_image = false;
@@ -121,8 +135,12 @@ plot_final_ratio_estimators = false;
 display_final_ratio_distribution_backprojections = false;
 verbose_final_region_extraction = false;
 verbose_final_region_filtering = false;
-display_final_regions_colored = true;
-display_band_edge_extraction = true;
+display_final_regions_colored = false;
+display_band_edge_extraction = false;
+verbose_edge_endpoint_extraction = false;
+display_detected_model_from_image = false;
+verbose_detected_point_sequence_matching = false;
+display_detected_model_matching = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -456,4 +474,125 @@ if display_band_edge_extraction
     figure %#ok<UNRCH>
     imshow(probe_color_pairs_bwdist_all);
     title(sprintf('Euclidean distances of %g or less to adjacent probe colour regions', band_edge_distance_threshold))
+end
+
+% Refine the edges between bands
+interest_points_detected = detectProbeEdgeEndpoints(...
+        probe_color_pairs_bwdist_all,...
+        edge_refinement_edge_width,...
+        edge_refinement_angle_std,...
+        edge_refinement_filter_threshold,...
+        verbose_edge_endpoint_extraction...
+    );
+
+%% Organize the detected points into per-edge pairs, and filter outliers
+
+% In contrast to probe model creation, the probe tips are not extracted,
+% and therefore not expected as part of the output of `bilateralModel`. The
+% `distinguish_tips` parameter is therefore set to `false`.
+[...
+    model_from_image_detected,...
+    model_from_image_detected_lengths,...
+    model_from_image_detected_axes,...
+    model_to_image_detected_transform...
+] = bilateralModel(...
+    interest_points_detected, detected_point_alignment_outlier_threshold, false...
+);
+
+above_detected = [
+        model_from_image_detected.above,...
+        ones(size(model_from_image_detected.above, 1), 1)
+    ] * model_to_image_detected_transform;
+below_detected = [
+        model_from_image_detected.below,...
+        ones(size(model_from_image_detected.below, 1), 1)
+    ] * model_to_image_detected_transform;
+
+if display_detected_model_from_image
+    figure; %#ok<UNRCH>
+    imshow(I);
+    title('Classified detected interest points (green, red = above/below first PCA component; yellow = unmatched)');
+    hold on
+    
+    % Plot points
+    scatter(above_detected(:, 1), above_detected(:, 2), 'g')
+    scatter(below_detected(:, 1), below_detected(:, 2), 'r')
+    unmatched_detected = [
+            model_from_image_detected.unmatched,...
+            ones(size(model_from_image_detected.unmatched, 1), 1)
+        ] * model_to_image_detected_transform;
+    scatter(unmatched_detected(:, 1), unmatched_detected(:, 2), 'y')
+    
+    % Plot PCA lines
+    line_points = lineToBorderPoints(model_from_image_detected_axes, [image_height, image_width]);
+    line(line_points(1, [1,3])', line_points(1, [2,4])', 'Color', 'c');
+    line(line_points(2, [1,3])', line_points(2, [2,4])', 'Color', 'm');
+    hold off
+end
+
+if ~isempty(model_from_image_detected.unmatched)
+    warning(sprintf(['Not all detected probe colour band junctions are marked with two points - One on each edge of the probe.\n',...
+        'The output of probe colour band junction detection may have been quite messy.\n',...
+        'Consider adjusting edge detection and edge endpoint detection parameters,\n',...
+        'or increasing the outlier detection threshold used when pairing points.'])); %#ok<SPWRN>
+end
+
+%% Match model extracted from the image to the user-supplied measurements of the probe
+if ~exist('probe', 'var')
+    error('No variable called ''probe'' is loaded (which would contain probe measurements).')
+end
+
+image_lengths_detected = mean([
+        model_from_image_detected.above(:, 1),...
+        model_from_image_detected.below(:, 1)
+    ], 2);
+
+% Note that the probe tips are never in the sequence of interest points
+% detected in the image, because they are not adjacent to any coloured
+% bands.
+probe_lengths_for_matching = probe.lengths(2:(end - 1));
+
+image_to_measured_matches_detected = matchPointsByCrossRatios(...
+  probe_lengths_for_matching,...
+  image_lengths_detected,...
+  subject_gap_cost_detection, query_gap_cost_detection,...
+  n_samples_sequence_alignment_detection,...
+  verbose_detected_point_sequence_matching...
+);
+
+image_to_measured_matches_detected_filter = logical(image_to_measured_matches_detected);
+if ~all(image_to_measured_matches_detected_filter)
+    warning('Some detected interest points in the image were not matched to known probe measurements.')
+    matched_lengths = nan(length(image_lengths_detected), 1);
+    matched_lengths(image_to_measured_matches_detected_filter) =...
+        probe_lengths_for_matching(...
+                image_to_measured_matches_detected(...
+                        image_to_measured_matches_detected_filter...
+                    )...
+            );
+else
+    matched_lengths = probe_lengths_for_matching(image_to_measured_matches_detected);
+end
+
+image_to_measured_matches_detected = struct(...
+        'Index', num2cell((1:length(image_lengths_detected)).'),...
+        'PointAbovePCAMajorAxis_PCASpace', num2cell(model_from_image_detected.above, 2),...
+        'PointBelowPCAMajorAxis_PCASpace', num2cell(model_from_image_detected.below, 2),...
+        'DetectedPixelLength', num2cell(image_lengths_detected),...
+        'PointAbovePCAMajorAxis_PixelSpace', num2cell(above_detected, 2),...
+        'PointBelowPCAMajorAxis_PixelSpace', num2cell(below_detected, 2),...
+        'MatchedLengthIndex', num2cell(image_to_measured_matches_detected),...
+        'MatchedLength', num2cell(matched_lengths)...
+    );
+
+if display_detected_model_matching
+    disp('Match between detected interest points and probe measurements:')
+    image_to_measured_matches_detected_display =...
+        rmfield(image_to_measured_matches_detected, 'PointAbovePCAMajorAxis_PCASpace');
+    image_to_measured_matches_detected_display =...
+        rmfield(image_to_measured_matches_detected_display, 'PointBelowPCAMajorAxis_PCASpace');
+    image_to_measured_matches_detected_display =...
+        rmfield(image_to_measured_matches_detected_display, 'DetectedPixelLength');
+    image_to_measured_matches_detected_display = struct2table(image_to_measured_matches_detected_display);
+    disp(image_to_measured_matches_detected_display);
 end

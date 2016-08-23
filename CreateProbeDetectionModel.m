@@ -280,7 +280,7 @@ end
 % an error. In a detection scenario, we would just eliminate the outlier
 % points and continue.
 if ~isempty(model_from_image.unmatched)
-    error(sprintf(['Not all probe color band junctions are marked with two points - One on each edge of the probe.\n',...
+    error(sprintf(['Not all probe colour band junctions are marked with two points - One on each edge of the probe.\n',...
         'Consider increasing the outlier detection threshold used when pairing points.'])); %#ok<SPERR>
 end
 
