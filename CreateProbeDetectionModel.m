@@ -180,12 +180,12 @@ probe_color_distribution_resolution = 180;
 display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
-display_model_from_image = true;
+display_model_from_image = false;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
 display_probe_color_masks = false;
-display_hue_image = true;
-plot_hue_estimators = true;
+display_hue_image = false;
+plot_hue_estimators = false;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -239,38 +239,16 @@ end
 %% Model the interest points as a series of bands on a linear probe object
 
 [...
-    model_from_image, model_from_image_lengths, model_from_image_axes, ~, model_to_image_transform...
+    ~, image_lengths, model_from_image_axes, model_from_image...
 ] = bilateralModel(...
     interest_points, point_alignment_outlier_threshold, true...
 );
 
 if display_model_from_image
-    figure; %#ok<UNRCH>
+    fg = figure; %#ok<UNRCH>
     imshow(I);
+    plotBilateralModel( model_from_image, model_from_image_axes, [image_height, image_width], [], fg);
     title('Classified interest points (blue, black = tips; green, red = above/below first PCA component; yellow = unmatched)');
-    hold on
-    
-    % Plot points
-    if isfield(model_from_image, 'head')
-        head = [model_from_image.head, 1] * model_to_image_transform;
-        scatter(head(1), head(2), 'b')
-    end
-    if isfield(model_from_image, 'tail')
-        tail = [model_from_image.tail, 1] * model_to_image_transform;
-        scatter(tail(1), tail(2), 'k')
-    end
-    above = [model_from_image.above, ones(size(model_from_image.above, 1), 1)] * model_to_image_transform;
-    scatter(above(:, 1), above(:, 2), 'g')
-    below = [model_from_image.below, ones(size(model_from_image.below, 1), 1)] * model_to_image_transform;
-    scatter(below(:, 1), below(:, 2), 'r')
-    unmatched = [model_from_image.unmatched, ones(size(model_from_image.unmatched, 1), 1)] * model_to_image_transform;
-    scatter(unmatched(:, 1), unmatched(:, 2), 'y')
-    
-    % Plot PCA lines
-    line_points = lineToBorderPoints(model_from_image_axes, [image_height, image_width]);
-    line(line_points(1, [1,3])', line_points(1, [2,4])', 'Color', 'c');
-    line(line_points(2, [1,3])', line_points(2, [2,4])', 'Color', 'm');
-    hold off
 end
 
 % The probe tips are marked with single points. All other probe segments
@@ -288,14 +266,6 @@ end
 load(model_filename, 'probe');
 if ~exist('probe', 'var')
     error('No variable called ''probe'' is loaded (which would contain probe measurements).')
-end
-
-image_lengths = mean([model_from_image.above(:, 1), model_from_image.below(:, 1)], 2);
-if isfield(model_from_image, 'head')
-    image_lengths = [model_from_image.head(1); image_lengths];
-end
-if isfield(model_from_image, 'tail')
-    image_lengths = [image_lengths; model_from_image.tail(1)];
 end
     
 image_to_measured_matches = matchPointsByCrossRatios(...
@@ -334,12 +304,12 @@ end
 
 % Express the model in pixel coordinates as polygonal sections
 n_bands = length(probe.lengths) - 1;
-above = [model_from_image.above, ones(size(model_from_image.above, 1), 1)] * model_to_image_transform;
-below = [model_from_image.below, ones(size(model_from_image.below, 1), 1)] * model_to_image_transform;
+above = model_from_image.above;
+below = model_from_image.below;
 model_from_image_polygons = cell(n_bands, 1);
 start_offset = 0;
 if isfield(model_from_image, 'head')
-    head = [model_from_image.head, 1] * model_to_image_transform;
+    head = model_from_image.head;
     model_from_image_polygons{1} = [
             head(1:2);
             above(1, 1:2);
@@ -354,7 +324,7 @@ for i = 1:(size(above, 1) - 1)
         ];
 end
 if isfield(model_from_image, 'tail')
-    tail = [model_from_image.tail, 1] * model_to_image_transform;
+    tail = model_from_image.tail;
     model_from_image_polygons{end} = [
         above(end, 1:2);
         tail(1:2);
