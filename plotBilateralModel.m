@@ -65,6 +65,10 @@ function [ fg ] = plotBilateralModel( model, varargin )
 % fg -- Figure handle
 %   A handle to the figure updated with the plot output.
 %
+% ## Notes
+% - The caller is responsible for adding axis labels, a plot title, and a
+%   legend to the figure.
+%
 % See also bilateralModel, lineToBorderPoints
 
 % Bernard Llanos

@@ -140,7 +140,7 @@ display_band_edge_extraction = false;
 verbose_edge_endpoint_extraction = false;
 display_detected_model_from_image = false;
 verbose_detected_point_sequence_matching = false;
-display_detected_model_matching = true;
+display_detected_model_matching = false;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -168,6 +168,8 @@ load(detection_model_filename, model_variables_required{:});
 if ~all(ismember(model_variables_required, who))
     error('One or more of the probe detection model variables is not loaded.')
 end
+
+n_colors = size(probe_color_distributions, 2);
 
 %% Compute the hue variable kernel density estimator for the image
 
@@ -202,16 +204,19 @@ B = I_double(:, :, 3);
 );
 
 if plot_global_hue_estimator
-    x = 0:I_color_distribution_increment:1; %#ok<UNRCH>
-    figure
-    plot(x, I_color_distribution)
+    legend_names = cell(n_colors + 1, 1); %#ok<UNRCH>
+    legend_names{1} = 'Image';
+    for i = 1:n_colors
+        legend_names{i + 1} = sprintf('Probe colour %d', i);
+    end
+    plotHueVariableKernelDensityEstimator(...
+        I_color_distribution_increment,...
+        [I_color_distribution, probe_color_distributions], legend_names...
+    );
     title('Hue variable kernel density estimator for the entire image')
-    xlabel('Hue, \theta (range [0, 1])')
-    ylabel('Density, P(\theta)')
 end
 
 %% Transform the image using histogram backprojection
-n_colors = size(probe_color_distributions, 2);
 
 % Ratio distributions with respect to the background
 ratio_distributions_bg = zeros(...
@@ -224,25 +229,14 @@ for i = 1:n_colors
 end
 
 if plot_initial_ratio_estimators
-    x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
-    line_styles = {'-', '--', ':', '-.'};
-    legend_names = cell(n_colors, 1);
-    plot_colors = jet(n_colors);
-    figure
-    hold on
+    legend_names = cell(n_colors, 1); %#ok<UNRCH>
     for i = 1:n_colors
         legend_names{i} = sprintf('Probe colour %d', i);
-        plot(...
-                x, ratio_distributions_bg(:, i),...
-                'Color', plot_colors(i, :),...
-                'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
-            )
     end
-    hold off
-    legend(legend_names{:});
+    plotHueVariableKernelDensityEstimator(...
+        probe_color_distribution_increment, ratio_distributions_bg, legend_names...
+    );
     title('Ratio hue variable kernel density estimators for probe colours with respect to the background')
-    xlabel('Hue, \theta (range [0, 1])')
-    ylabel('Density, P(\theta)')
 end
 
 % Histogram backprojection
@@ -350,12 +344,16 @@ end
 );
 
 if plot_bounding_area_hue_estimator
-    x = 0:bound_color_distribution_increment:1; %#ok<UNRCH>
-    figure
-    plot(x, bound_color_distribution)
+    legend_names = cell(n_colors + 1, 1); %#ok<UNRCH>
+    legend_names{1} = 'Bounding area';
+    for i = 1:n_colors
+        legend_names{i + 1} = sprintf('Probe colour %d', i);
+    end
+    plotHueVariableKernelDensityEstimator(...
+        bound_color_distribution_increment,...
+        [bound_color_distribution, probe_color_distributions], legend_names...
+    );
     title('Hue variable kernel density estimator for the initial bounding area')
-    xlabel('Hue, \theta (range [0, 1])')
-    ylabel('Density, P(\theta)')
 end
 
 %% Transform the image using histogram backprojection for the bounding region
@@ -371,25 +369,14 @@ for i = 1:n_colors
 end
 
 if plot_final_ratio_estimators
-    x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
-    line_styles = {'-', '--', ':', '-.'};
-    legend_names = cell(n_colors, 1);
-    plot_colors = jet(n_colors);
-    figure
-    hold on
+    legend_names = cell(n_colors, 1); %#ok<UNRCH>
     for i = 1:n_colors
         legend_names{i} = sprintf('Probe colour %d', i);
-        plot(...
-                x, ratio_distributions_bounding(:, i),...
-                'Color', plot_colors(i, :),...
-                'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
-            )
     end
-    hold off
-    legend(legend_names{:});
+    plotHueVariableKernelDensityEstimator(...
+        probe_color_distribution_increment, ratio_distributions_bounding, legend_names...
+    );
     title('Ratio hue variable kernel density estimators for probe colours with respect to the bounding area')
-    xlabel('Hue, \theta (range [0, 1])')
-    ylabel('Density, P(\theta)')
 end
 
 % Histogram backprojection
@@ -555,7 +542,7 @@ image_to_measured_matches_detected = struct(...
     );
 
 if display_detected_model_matching
-    disp('Match between detected interest points and probe measurements:')
+    disp('Match between detected interest points and probe measurements:') %#ok<UNRCH>
     image_to_measured_matches_detected_display =...
         rmfield(image_to_measured_matches_detected, 'DetectedPixelLength');
     image_to_measured_matches_detected_display = struct2table(image_to_measured_matches_detected_display);

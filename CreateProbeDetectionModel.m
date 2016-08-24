@@ -403,25 +403,14 @@ for i = 1:n_colors
 end
 
 if plot_hue_estimators
-    x = 0:probe_color_distribution_increment:1; %#ok<UNRCH>
-    line_styles = {'-', '--', ':', '-.'};
-    legend_names = cell(n_colors, 1);
-    plot_colors = jet(n_colors);
-    figure
-    hold on
+    legend_names = cell(n_colors, 1); %#ok<UNRCH>
     for i = 1:n_colors
         legend_names{i} = sprintf('Probe color %d', i);
-        plot(...
-                x, probe_color_distributions(:, i),...
-                'Color', plot_colors(i, :),...
-                'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
-            )
     end
-    hold off
-    legend(legend_names{:});
+    plotHueVariableKernelDensityEstimator(...
+        probe_color_distribution_increment, probe_color_distributions, legend_names...
+    )
     title('Hue variable kernel density estimators for colors on the probe')
-    xlabel('Hue, \theta (range [0, 1])')
-    ylabel('Density, P(\theta)')
 end
 
 %% Save results to a file
