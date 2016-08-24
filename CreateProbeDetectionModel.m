@@ -180,7 +180,7 @@ probe_color_distribution_resolution = 180;
 display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
-display_model_from_image = false;
+display_model_from_image = true;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
 display_probe_color_masks = false;
@@ -239,7 +239,7 @@ end
 %% Model the interest points as a series of bands on a linear probe object
 
 [...
-    model_from_image, model_from_image_lengths, model_from_image_axes, model_to_image_transform...
+    model_from_image, model_from_image_lengths, model_from_image_axes, ~, model_to_image_transform...
 ] = bilateralModel(...
     interest_points, point_alignment_outlier_threshold, true...
 );

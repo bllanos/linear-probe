@@ -1,25 +1,67 @@
-function [ model, lengths, axes, transform ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
+function [ model, lengths, axes, model_px, transform ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
 % BILATERALMODEL  Interpret points as arranged symmetrically around a line segment
 %
 % ## Syntax
 % model = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
-% [ model, lengths ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
-% [ model, lengths, axes ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
+% [ model, lengths ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
+% [ model, lengths, axes ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
+% [ model, lengths, axes, model_px ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
+% [ model, lengths, axes, model_px, transform ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
 %
 % ## Description
-% model = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
+% model = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
 %   Returns the input points in the coordinates of their PCA components,
 %   organized into pairs where possible.
 %
-% [ model, lengths ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
+% [ model, lengths ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
 %   Additionally returns a summarization of data in `model` with respect to
 %   the first PCA component of the input points.
 %
-% [ model, lengths, axes ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
+% [ model, lengths, axes ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
 %   Additionally returns the PCA components of the input points in the form of
 %   lines in the original coordinate frame of the points.
 %
-% [ model, lengths, axes, transform ] = bilateralModel( points, point_alignment_outlier_threshold, distinguish_tips )
+% [ model, lengths, axes, model_px ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
+%   Additionally returns the original input points organized in the same
+%   way as their equivalents in the space of the PCA components.
+%
+% [ model, lengths, axes, model_px, transform ] = bilateralModel(...
+%   points,...
+%   point_alignment_outlier_threshold,...
+%   distinguish_tips...
+% )
 %   Additionally returns the transformation matrix that converts the points
 %   from the PCA components space to the reference frame of the original
 %   data.
@@ -111,6 +153,15 @@ function [ model, lengths, axes, transform ] = bilateralModel( points, point_ali
 %   For convenience, lines have been normalized as described here:
 %   http://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/BEARDSLEY/node2.html
 %
+% model_px -- Bilaterally-symmetric representation of points in pixel space
+%   The equivalent of `model`, but the points are in pixel space as opposed
+%   to the reference frame defined by their PCA components.
+%
+%   `model_px` contains the original data points, rather than points
+%   obtained using the transformation between the PCA and pixel reference
+%   frames. As such, the coordinates of the points are unaffected by
+%   numerical error.
+%
 % transform -- Map back from PCA component space
 %   A 3 x 2 array, of the form `[coeff mu].'`, where `coeff` is the
 %   principal components expressed in the reference frame of the original
@@ -137,13 +188,13 @@ function [ model, lengths, axes, transform ] = bilateralModel( points, point_ali
 % University of Alberta, Department of Computing Science
 % File created August 2, 2016
 
-nargoutchk(1, 4);
+nargoutchk(1, 5);
 narginchk(3, 3);
 
 % Express the points in the coordinate space of their principal components
 % using Principal Components Analysis
 if nargout > 2
-    [coeff,score,~, ~, ~, mu] = pca(points);
+    [ coeff, score, ~, ~, ~, mu ] = pca(points);
     
     % Express the PCA component vectors as lines in the space of the original data
     dx = coeff(1, :).';
@@ -158,6 +209,12 @@ if nargout > 2
     transform = [coeff, mu.'].';
 else
     [~,score] = pca(points);
+end
+
+% Keep the points with their PCA component space equivalents, if the
+% original points are to be returned as `model_px`
+if nargout > 3
+    score = [score, points];
 end
 
 % Partition points into those above and below the first component
@@ -249,6 +306,16 @@ if nargout > 1
     end
     if end_offset
         lengths(end) = model.tail(1) - s;
+    end
+end
+
+if nargout > 3
+    % Separate points in PCA components space from points in pixel space
+    model_px = struct;
+    for i = fieldnames(model).'
+        field = i{1};
+        model_px.(field) = model.(field)(:, 3:4);
+        model.(field) = model.(field)(:, 1:2);
     end
 end
 
