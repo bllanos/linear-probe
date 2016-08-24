@@ -3,8 +3,8 @@
 % the probe object to locate it in a test image.
 %
 % ## Usage
-%   Modify parameters and paths to input data in the first code section
-%   below, then run.
+%   Modify the parameters and the paths to input data in the first code
+%   section below, then run.
 %
 % ## Probe Detection Assumptions and Limitations
 % - The image contains fairly saturated colours throughout, to assist with
@@ -12,9 +12,9 @@
 %   from the probe.
 % - The image only contains a single instance of the probe.
 % - The probe may be occluded in one or more places. However, it can be
-%   detected if at least 5 transition lines between pairs of coloured bands
-%   of the probe are completely visible. The transition lines do not need
-%   to be between bands that are all consecutive.
+%   detected if at least 5 edges between pairs of coloured bands of the
+%   probe are completely visible. The edges do not need to be between bands
+%   that are all consecutive.
 %
 % ## Input
 %
@@ -44,6 +44,64 @@
 %
 % ## Output
 %
+% ### Probe detection results
+% A '.mat' file containing the following variables:
+%
+% - 'model_filename': The path to the file containing user-provided
+%   measurements of the probe in the structure 'probe'. The 'probe'
+%   structure is provided to this script via the output of
+%   '.\CreateProbeDetectionModel.m', and so 'model_filename' is actually a
+%   direct parameter of '.\CreateProbeDetectionModel.m' and an indirect
+%   parameter of this script. It is retrieved from the output of
+%   '.\CreateProbeDetectionModel.m' and copied to the output of this script
+%   for completeness.
+%
+% - 'probe_detection_matches': A structure vector describing the matches
+%   found from detected edges between bands of colour on the probe in the
+%   image to user-provided measurements of the edges between probe colour
+%   bands. Each element contains the match information for one detected
+%   edge. If no suitable match was found for a given edge detected in the
+%   image, the corresponding field values will be `NaN`. The fields of the
+%   structure vector are as follows:
+%   - index: The index of the detected edge between two bands of colour
+%       on the probe. The indices of edges correspond to the order of the
+%       edges along the major axis of the probe in the image, from left to
+%       right.
+%   - lengthAlongPCAMajorAxis: The pixel distance along the major axis of
+%       the probe from the first detected edge to the current edge. For
+%       more information, refer to the documentation of the `lengths`
+%       output argument of `bilateralModel`.
+%   - pointAbovePCAMajorAxis: A two-element row vector containing the detected
+%       position of the point where the edge meets the lower border of the
+%       probe in the image. (This is the point "above" the axis of the
+%       probe in the sense that it has a pixel y-coordinate that is larger
+%       than that of the axis at the same pixel x-coordinate.)
+%   - pointBelowPCAMajorAxis: Similar to 'pointAbovePCAMajorAxis', but contains
+%       the detected position of the point where the edge meets the upper
+%       border of the probe in the image.
+%   - matchedLengthIndex: The index of the edge between coloured bands of
+%       the physical probe that is matched with the detected edge.
+%       Specifically, this is the index into the user-provided measurements
+%       of the probe, `probe.lengths` and `probe.widths`, where `probe` is
+%       a structure input and output by '.\CreateProbeDetectionModel.m'.
+%   - matchedLength: The value of `probe.lengths(matchedLengthIndex)`, where
+%       `probe` is a structure input and output by
+%       '.\CreateProbeDetectionModel.m'.
+%   - matchedWidth: The value of `probe.widths(matchedLengthIndex)`, where
+%       `probe` is a structure input and output by
+%       '.\CreateProbeDetectionModel.m'.
+%
+% - 'probe_detection_matches_filtered': A copy of
+%   'probe_detection_matches', with detected edges that were not matched to
+%   probe measurements filtered out. In other words, this is a version of
+%   'probe_detection_matches' without elements containing `NaN` values for
+%   any fields.
+%
+% Additionally, the output file contains the values of all parameters in
+% the first section of the script below, for reference. (Specifically,
+% those listed in `parameters_list`, which should be updated if the set of
+% parameters is changed.)
+%
 % ## References
 % - M.-C. Chuang, J.-N. Hwang, K. Williams and R. Towler. "Tracking Live
 %   Fish from Low-Contrast and Low-Frame-Rate Stereo Videos". IEEE
@@ -63,10 +121,32 @@
 
 % List of parameters to save with results
 parameters_list = {
+        'detection_model_filename',...
+        'I_filename',...
+        'rgb_sigma_filename',...
+        'noise_threshold_initial',...
+        'erosion_radius_initial',...
+        'radius_adj_initial',...
+        'axis_distance_outlier_threshold_initial',...
+        'dilation_radius_initial',...
+        'initial_region_expansion_factor_length',...
+        'initial_region_expansion_factor_width',...
+        'noise_threshold_final',...
+        'erosion_radius_final',...
+        'radius_adj_final',...
+        'axis_distance_outlier_threshold_final',...
+        'band_edge_distance_threshold',...
+        'edge_refinement_edge_width',...
+        'edge_refinement_angle_std',...
+        'edge_refinement_filter_threshold',...
+        'detected_point_alignment_outlier_threshold',...
+        'subject_gap_cost_detection',...
+        'query_gap_cost_detection',...
+        'n_samples_sequence_alignment_detection'...
     };
 
 % Probe detection model
-detection_model_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160815_bambooSkewer_orangeBlue_probeDetectionModel_bottomCamera.mat';
+detection_model_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160824_bambooSkewer_orangeBlue_probeDetectionModel_bottomCamera.mat';
 % Image of probe in an unknown pose
 I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\original\probePrePaperOcclusion_1_b.bmp';
 % RGB noise parameters
@@ -140,7 +220,7 @@ display_band_edge_extraction = false;
 verbose_edge_endpoint_extraction = false;
 display_detected_model_from_image = false;
 verbose_detected_point_sequence_matching = false;
-display_detected_model_matching = false;
+display_detected_model_matching = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -162,7 +242,8 @@ model_variables_required = {...
         'probe_color_distribution_resolution',...
         'probe',...
         'probe_color_distributions',...
-        'probe_color_distribution_increment'...
+        'probe_color_distribution_increment',...
+        'model_filename'...
     };
 load(detection_model_filename, model_variables_required{:});
 if ~all(ismember(model_variables_required, who))
@@ -508,7 +589,9 @@ end
 % Note that the probe tips are never in the sequence of interest points
 % detected in the image, because they are not adjacent to any coloured
 % bands.
-probe_lengths_for_matching = probe.lengths(2:(end - 1));
+matching_start_index = 2;
+matching_end_index = length(probe.lengths) - 1;
+probe_lengths_for_matching = probe.lengths(matching_start_index:matching_end_index);
 
 image_to_measured_matches_detected = matchPointsByCrossRatios(...
   probe_lengths_for_matching,...
@@ -518,7 +601,11 @@ image_to_measured_matches_detected = matchPointsByCrossRatios(...
   verbose_detected_point_sequence_matching...
 );
 
+%% Organize matching results into a structure for output
+
+probe_widths_for_matching = probe.widths(matching_start_index:matching_end_index);
 image_to_measured_matches_detected_filter = logical(image_to_measured_matches_detected);
+image_to_measured_matches_detected(~image_to_measured_matches_detected_filter) = NaN;
 if ~all(image_to_measured_matches_detected_filter)
     warning('Some detected interest points in the image were not matched to known probe measurements.')
     matched_lengths = nan(length(image_lengths_detected), 1);
@@ -528,23 +615,45 @@ if ~all(image_to_measured_matches_detected_filter)
                         image_to_measured_matches_detected_filter...
                     )...
             );
+    matched_widths = nan(length(image_lengths_detected), 1);
+    matched_widths(image_to_measured_matches_detected_filter) =...
+        probe_widths_for_matching(...
+                image_to_measured_matches_detected(...
+                        image_to_measured_matches_detected_filter...
+                    )...
+            );
 else
     matched_lengths = probe_lengths_for_matching(image_to_measured_matches_detected);
+    matched_widths = probe_widths_for_matching(image_to_measured_matches_detected);
 end
 
-image_to_measured_matches_detected = struct(...
-        'Index', num2cell((1:length(image_lengths_detected)).'),...
-        'DetectedPixelLength', num2cell(image_lengths_detected),...
-        'PointAbovePCAMajorAxis', num2cell(model_from_image_detected.above, 2),...
-        'PointBelowPCAMajorAxis', num2cell(model_from_image_detected.below, 2),...
-        'MatchedLengthIndex', num2cell(image_to_measured_matches_detected),...
-        'MatchedLength', num2cell(matched_lengths)...
+probe_detection_matches = struct(...
+        'index', num2cell((1:length(image_lengths_detected)).'),...
+        'lengthAlongPCAMajorAxis', num2cell(image_lengths_detected),...
+        'pointAbovePCAMajorAxis', num2cell(model_from_image_detected.above, 2),...
+        'pointBelowPCAMajorAxis', num2cell(model_from_image_detected.below, 2),...
+        'matchedLengthIndex', num2cell(...
+                image_to_measured_matches_detected + (matching_start_index - 1)...
+            ),...
+        'matchedLength', num2cell(matched_lengths),...
+        'matchedWidth', num2cell(matched_widths)...
     );
 
 if display_detected_model_matching
     disp('Match between detected interest points and probe measurements:') %#ok<UNRCH>
-    image_to_measured_matches_detected_display =...
-        rmfield(image_to_measured_matches_detected, 'DetectedPixelLength');
-    image_to_measured_matches_detected_display = struct2table(image_to_measured_matches_detected_display);
-    disp(image_to_measured_matches_detected_display);
+    probe_detection_matches_display =...
+        rmfield(probe_detection_matches, 'lengthAlongPCAMajorAxis');
+    probe_detection_matches_display =...
+        rmfield(probe_detection_matches_display, 'matchedWidth');
+    probe_detection_matches_display = struct2table(probe_detection_matches_display);
+    disp(probe_detection_matches_display);
 end
+
+%% Save results to a file
+probe_detection_matches_filtered = probe_detection_matches(image_to_measured_matches_detected_filter);
+save_variables_list = [ parameters_list, {...
+        'model_filename',...
+        'probe_detection_matches',...
+        'probe_detection_matches_filtered'
+    } ];
+uisave(save_variables_list,'probeDetectionResults')

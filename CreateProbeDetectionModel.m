@@ -35,24 +35,23 @@
 %     including a distance of 0.0 for the active end of the probe, and a
 %     distance for the other end of the probe (i.e. the length of the
 %     entire probe). Distances are measured along the probe's axis of
-%     cylindrical symmetry.
+%     cylindrical symmetry, and are listed in order starting from the
+%     active end of the probe.
 % - colors: A vector with `length(lengths) - 1` elements specifying colour
-%   indices for the bands of the probe. Colour indices should be
-%   consecutive integers starting at 1. They indicate how the bands of
-%   the probe are grouped based on mutually-distinguishable colours,
-%   allowing bands to have non-unique colours. The specific index assigned
-%   to a given band is unimportant.
+%     indices for the bands of the probe. Colour indices should be
+%     consecutive integers starting at 1. They indicate how the bands of
+%     the probe are grouped based on mutually-distinguishable colours,
+%     allowing bands to have non-unique colours. The specific index
+%     assigned to a given band is unimportant. For instance, the first band
+%     need not have a colour index of 1. The elements of `colors` should
+%     correspond to adjacent pairs of elements in `lengths` (i.e. The
+%     colour indices should be in order starting from the active end of the
+%     probe).
 % - widths: Width of the probe at the edges of bands. Widths must include
-%     the ends of the probe, with values of zero for ends that taper to
-%     points. The elements of 'widths' should correspond to elements of
-%     'lengths' as follows:
-%     1) Active tip of probe.
-%     2) `2 * (length(probe.lengths) - 2)` measurements: One for each side
-%        of each edge between bands, to disambiguate between conical and
-%        cylindrical sections and to allow for junctions with slightly different
-%        radii on either side. Measurements are in order of distance from
-%        the active tip of the probe.
-%     3) Other end of the probe.
+%     the ends of the probe, with values of zero or approximate tip radii
+%     for ends that taper to points. (Probe tip widths are currently
+%     unused, so their values do not matter.) The elements of 'widths'
+%     should correspond to elements of 'lengths'.
 %
 % Units are arbitrary, but should be consistent with the units of any
 % partial reconstruction of an object that the probe is used to refine.
@@ -75,18 +74,15 @@
 %
 % Interest points can be marked by nonzero alpha channel regions that are
 % more than one pixel in size - A morphological shrink operation will be
-% used to extract single pixel locations from them. Optionally, a corner
-% feature detector will then be used to refine the locations of interest
-% points within a search window.
+% used to extract single pixel locations from them. Optionally (depending
+% on the parameter variable `annotation_corner_search_width` below), a
+% corner feature detector will then be used to refine the locations of
+% interest points within a search window.
 %
 % A single interest point should be marked for each end of the probe that
 % tapers to a point. Two interest points should be marked for the edges of
 % coloured bands on the probe, corresponding to their intersections with
-% the probe's contour in the image. For junctions between coloured bands of
-% different radii, two interest points should be marked on the same side
-% of the junction. Assuming the difference in radii is not significant, the
-% choice of side should not matter with respect to the determination of the
-% average colour on each side of the junction.
+% the probe's contour in the image.
 %
 % ### Colour noise parameters
 % A '.mat' file containing a 'rgb_sigma_polyfit' variable, as output by the
