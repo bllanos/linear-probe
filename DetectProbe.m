@@ -220,7 +220,7 @@ display_band_edge_extraction = false;
 verbose_edge_endpoint_extraction = false;
 display_detected_model_from_image = false;
 verbose_detected_point_sequence_matching = false;
-display_detected_model_matching = true;
+display_detected_model_matching = false;
 
 %% Load the image containing the probe in an unknown pose
 

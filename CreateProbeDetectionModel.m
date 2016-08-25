@@ -17,11 +17,12 @@
 %
 %   The length of the probe should be divided into different-coloured
 %   bands, and the pattern of bands should be asymmetrical, such that it is
-%   possible to uniquely determine the orientation of the probe.
-%   Specifically, asymmetry of band lengths is assumed, as opposed to colour
-%   pattern asymmetry. Band edges should be perpendicular to the probe's
-%   axis of cylindrical symmetry. It should not be possible for the probe
-%   to self-occlude any of the edges between bands.
+%   possible to uniquely determine the orientation of the probe, even if
+%   some of the probe is occluded. Specifically, asymmetry of band lengths
+%   is assumed, as opposed to colour pattern asymmetry. Band edges should
+%   be perpendicular to the probe's axis of cylindrical symmetry. It should
+%   not be possible for the probe to self-occlude any of the edges between
+%   bands.
 %
 %   At each junction between two coloured bands, the coloured bands should
 %   have the same widths.

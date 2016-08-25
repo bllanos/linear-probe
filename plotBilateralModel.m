@@ -37,8 +37,9 @@ function [ fg ] = plotBilateralModel( model, varargin )
 %   Internally, `image_size` is passed to `lineToBorderPoints`.
 %
 % colors -- Plot colours
-%   A set of colours to use when plotting `model` and, if passed as input,
-%   `model_axes`.
+%   A cell vector of colours to use when plotting `model` and, if passed as
+%   input, `model_axes`. Colours can be string colour codes recognized by
+%   MATLAB, or numeric RGB colour value 3-vectors.
 %
 %   The first five elements specify plot colours for the points in the
 %   fields of `model` in the following order:
@@ -53,7 +54,7 @@ function [ fg ] = plotBilateralModel( model, varargin )
 %   first and second rows of `model_axes`, respectively.
 %
 %   If empty or not passed, `colors` defaults to
-%   `[ 'b', 'k', 'g', 'r', 'y', 'c', 'm' ]`.
+%   `{ 'b', 'k', 'g', 'r', 'y', 'c', 'm' }`.
 %
 % fg -- Figure handle
 %   A handle to the figure to update.
@@ -95,10 +96,10 @@ end
 if length(varargin) > 2
     colors = varargin{3};
 else
-    colors = [];
+    colors = {};
 end
 if isempty(colors)
-    colors = [ 'b', 'k', 'g', 'r', 'y', 'c', 'm' ];
+    colors = { 'b', 'k', 'g', 'r', 'y', 'c', 'm' };
 end
 if length(varargin) > 3
     fg = varargin{4};
@@ -115,24 +116,24 @@ hold on
 % Plot points
 if isfield(model, 'head')
     head = model.head;
-    scatter(head(1), head(2), colors(1))
+    scatter(head(1), head(2), colors{1})
 end
 if isfield(model, 'tail')
     tail = model.tail;
-    scatter(tail(1), tail(2), colors(2))
+    scatter(tail(1), tail(2), colors{2})
 end
 above = model.above;
-scatter(above(:, 1), above(:, 2), colors(3))
+scatter(above(:, 1), above(:, 2), colors{3})
 below = model.below;
-scatter(below(:, 1), below(:, 2), colors(4))
+scatter(below(:, 1), below(:, 2), colors{4})
 unmatched = model.unmatched;
-scatter(unmatched(:, 1), unmatched(:, 2), colors(5))
+scatter(unmatched(:, 1), unmatched(:, 2), colors{5})
 
 % Plot PCA lines
 if ~isempty(model_axes)
     line_points = lineToBorderPoints(model_axes, image_size);
-    line(line_points(1, [1,3])', line_points(1, [2,4])', 'Color', colors(6));
-    line(line_points(2, [1,3])', line_points(2, [2,4])', 'Color', colors(7));
+    line(line_points(1, [1,3])', line_points(1, [2,4])', 'Color', colors{6});
+    line(line_points(2, [1,3])', line_points(2, [2,4])', 'Color', colors{7});
 end
 
 hold off
