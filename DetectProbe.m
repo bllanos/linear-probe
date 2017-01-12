@@ -24,7 +24,7 @@
 % '.\CreateProbeDetectionModel.m' for details.
 %
 % ### Image containing the probe
-% An RGB image in any format that can be loaded by `imread` showing enough
+% An RGB image, in any format that can be loaded by `imread`, showing enough
 % of the probe for detection to be possible. The image should have been
 % taken by the same camera, and under the same camera parameters, as the
 % image used to create the probe detection model. Ideally, the lighting
@@ -146,11 +146,11 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160824_bambooSkewer_orangeBlue_probeDetectionModel_bottomCamera.mat';
+detection_model_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170112_bambooSkewer_orangeBlue_probeDetectionModel_bottomCamera_rect.mat';
 % Image of probe in an unknown pose
-I_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\original\probePrePaperOcclusion_1_b.bmp';
+I_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\Bernard\Documents\Data\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
+rgb_sigma_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Determination of the probe's bounding region
 % Threshold for identifying noise pixels in initial histogram backprojections

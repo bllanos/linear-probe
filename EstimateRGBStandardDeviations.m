@@ -13,7 +13,7 @@
 %
 % ## Output
 %
-% ### Probe detection model
+% ### RGB noise model
 % A '.mat' file containing the following variables:
 % - 'rgb_sigma_polyfit': An n x n_channels array, containing the coefficients
 %   of polynomials fitted to `(mean(channel_values),std(channel_values))`
