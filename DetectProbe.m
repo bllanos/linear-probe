@@ -222,6 +222,7 @@ display_final_regions_colored = false;
 display_band_edge_extraction = false;
 verbose_edge_endpoint_extraction = false;
 display_detected_model_from_image = false;
+display_final_clipped_regions_colored = false;
 verbose_detected_point_sequence_matching = false;
 display_detected_model_matching = false;
 
@@ -584,6 +585,8 @@ interest_points_detected = detectProbeEdgeEndpoints(...
     interest_points_detected, detected_point_alignment_outlier_threshold, false...
 );
 
+n_detected_band_edges = length(image_lengths_detected);
+
 if display_detected_model_from_image
     fg = figure; %#ok<UNRCH>
     imshow(I);
@@ -597,6 +600,99 @@ if ~isempty(model_from_image_detected.unmatched)
         'Consider adjusting edge detection and edge endpoint detection parameters,\n',...
         'or increasing the outlier detection threshold used when pairing points.'])); %#ok<SPWRN>
 end
+
+%% Label the colours between detected probe band edges
+
+% Clip the detected colour regions to the area between the probe edge
+% endpoints. Extrapolate the clipping area to the tips of the probe by extending the
+% line segments formed by the first and last pairs of band edges.
+
+% Interior region
+polygons_points = zeros((n_detected_band_edges + 2) * 2, 2);
+polygons_points(2:(n_detected_band_edges + 1), :) = model_from_image_detected.above;
+polygons_points((n_detected_band_edges + 4):(end-1), :) = flipud(model_from_image_detected.below);
+
+% Define line segments used to extrapolate to the probe tips
+line_endpoints = [
+    model_from_image_detected.above(1,:), model_from_image_detected.above(2,:);
+    model_from_image_detected.above(end,:), model_from_image_detected.above(end-1,:);
+    model_from_image_detected.below(end,:), model_from_image_detected.below(end-1,:);
+    model_from_image_detected.below(1,:), model_from_image_detected.below(2,:)
+    ];
+
+% Find intersections with the four image borders
+% Top, right, bottom, left
+border_coordinates = [1; image_width; image_height; 1];
+border_coordinate_indices = [2; 1; 2; 1];
+
+line_endpoints_rep = repmat(line_endpoints, 4, 1);
+border_coordinates_rep = repelem(border_coordinates, 4);
+border_coordinate_indices = repelem(border_coordinate_indices, 4);
+line_indices = repmat((1:size(line_endpoints, 1))', 4, 1);
+
+border_points = pointsOnLinesByCoordinates(...
+    line_endpoints_rep(:, 1:2), line_endpoints_rep(:, 3:4),...
+    border_coordinates_rep, border_coordinate_indices);
+
+% Determine which intersection points to use
+border_points_filter = all(isfinite(border_points), 2);
+% Select intersection points in the appropriate directions
+border_points_filter = border_points_filter &...
+    (dot(border_points - line_endpoints_rep(:, 1:2),...
+     line_endpoints_rep(:, 1:2) - line_endpoints_rep(:, 3:4), 2) > 0);
+% Select intersection points within the image
+border_points_filter = border_points_filter &...
+    border_points(:, 1) > 0 & border_points(:, 1) <= image_width &...
+    border_points(:, 2) > 0 & border_points(:, 2) <= image_height;
+line_indices = line_indices(border_points_filter);
+border_points = border_points(border_points_filter, :);
+border_points(line_indices, :) = border_points;
+
+% If lines crossed, replace border points by line intersections
+if dot(border_points(1, :) - border_points(4, :), line_endpoints(1, 1:2) - line_endpoints(4, 1:2), 2) < 0
+    intersection_point = cross(...
+            cross([border_points(1, :), 1], [line_endpoints(1, 1:2), 1]),...
+            cross([border_points(4, :), 1], [line_endpoints(4, 1:2), 1])...
+        );
+    border_points([1 4], :) = repmat(intersection_point(1:2) ./ intersection_point(3), 2, 1);
+end
+if dot(border_points(2, :) - border_points(3, :), line_endpoints(2, 1:2) - line_endpoints(3, 1:2), 2) < 0
+    intersection_point = cross(...
+            cross([border_points(2, :), 1], [line_endpoints(2, 1:2), 1]),...
+            cross([border_points(3, :), 1], [line_endpoints(3, 1:2), 1])...
+        );
+    border_points([2 3], :) = repmat(intersection_point(1:2) ./ intersection_point(3), 2, 1);
+end
+
+polygons_points([1, n_detected_band_edges + 2, n_detected_band_edges + 3, end], :) = border_points;
+
+% Perform the clipping
+clipping_mask = roipoly(I, polygons_points(:, 1), polygons_points(:, 2));
+probe_regions_bw_final_clipped = probe_regions_bw_final_filtered;
+
+for i = 1:n_colors
+    probe_regions_bw_final_clipped(:, :, i) = probe_regions_bw_final_clipped(:, :, i) & clipping_mask;
+end
+
+if display_final_clipped_regions_colored
+    probe_regions_bw_final_clipped_display = zeros(image_height, image_width, image_n_channels); %#ok<UNRCH>
+    for i = 1:n_colors
+        [ ~, peak_hue_index ] = max(probe_color_distributions(:, i));
+        peak_hue = (peak_hue_index - 1) * probe_color_distribution_increment;
+        peak_rgb = hsv2rgb([peak_hue, 1, 1]);
+        probe_regions_bw_final_clipped_filtered_i = probe_regions_bw_final_clipped(:, :, i);
+        probe_regions_bw_final_clipped_display = probe_regions_bw_final_clipped_display +...
+            cat(3,...
+                    peak_rgb(1) * probe_regions_bw_final_clipped_filtered_i,...
+                    peak_rgb(2) * probe_regions_bw_final_clipped_filtered_i,...
+                    peak_rgb(3) * probe_regions_bw_final_clipped_filtered_i...
+                );
+    end
+    figure
+    imshow(probe_regions_bw_final_clipped_display);
+    title('Final detected probe regions, clipped to detected probe edges')
+end
+
 
 %% Match model extracted from the image to the user-supplied measurements of the probe
 if ~exist('probe', 'var')
@@ -625,14 +721,14 @@ image_to_measured_matches_detected_filter = logical(image_to_measured_matches_de
 image_to_measured_matches_detected(~image_to_measured_matches_detected_filter) = NaN;
 if ~all(image_to_measured_matches_detected_filter)
     warning('Some detected interest points in the image were not matched to known probe measurements.')
-    matched_lengths = nan(length(image_lengths_detected), 1);
+    matched_lengths = nan(n_detected_band_edges, 1);
     matched_lengths(image_to_measured_matches_detected_filter) =...
         probe_lengths_for_matching(...
                 image_to_measured_matches_detected(...
                         image_to_measured_matches_detected_filter...
                     )...
             );
-    matched_widths = nan(length(image_lengths_detected), 1);
+    matched_widths = nan(n_detected_band_edges, 1);
     matched_widths(image_to_measured_matches_detected_filter) =...
         probe_widths_for_matching(...
                 image_to_measured_matches_detected(...
@@ -645,7 +741,7 @@ else
 end
 
 probe_detection_matches = struct(...
-        'index', num2cell((1:length(image_lengths_detected)).'),...
+        'index', num2cell((1:n_detected_band_edges).'),...
         'lengthAlongPCAMajorAxis', num2cell(image_lengths_detected),...
         'pointAbovePCAMajorAxis', num2cell(model_from_image_detected.above, 2),...
         'pointBelowPCAMajorAxis', num2cell(model_from_image_detected.below, 2),...
