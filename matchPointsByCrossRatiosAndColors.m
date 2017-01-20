@@ -1,14 +1,16 @@
-function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject, query, subject_gap_cost, query_gap_cost, varargin )
+function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject, query, subject_gap_cost, query_gap_cost, color_weight, varargin )
 % MATCHPOINTSBYCROSSRATIOSANDCOLORS  Align sequences of points on two lines by comparing cross ratios and colour adjacency relationships
 %
 % ## Syntax
 % subject_match_indices = matchPointsByCrossRatios(...
-%   subject, query, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
+%   subject, query, subject_gap_cost, query_gap_cost, color_weight...
+%   [, n_samples, verbose]...
 % )
 %
 % ## Description
 % subject_match_indices = matchPointsByCrossRatios(...
-%   subject, query, subject_gap_cost, query_gap_cost [, n_samples, verbose]...
+%   subject, query, subject_gap_cost, query_gap_cost, color_weight...
+%   [, n_samples, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
 %   points in the query sequence.
@@ -44,6 +46,12 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
 %   The score to assign to gaps of any length in the query sequence in
 %   the alignment of the subject and query sequences. This value is used
 %   indirectly by `swSequenceAlignmentAffine()`.
+%
+% color_weight -- Weight of colour adjacency scores
+%   The weight to apply to the colour portion of the alignment scores.
+%   `color_weight` ranges from `0` to `1`, where `0` enforces matching
+%   based only on cross ratios, and `1` enforces matching based only on
+%   colour adjacency constraints.
 %
 % n_samples - Reduce problem size
 %   An integer value from zero to 'n - 1'. If greater than zero, the function
@@ -102,53 +110,40 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
 % combinations of points to be inserted or deleted, but not transposed.
 %
 % Colour information is taken into account in the matching cost function,
-% which computes the cost of pairing two cross ratios.
+% which computes the cost of pairing two subsequences of points (of length 4)
+% by comparing their cross ratios and adjacent colours. Matching costs are
+% in the range `[0,1]`, where `1` represents an ideal match.
 %
-% See also crossRatio, swSequenceAlignmentAffine
+% See also crossRatio, swSequenceAlignmentAffine, matchPointsByCrossRatios
 
 % Bernard Llanos
-% Spring 2016 research assistantship supervised by Dr. Y.H. Yang
+% Supervised by Dr. Y.H. Yang
 % University of Alberta, Department of Computing Science
-% File created August 5, 2016
+% File created January 19, 2017
 
-% Color matching scoring
-% - Same colours: 0.125 points
-% - One or both colours is `-1`, and neither colour is zero: 0.0625 points
-% - One or both colours is zero, or two different colours: 0 points
-% The maximum score is `1`, and the minimum score is `0`.
-
-    function [ score ] = f_similarity_cross_ratios_forward(s, q)
-        s_val = subject_cross_ratios(s);
-        q_val = query_cross_ratios_forward(q);
-        subject_colors = subject_cross_ratios_colors(:, s);
-        query_colors = query_cross_ratios_colors_forward(:, q);
-        diff_colors = (subject_colors == query_colors) * 0.125;
-        diff_colors(subject_colors == -1) = 0.0625;
-        diff_colors(query_colors == -1) = 0.0625;
-        diff_colors(subject_colors == 0) = 0;
-        diff_colors(query_colors == 0) = 0;
+    function [ score ] = f_similarity_helper(subject_points, query_points, s_val, q_val)
         score = 1 - abs((q_val - s_val) / s_val);
         if score < 0
             score = 0;
         end
-        score = score * sum(diff_colors);
+        color_score_indices = sub2ind(color_scores_size, subject_points, query_points);
+        score = (score * cross_weight) + (sum(color_scores(color_score_indices)) * color_weight);
     end
 
-    function [ score ] = f_similarity_cross_ratios_reverse(s, q)
+    function [ score ] = f_similarity_forward(s, q)
+        s_val = subject_cross_ratios(s);
+        q_val = query_cross_ratios_forward(q);
+        subject_points = subject_combinations(s, :);
+        query_points = query_combinations(q, :);
+        score = f_similarity_helper(subject_points, query_points, s_val, q_val);
+    end
+
+    function [ score ] = f_similarity_reverse(s, q)
         s_val = subject_cross_ratios(s);
         q_val = query_cross_ratios_reverse(q);
-        subject_colors = subject_cross_ratios_colors(:, s);
-        query_colors = query_cross_ratios_colors_reverse(:, q);
-        diff_colors = (subject_colors == query_colors) * 0.125;
-        diff_colors(subject_colors == -1) = 0.0625;
-        diff_colors(query_colors == -1) = 0.0625;
-        diff_colors(subject_colors == 0) = 0;
-        diff_colors(query_colors == 0) = 0;
-        score = 1 - abs((q_val - s_val) / s_val);
-        if score < 0
-            score = 0;
-        end
-        score = score * sum(diff_colors);
+        subject_points = subject_combinations(s, :);
+        query_points = query_combinations_reverse(q, :);
+        score = f_similarity_helper(subject_points, query_points, s_val, q_val);
     end
 
     function [ score ] = f_similarity_points(s, q)
@@ -160,6 +155,7 @@ narginchk(4, 6);
 
 n_subject = length(subject);
 n_query = length(query);
+cross_weight = 1 - color_weight;
 
 if ~isempty(varargin)
     n_samples = varargin{1};
@@ -197,11 +193,9 @@ end
 subject_combinations = nchoosek(1:n_subject, 4);
 n_subject_cross_ratios = size(subject_combinations, 1);
 subject_cross_ratios = zeros(n_subject_cross_ratios, 1);
-subject_cross_ratios_colors = zeros(8, n_subject_cross_ratios);
 for i = 1:n_subject_cross_ratios
-    points = subject(subject_combinations(i, :), :);
-    subject_cross_ratios(i) = crossRatio(points(:, 1));
-    subject_cross_ratios_colors(:, i) = reshape(points(:, 2:3), 8, 1);
+    points = subject(subject_combinations(i, :), 1);
+    subject_cross_ratios(i) = crossRatio(points);
 end
 
 if n_samples
@@ -234,47 +228,62 @@ else
 end
 
 query_cross_ratios_forward = zeros(n_query_cross_ratios, 1);
-query_cross_ratios_colors_forward = zeros(8, n_query_cross_ratios);
 for i = 1:n_query_cross_ratios
-    points = query(query_combinations(i, :), :);
-    query_cross_ratios_forward(i) = crossRatio(points(:, 1));
-    query_cross_ratios_colors_forward(:, i) = reshape(points(:, 2:3), 8, 1);
+    points = query(query_combinations(i, :), 1);
+    query_cross_ratios_forward(i) = crossRatio(points);
 end
 
 query_reverse_map = n_query:(-1):1;
 query_cross_ratios_reverse = zeros(n_query_cross_ratios, 1);
-query_cross_ratios_colors_reverse = zeros(8, n_query_cross_ratios);
+query_combinations_reverse = reshape(query_reverse_map(query_combinations(:)), n_query_cross_ratios, 4);
 for i = 1:n_query_cross_ratios
-    points = query(query_reverse_map(query_combinations(i, :)), :);
-    query_cross_ratios_reverse(i) = crossRatio(points(:, 1));
-    query_cross_ratios_colors_reverse(:, i) = reshape(points(:, 2:3), 8, 1);
+    points = query(query_combinations_reverse(i, :), 1);
+    query_cross_ratios_reverse(i) = crossRatio(points);
 end
 
-if verbose
-    % Plot cross ratios
-    figure;
-    hold on
-    plot(subject_cross_ratios, 'g-');
-    plot(query_cross_ratios_forward, 'r-');
-    hold off
-    title('Cross ratios')
-    xlabel('Combination index')
-    ylabel('Cross ratio')
-    legend('Subject sequence cross ratios', 'Query sequence cross ratios')
-end
+% if verbose
+%     % Plot cross ratios
+%     figure;
+%     hold on
+%     plot(subject_cross_ratios, 'g-');
+%     plot(query_cross_ratios_forward, 'r-');
+%     hold off
+%     title('Cross ratios')
+%     xlabel('Combination index')
+%     ylabel('Cross ratio')
+%     legend('Subject sequence cross ratios', 'Query sequence cross ratios')
+% end
+% 
+% if verbose
+%     % Plot cross ratios in reverse
+%     figure;
+%     hold on
+%     plot(subject_cross_ratios, 'g-');
+%     plot(query_cross_ratios_reverse, 'r-');
+%     hold off
+%     title('Cross ratios, with query sequence reversed')
+%     xlabel('Combination index')
+%     ylabel('Cross ratio')
+%     legend('Subject sequence cross ratios', 'Reversed query sequence cross ratios')
+% end
 
-if verbose
-    % Plot cross ratios in reverse
-    figure;
-    hold on
-    plot(subject_cross_ratios, 'g-');
-    plot(query_cross_ratios_reverse, 'r-');
-    hold off
-    title('Cross ratios, with query sequence reversed')
-    xlabel('Combination index')
-    ylabel('Cross ratio')
-    legend('Subject sequence cross ratios', 'Reversed query sequence cross ratios')
-end
+% Color matching scoring
+% - Same colours: 1 points
+% - One or both colours is `-1`, and neither colour is zero: 0.5 points
+% - One or both colours is zero, or two different colours: 0 points
+
+% Precompute point matching scores based on colour
+subject_colors = repmat(reshape(subject(:, 2:3), n_subject, 1, 2), 1, n_query, 1);
+query_colors = repmat(reshape(query(:, 2:3), 1, n_query, 2), n_subject, 1, 1);
+color_scores = double(subject_colors == query_colors);
+color_scores(subject_colors == -1) = 0.5;
+color_scores(query_colors == -1) = 0.5;
+color_scores(subject_colors == 0) = 0;
+color_scores(query_colors == 0) = 0;
+color_scores_size = size(color_scores);
+% Normalization, to obtain scores in the range [0,1] when summed over the
+% four points in a cross ratio
+color_scores = color_scores / 4;
 
 % Match sequences in the given directions with dynamic programming
 subject_sequence = 1:n_subject_cross_ratios;
@@ -284,7 +293,7 @@ subject_gap_cost = [subject_gap_cost 0];
 query_gap_cost = [query_gap_cost 0];
 [ alignment_forward, score_forward ] = swSequenceAlignmentAffine(...
         subject_sequence, query_sequence,...
-        @f_similarity_cross_ratios_forward, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
+        @f_similarity_forward, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
     );
 
 if verbose
@@ -295,7 +304,7 @@ end
 % Match sequences in the reverse directions with dynamic programming
 [ alignment_reverse, score_reverse ] = swSequenceAlignmentAffine(...
         subject_sequence, query_sequence,...
-        @f_similarity_cross_ratios_reverse, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
+        @f_similarity_reverse, threshold, subject_gap_cost, query_gap_cost, 'SemiGlobal'...
     );
 
 if verbose
