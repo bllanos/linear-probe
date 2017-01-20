@@ -1,5 +1,5 @@
-function [ subject_match_indices ] = matchPointsByCrossRatios( subject, query, subject_gap_cost, query_gap_cost, varargin )
-% MATCHPOINTSBYCROSSRATIOS  Align sequences of points on two lines by comparing cross ratios
+function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject, query, subject_gap_cost, query_gap_cost, varargin )
+% MATCHPOINTSBYCROSSRATIOSANDCOLORS  Align sequences of points on two lines by comparing cross ratios and colour adjacency relationships
 %
 % ## Syntax
 % subject_match_indices = matchPointsByCrossRatios(...
@@ -15,15 +15,25 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject, query, s
 %
 % ## Input Arguments
 %
-% subject -- First sequence of collinear points
-%   A vector of length 'm' containing the 1D coordinates of points on a
-%   line. The vector should be sorted.
+% subject -- First sequence of collinear points, and adjacent colours
+%   A matrix of size 'm x 3' containing the 1D coordinates of points on a
+%   line in its first column. The rows of the matrix should be sorted by
+%   the first column.
 %
-% query -- Second sequence of collinear points
-%   A vector of length 'n' containing the 1D coordinates of points on the
+%   The second column contains integer labels for the colours preceding the
+%   points, whereas the third column contains integer labels for the colours
+%   following the points. Use values of zero for unknown colours, which do
+%   not match any colour (including themselves), and values of `-1` for
+%   arbitrary colours, which half-match any colour.
+%
+% query -- Second sequence of collinear points, and adjacent colours
+%   A matrix of size 'n * 3' containing the 1D coordinates of points on the
 %   same or a different line from the points in `subject`. The points in
-%   `subject` and `query` can be in different coordinate frames. `query`
-%   should be sorted.
+%   `subject` and `query` can be in different coordinate frames. The rows of
+%   `query` should be sorted by the first column.
+%
+%   The second and third columns are analogous to the second and third
+%   columns of `subject`.
 %
 % subject_gap_cost -- Score for gaps in the subject sequence
 %   The score to assign to gaps of any length in the subject sequence in
@@ -91,6 +101,9 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject, query, s
 % programming algorithm in `swSequenceAlignmentAffine` allows for
 % combinations of points to be inserted or deleted, but not transposed.
 %
+% Colour information is taken into account in the matching cost function,
+% which computes the cost of pairing two cross ratios.
+%
 % See also crossRatio, swSequenceAlignmentAffine
 
 % Bernard Llanos
@@ -98,16 +111,44 @@ function [ subject_match_indices ] = matchPointsByCrossRatios( subject, query, s
 % University of Alberta, Department of Computing Science
 % File created August 5, 2016
 
+% Color matching scoring
+% - Same colours: 0.125 points
+% - One or both colours is `-1`, and neither colour is zero: 0.0625 points
+% - One or both colours is zero, or two different colours: 0 points
+% The maximum score is `1`, and the minimum score is `0`.
+
     function [ score ] = f_similarity_cross_ratios_forward(s, q)
         s_val = subject_cross_ratios(s);
         q_val = query_cross_ratios_forward(q);
+        subject_colors = subject_cross_ratios_colors(:, s);
+        query_colors = query_cross_ratios_colors_forward(:, q);
+        diff_colors = (subject_colors == query_colors) * 0.125;
+        diff_colors(subject_colors == -1) = 0.0625;
+        diff_colors(query_colors == -1) = 0.0625;
+        diff_colors(subject_colors == 0) = 0;
+        diff_colors(query_colors == 0) = 0;
         score = 1 - abs((q_val - s_val) / s_val);
+        if score < 0
+            score = 0;
+        end
+        score = score * sum(diff_colors);
     end
 
     function [ score ] = f_similarity_cross_ratios_reverse(s, q)
         s_val = subject_cross_ratios(s);
         q_val = query_cross_ratios_reverse(q);
+        subject_colors = subject_cross_ratios_colors(:, s);
+        query_colors = query_cross_ratios_colors_reverse(:, q);
+        diff_colors = (subject_colors == query_colors) * 0.125;
+        diff_colors(subject_colors == -1) = 0.0625;
+        diff_colors(query_colors == -1) = 0.0625;
+        diff_colors(subject_colors == 0) = 0;
+        diff_colors(query_colors == 0) = 0;
         score = 1 - abs((q_val - s_val) / s_val);
+        if score < 0
+            score = 0;
+        end
+        score = score * sum(diff_colors);
     end
 
     function [ score ] = f_similarity_points(s, q)
@@ -156,9 +197,11 @@ end
 subject_combinations = nchoosek(1:n_subject, 4);
 n_subject_cross_ratios = size(subject_combinations, 1);
 subject_cross_ratios = zeros(n_subject_cross_ratios, 1);
+subject_cross_ratios_colors = zeros(8, n_subject_cross_ratios);
 for i = 1:n_subject_cross_ratios
-    points = subject(subject_combinations(i, :), 1);
-    subject_cross_ratios(i) = crossRatio(points);
+    points = subject(subject_combinations(i, :), :);
+    subject_cross_ratios(i) = crossRatio(points(:, 1));
+    subject_cross_ratios_colors(:, i) = reshape(points(:, 2:3), 8, 1);
 end
 
 if n_samples
@@ -171,7 +214,7 @@ if n_samples
     query_combinations = zeros(n_query_cross_ratios, 4);
     j = 1;
     for i = 1:n_query
-        for k = j:(j + n_samples - 1);
+        for k = j:(j + n_samples - 1)
             triplet = sampled_triplets(k, :);
             triplet_filter = triplet < i;
             query_combinations(k, :) = [
@@ -191,16 +234,20 @@ else
 end
 
 query_cross_ratios_forward = zeros(n_query_cross_ratios, 1);
+query_cross_ratios_colors_forward = zeros(8, n_query_cross_ratios);
 for i = 1:n_query_cross_ratios
-    points = query(query_combinations(i, :), 1);
-    query_cross_ratios_forward(i) = crossRatio(points);
+    points = query(query_combinations(i, :), :);
+    query_cross_ratios_forward(i) = crossRatio(points(:, 1));
+    query_cross_ratios_colors_forward(:, i) = reshape(points(:, 2:3), 8, 1);
 end
 
 query_reverse_map = n_query:(-1):1;
 query_cross_ratios_reverse = zeros(n_query_cross_ratios, 1);
+query_cross_ratios_colors_reverse = zeros(8, n_query_cross_ratios);
 for i = 1:n_query_cross_ratios
-    points = query(query_reverse_map(query_combinations(i, :)), 1);
-    query_cross_ratios_reverse(i) = crossRatio(points);
+    points = query(query_reverse_map(query_combinations(i, :)), :);
+    query_cross_ratios_reverse(i) = crossRatio(points(:, 1));
+    query_cross_ratios_colors_reverse(:, i) = reshape(points(:, 2:3), 8, 1);
 end
 
 if verbose
