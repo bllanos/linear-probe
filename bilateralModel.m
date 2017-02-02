@@ -163,7 +163,7 @@ function [ model, lengths, axes, model_px, transform ] = bilateralModel( points,
 %   numerical error.
 %
 % transform -- Map back from PCA component space
-%   A 3 x 2 array, of the form `[coeff mu].'`, where `coeff` is the
+%   A 3 x 2 array, of the form `[coeff mu; 0 0 1].'`, where `coeff` is the
 %   principal components expressed in the reference frame of the original
 %   data, and `mu` is the vector of variable means. `transform` can be used
 %   to map points in `model` back into their original frame of reference
@@ -206,7 +206,7 @@ if nargout > 2
     scale = sqrt(a .^ 2 + b .^ 2);
     axes = [a, b, c] ./ repmat(scale, 1, 3);
     
-    transform = [coeff, mu.'].';
+    transform = [coeff, mu.'; 0 0 1].';
 else
     [~,score] = pca(points);
 end

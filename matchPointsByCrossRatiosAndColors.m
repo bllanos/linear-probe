@@ -2,13 +2,13 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
 % MATCHPOINTSBYCROSSRATIOSANDCOLORS  Align sequences of points on two lines by comparing cross ratios and colour adjacency relationships
 %
 % ## Syntax
-% subject_match_indices = matchPointsByCrossRatios(...
+% subject_match_indices = matchPointsByCrossRatiosAndColors(...
 %   subject, query, subject_gap_cost, query_gap_cost, color_weight...
 %   [, n_samples, verbose]...
 % )
 %
 % ## Description
-% subject_match_indices = matchPointsByCrossRatios(...
+% subject_match_indices = matchPointsByCrossRatiosAndColors(...
 %   subject, query, subject_gap_cost, query_gap_cost, color_weight...
 %   [, n_samples, verbose]...
 % )
@@ -121,13 +121,18 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
 % University of Alberta, Department of Computing Science
 % File created January 19, 2017
 
-    function [ score ] = f_similarity_helper(subject_points, query_points, s_val, q_val)
+    function [ score ] = f_similarity_helper(subject_points, query_points, s_val, q_val, forward)
         score = 1 - abs((q_val - s_val) / s_val);
         if score < 0
             score = 0;
         end
         color_score_indices = sub2ind(color_scores_size, subject_points, query_points);
-        score = (score * cross_weight) + (sum(color_scores(color_score_indices)) * color_weight);
+        if forward
+            color_score = sum(color_scores_forward(color_score_indices));
+        else
+            color_score = sum(color_scores_reverse(color_score_indices));
+        end
+        score = (score * cross_weight) + (color_score * color_weight);
     end
 
     function [ score ] = f_similarity_forward(s, q)
@@ -135,7 +140,7 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
         q_val = query_cross_ratios_forward(q);
         subject_points = subject_combinations(s, :);
         query_points = query_combinations(q, :);
-        score = f_similarity_helper(subject_points, query_points, s_val, q_val);
+        score = f_similarity_helper(subject_points, query_points, s_val, q_val, true);
     end
 
     function [ score ] = f_similarity_reverse(s, q)
@@ -143,7 +148,7 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
         q_val = query_cross_ratios_reverse(q);
         subject_points = subject_combinations(s, :);
         query_points = query_combinations_reverse(q, :);
-        score = f_similarity_helper(subject_points, query_points, s_val, q_val);
+        score = f_similarity_helper(subject_points, query_points, s_val, q_val, false);
     end
 
     function [ score ] = f_similarity_points(s, q)
@@ -275,15 +280,24 @@ end
 % Precompute point matching scores based on colour
 subject_colors = repmat(reshape(subject(:, 2:3), n_subject, 1, 2), 1, n_query, 1);
 query_colors = repmat(reshape(query(:, 2:3), 1, n_query, 2), n_subject, 1, 1);
-color_scores = double(subject_colors == query_colors);
-color_scores(subject_colors == -1) = 0.5;
-color_scores(query_colors == -1) = 0.5;
-color_scores(subject_colors == 0) = 0;
-color_scores(query_colors == 0) = 0;
-color_scores_size = size(color_scores);
+color_scores_forward = double(subject_colors == query_colors);
+color_scores_forward(subject_colors == -1) = 0.5;
+color_scores_forward(query_colors == -1) = 0.5;
+color_scores_forward(subject_colors == 0) = 0;
+color_scores_forward(query_colors == 0) = 0;
+
+query_colors_reverse = repmat(reshape(flipud(query(:, 2:3)), 1, n_query, 2), n_subject, 1, 1);
+color_scores_reverse = double(subject_colors == query_colors_reverse);
+color_scores_reverse(subject_colors == -1) = 0.5;
+color_scores_reverse(query_colors_reverse == -1) = 0.5;
+color_scores_reverse(subject_colors == 0) = 0;
+color_scores_reverse(query_colors_reverse == 0) = 0;
+
+color_scores_size = size(color_scores_forward);
 % Normalization, to obtain scores in the range [0,1] when summed over the
 % four points in a cross ratio
-color_scores = color_scores / 4;
+color_scores_forward = color_scores_forward / 4;
+color_scores_reverse = color_scores_reverse / 4;
 
 % Match sequences in the given directions with dynamic programming
 subject_sequence = 1:n_subject_cross_ratios;
