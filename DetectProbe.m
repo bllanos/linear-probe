@@ -140,6 +140,7 @@ parameters_list = {
         'edge_refinement_angle_std',...
         'edge_refinement_filter_threshold',...
         'detected_point_alignment_outlier_threshold',...
+        'color_sum_outlier_threshold',...
         'color_dominance_threshold',...
         'subject_gap_cost_detection',...
         'query_gap_cost_detection',...
@@ -202,11 +203,12 @@ edge_refinement_filter_threshold = 0.3;
 
 % Matching edge endpoints to probe measurements
 detected_point_alignment_outlier_threshold = 5;
+color_sum_outlier_threshold = 1;
 color_dominance_threshold = 1.5;
 subject_gap_cost_detection = -0.1;
 query_gap_cost_detection = 0.5;
 color_weight_detection = 0.5;
-n_samples_sequence_alignment_detection = 12;
+n_samples_sequence_alignment_detection = 20;
 
 % Debugging tools
 display_original_image = false;
@@ -757,6 +759,15 @@ for i = 1:2
         scores = probe_color_scores_right;
     end
     [scores_max, scores_maxind] = max(scores, [], 2);
+    
+    % Filter out outlier small scores
+    mu_scores_max = mean(scores_max);
+    sigma_scores_max = std(scores_max);
+    mu_scores_max_rep = repmat(mu_scores_max,n_detected_band_edges,1);
+    sigma_scores_max_rep = repmat(sigma_scores_max,n_detected_band_edges,1);
+    scores_max_filter = (mu_scores_max - scores_max) > color_sum_outlier_threshold * sigma_scores_max_rep;
+    scores_max(scores_max_filter) = 0;
+
     scores_nomax = scores;
     scores_nomax(...
         sub2ind(size(scores), (1:n_detected_band_edges)', scores_maxind)...
