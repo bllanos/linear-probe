@@ -156,7 +156,7 @@ function [ subject_match_indices ] = matchPointsByCrossRatiosAndColors( subject,
     end
 
 nargoutchk(1, 1);
-narginchk(4, 6);
+narginchk(5, 7);
 
 n_subject = length(subject);
 n_query = length(query);
@@ -286,18 +286,20 @@ color_scores_forward(query_colors == -1) = 0.5;
 color_scores_forward(subject_colors == 0) = 0;
 color_scores_forward(query_colors == 0) = 0;
 
-query_colors_reverse = repmat(reshape(flipud(query(:, 2:3)), 1, n_query, 2), n_subject, 1, 1);
+query_colors_reverse = repmat(reshape(rot90(query(:, 2:3),2), 1, n_query, 2), n_subject, 1, 1);
 color_scores_reverse = double(subject_colors == query_colors_reverse);
 color_scores_reverse(subject_colors == -1) = 0.5;
 color_scores_reverse(query_colors_reverse == -1) = 0.5;
 color_scores_reverse(subject_colors == 0) = 0;
 color_scores_reverse(query_colors_reverse == 0) = 0;
 
-color_scores_size = size(color_scores_forward);
 % Normalization, to obtain scores in the range [0,1] when summed over the
 % four points in a cross ratio
-color_scores_forward = color_scores_forward / 4;
-color_scores_reverse = color_scores_reverse / 4;
+color_scores_forward = sum(color_scores_forward, 3);
+color_scores_forward = color_scores_forward / 8;
+color_scores_reverse = sum(color_scores_reverse, 3);
+color_scores_reverse = color_scores_reverse / 8;
+color_scores_size = size(color_scores_forward);
 
 % Match sequences in the given directions with dynamic programming
 subject_sequence = 1:n_subject_cross_ratios;
@@ -311,7 +313,7 @@ query_gap_cost = [query_gap_cost 0];
     );
 
 if verbose
-    disp('Forward cross ratio sequence alignment score:');
+    disp('Forward cross ratio and colour sequence alignment score:');
     disp(score_forward);
 end
 
@@ -322,7 +324,7 @@ end
     );
 
 if verbose
-    disp('Reverse cross ratio sequence alignment score:');
+    disp('Reverse cross ratio and colour sequence alignment score:');
     disp(score_reverse);
 end
 

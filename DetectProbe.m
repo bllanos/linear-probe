@@ -785,7 +785,7 @@ end
 matching_start_index = 2;
 matching_end_index = length(probe.lengths) - 1;
 probe_lengths_for_matching = probe.lengths(matching_start_index:matching_end_index);
-subject = [probe_lengths_for_matching, probe.colors(1:matching_end_index), probe.colors(2:end)];
+subject = [probe_lengths_for_matching, probe.colors(1:(end-1)), probe.colors(2:end)];
 
 query = [image_lengths_detected, probe_colors_left, probe_colors_right];
 
