@@ -207,8 +207,9 @@ color_sum_outlier_threshold = 1;
 color_dominance_threshold = 1.5;
 subject_gap_cost_detection = -0.1;
 query_gap_cost_detection = 0.5;
-color_weight_detection = 0.5;
-n_samples_sequence_alignment_detection = 20;
+% Set a low weight when the pattern of probe colours is nearly symmetrical
+color_weight_detection = 0.0;
+n_samples_sequence_alignment_detection = 12;
 
 % Debugging tools
 display_original_image = false;
@@ -227,10 +228,10 @@ verbose_final_region_filtering = false;
 display_final_regions_colored = false;
 display_band_edge_extraction = false;
 verbose_edge_endpoint_extraction = false;
-display_detected_model_from_image = false;
+display_detected_model_from_image = true;
 display_final_clipped_regions_colored = false;
-verbose_detected_point_sequence_matching = false;
-display_detected_model_matching = false;
+verbose_detected_point_sequence_matching = true;
+display_detected_model_matching = true;
 
 %% Load the image containing the probe in an unknown pose
 
@@ -779,9 +780,9 @@ for i = 1:2
     colors(scores_max == 0) = 0; % No colour
     colors(colors_filter) = scores_maxind(colors_filter);
     if i == 1
-        probe_colors_left = colors;
+        probe_colors_detected_left = colors;
     else
-        probe_colors_right = colors;
+        probe_colors_detected_right = colors;
     end
 end
 
@@ -790,15 +791,20 @@ if ~exist('probe', 'var')
     error('No variable called ''probe'' is loaded (which would contain probe measurements).')
 end
 
-% Note that the probe tips are never in the sequence of interest points
+% Note that the probe tips should never be in the sequence of interest points
 % detected in the image, because they are not adjacent to any coloured
-% bands.
-matching_start_index = 2;
-matching_end_index = length(probe.lengths) - 1;
+% bands. But, in case they are, match them and then remove them from the
+% matched sequence.
+matching_start_index = 1;
+matching_end_index = length(probe.lengths);
 probe_lengths_for_matching = probe.lengths(matching_start_index:matching_end_index);
-subject = [probe_lengths_for_matching, probe.colors(1:(end-1)), probe.colors(2:end)];
+subject = [probe_lengths_for_matching, zeros(matching_end_index - matching_start_index + 1, 2)];
+% Colours to the left of each band transition
+subject((matching_start_index + 1):matching_end_index, 2) = probe.colors;
+% Colours to the right of each band transition
+subject(matching_start_index:(matching_end_index - 1), 3) = probe.colors;
 
-query = [image_lengths_detected, probe_colors_left, probe_colors_right];
+query = [image_lengths_detected, probe_colors_detected_left, probe_colors_detected_right];
 
 image_to_measured_matches_detected = matchPointsByCrossRatiosAndColors(...
   subject,...
@@ -809,6 +815,18 @@ image_to_measured_matches_detected = matchPointsByCrossRatiosAndColors(...
   n_samples_sequence_alignment_detection,...
   verbose_detected_point_sequence_matching...
 );
+
+% Remove probe tips
+tip_filter = image_to_measured_matches_detected == matching_start_index;
+if any(tip_filter)
+    warning('Removing detected interest point which was matched to the start of the probe.')
+    image_to_measured_matches_detected(tip_filter) = 0;
+end
+tip_filter = image_to_measured_matches_detected == matching_end_index;
+if any(tip_filter)
+    warning('Removing detected interest point which was matched to the end of the probe.')
+    image_to_measured_matches_detected(tip_filter) = 0;
+end
 
 % Previous version which did not use colour information
 %
