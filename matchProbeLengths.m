@@ -96,10 +96,10 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % cross ratios (as opposed to positions or length ratios) are
 % invariant to projective transformations:
 % 
-% First, all possible cross ratios (from all possible combinations of
-% points) are generated for the two sets of points. Each cross ratio from
-% the subject points is compared to each cross ratio from the query points,
-% and the degree of agreement between the two cross ratios is computed. The
+% First, all possible cross ratios (from all possible 4-point subsequences)
+% are generated for the two sets of points. Each cross ratio from the
+% subject points is compared to each cross ratio from the query points, and
+% the degree of agreement between the two cross ratios is computed. The
 % agreement score is then added to the cross ratio matching scores of the
 % points used to form the two cross ratios.
 %
@@ -138,6 +138,12 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % whereas the process will not penalize the extension of `subject` outside
 % the aligned region.
 %
+% The alignment is tested in both the forward and reverse directions, and
+% the final output, `subject_match_indices`, corresponds to the direction
+% producing the highest alignment score. Note that cross ratio and
+% colour-based point matching scores must be computed for each of the
+% alignment directions.
+%
 % See also crossRatio, swSequenceAlignmentAffine
 
 % Bernard Llanos
@@ -145,6 +151,215 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % University of Alberta, Department of Computing Science
 % File created February 9, 2017
 
+    function [ score ] = f_similarity_forward(s, q)
+        score = scores(s, q, 1);
+    end
+
+    function [ score ] = f_similarity_reverse(s, q)
+        score = scores(s, q, 2);
+    end
+
+nargoutchk(1, 1);
+narginchk(4, 8);
+
+% Parse input arguments
+match_colors = false;
+verbose = false;
+if ~isempty(varargin)
+    if length(varargin) == 1
+        verbose = varargin{1};
+    elseif length(varargin) >= 3
+        match_colors = true;
+        subject_colors = varargin{1};
+        query_colors = varargin{2};
+        color_weight = varargin{3};
+        if length(varargin) == 4
+            verbose = varargin{4};
+        end
+    else
+        error('Incorrect number of input arguments')
+    end
+else
+    
+end
+
+n_subject = length(subject_lengths);
+subject_sequence = 1:n_subject;
+n_query = length(query_lengths);
+query_sequence = 1:n_query;
+
+% Computing the cross ratio requires 4 points. Disambiguating between
+% sequence orientations requires 5 points, because the cross ratio is
+% invariant to a reversal of point order.
+if n_subject < 5
+    error('Insufficient points given on the subject line to compute cross ratios and determine forwards/backwards orientation.')
+end
+if n_query < 5
+    error('Insufficient points given on the query line to compute cross ratios and determine forwards/backwards orientation.')
+end
+
+if ~all(subject_lengths == sort(subject_lengths))
+    error('The `subject` input argument should be sorted in ascending order.');
+end
+if ~all(query_lengths == sort(query_lengths))
+    error('The `query` input argument should be sorted in ascending order.');
+end
+
+% Compute all possible cross ratios of the subject and query points
+% Note that 'nchoosek' preserves the order of the items being chosen.
+subject_combinations = nchoosek(subject_sequence, 4);
+n_subject_cross_ratios = size(subject_combinations, 1);
+subject_cross_ratios = zeros(n_subject_cross_ratios, 1);
+for i = 1:n_subject_cross_ratios
+    points = subject_lengths(subject_combinations(i, :), 1);
+    subject_cross_ratios(i) = crossRatio(points);
+end
+
+% Take all combinations of 4 points
+query_combinations = nchoosek(query_sequence, 4);
+n_query_cross_ratios = size(query_combinations, 1);
+query_cross_ratios = zeros(n_query_cross_ratios, 1);
+for i = 1:n_query_cross_ratios
+    points = query_lengths(query_combinations(i, :), 1);
+    query_cross_ratios(i) = crossRatio(points);
+end
+
+% Compute cross ratio scores for the forward and reverse alignments
+% The first layer contains scores for forward alignment; The second
+% contains scores for reverse alignment.
+cross_ratio_scores = zeros(n_subject, n_query, 2);
+for i = 1:n_subject_cross_ratios
+    point_indices_subject = subject_combinations(i, :);
+    cross_ratio_subject = subject_cross_ratios(i);
+    for j = 1:n_query_cross_ratios
+        point_indices_query = query_combinations(j, :);
+        cross_ratio_query = query_cross_ratios(j);
+        cross_ratio_score = abs(cross_ratio_subject - cross_ratio_query) /...
+            cross_ratio_subject;
+        cross_ratio_score = max(1 - cross_ratio_score, 0);
+        cross_ratio_score_indices = sub2ind(...
+            size(cross_ratio_scores),...
+            repmat(point_indices_subject, 1, 2),...
+            [point_indices_query fliplr(point_indices_query)],...
+            [ones(1, 4), 2 * ones(1,4)]...
+            );
+        cross_ratio_scores(cross_ratio_score_indices) =...
+            cross_ratio_scores(cross_ratio_score_indices) + cross_ratio_score;
+    end
+end
+
+% Rescale to the range `[0, 1]`
+min_cross_ratio_score = min(min(min(cross_ratio_scores)));
+max_cross_ratio_score = max(max(max(cross_ratio_scores)));
+cross_ratio_scores = (cross_ratio_scores - min_cross_ratio_score) /...
+    (max_cross_ratio_score - min_cross_ratio_score);
+
+if verbose
+    figure;
+    imagesc(cross_ratio_scores(:, :, 1))
+    colorbar
+    title('Forward cross ratio matching scores')
+    figure;
+    imagesc(cross_ratio_scores(:, :, 2))
+    colorbar
+    title('Reverse cross ratio matching scores')
+end
+
+if match_colors
+    subject_colors_grid = repmat(...
+        reshape(subject_colors, n_subject, 1, 2),...
+        1, n_query, 2 ...
+        );
+    query_colors_grid = cat(3,...
+        repmat(reshape(query_colors, 1, n_query, 2), n_subject, 1, 1),...
+        repmat(reshape(fliplr(query_colors), 1, n_query, 2), n_subject, 1, 1)...
+        );
+
+    color_scores = double(subject_colors_grid == query_colors_grid) * 0.5;
+    color_scores(subject_colors_grid == -1) = 0.25;
+    color_scores(query_colors_grid == -1) = 0.25;
+    color_scores(subject_colors_grid == 0) = 0;
+    color_scores(query_colors_grid == 0) = 0;
+    
+    % Sum over the scores for colours on the left and right
+    color_scores = cat(3,...
+        sum(color_scores(:, :, 1:2), 3),...
+        sum(color_scores(:, :, 3:4), 3)...
+        );
+    
+    if verbose
+        figure;
+        imagesc(color_scores(:, :, 1))
+        colorbar
+        title('Forward colour matching scores')
+        figure;
+        imagesc(color_scores(:, :, 2))
+        colorbar
+        title('Reverse colour matching scores')
+    end
+    
+    scores = (color_scores * color_weight) +...
+        (cross_ratio_scores * (1 - color_weight));
+    
+    if verbose
+        figure;
+        imagesc(scores(:, :, 1))
+        colorbar
+        title('Forward combined matching scores')
+        figure;
+        imagesc(scores(:, :, 2))
+        colorbar
+        title('Reverse combined matching scores')
+    end
+else
+    scores = cross_ratio_scores;
+end
+
+% Match sequences in the given directions with dynamic programming
+threshold = -Inf;
+subject_gap_cost = [subject_gap_cost 0];
+query_gap_cost = [query_gap_cost 0];
+[ alignment_forward, score_forward ] = swSequenceAlignmentAffine(...
+        subject_sequence, query_sequence,...
+        @f_similarity_forward, threshold,...
+        subject_gap_cost, query_gap_cost, 'SemiGlobal'...
+    );
+
+if verbose
+    disp('Forward sequence alignment score:');
+    disp(score_forward);
+end
+
+% Match sequences in the reverse directions with dynamic programming
+[ alignment_reverse, score_reverse ] = swSequenceAlignmentAffine(...
+        subject_sequence, query_sequence,...
+        @f_similarity_reverse, threshold,...
+        subject_gap_cost, query_gap_cost, 'SemiGlobal'...
+    );
+
+if verbose
+    disp('Reverse cross ratio and colour sequence alignment score:');
+    disp(score_reverse);
+end
+
+if score_forward > score_reverse
+    alignment = alignment_forward;
+else
+    alignment = alignment_reverse;
+end
+
+if verbose
+    disp('Sequence alignment:');
+    disp(alignment);
+end
+
+subject_match_indices = zeros(n_query, 1);
+for i = 1:n_query
+    match_in_subject = alignment(alignment(:, 2) == i, 1);
+    if match_in_subject
+        subject_match_indices(i) = match_in_subject;
+    end
+end
 
 end
 
