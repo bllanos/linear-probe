@@ -204,10 +204,10 @@ edge_refinement_filter_threshold = 0.3;
 detected_point_alignment_outlier_threshold = 5;
 color_sum_outlier_threshold = 1;
 color_dominance_threshold = 1.5;
-subject_gap_cost_detection = -0.1;
-query_gap_cost_detection = 0.5;
+subject_gap_cost_detection = -1;
+query_gap_cost_detection = 0;
 % Set a low weight when the pattern of probe colours is nearly symmetrical
-color_weight_detection = 0.0;
+color_weight_detection = 0.5;
 
 % Debugging tools
 display_original_image = false;

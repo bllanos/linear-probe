@@ -227,24 +227,56 @@ end
 % The first layer contains scores for forward alignment; The second
 % contains scores for reverse alignment.
 cross_ratio_scores = zeros(n_subject, n_query, 2);
+point_indices_query = [
+    reshape(query_combinations.', [], 1);
+    reshape(fliplr(query_combinations).', [], 1)
+    ];
+point_indices_direction = [
+    ones(4 * n_query_cross_ratios, 1);
+    2 * ones(4 * n_query_cross_ratios, 1)
+    ];
+% `duplicates_buffer` prevents clobbering that would otherwise occur when
+% the same pairing of a subject and a query point corresponds to multiple
+% cross ratio scores within an iteration of the cross ratio scoring loop
+% below.
+cross_ratio_position_indices = repmat((1:4).', 2 * n_query_cross_ratios, 1); % Index of position in cross ratio
+cross_ratio_score_indices = sub2ind(...
+    size(cross_ratio_scores),...
+    cross_ratio_position_indices,...
+    point_indices_query,...
+    point_indices_direction...
+    );
+n_duplicates_max = nchoosek(n_query - 1, 3);
+[unique_indices,unique_indices_map,unique_indices_rows] = unique(cross_ratio_score_indices);
+n_unique_indices = length(unique_indices);
+duplicates_buffer = zeros(n_unique_indices, n_duplicates_max);
+unique_indices_columns = zeros(length(cross_ratio_score_indices), 1);
+for i = 1:n_unique_indices
+    unique_index_filter = (unique_indices_rows == i);
+    unique_indices_columns(unique_index_filter) = (1:sum(unique_index_filter)).';
+end
+duplicates_buffer_indices = sub2ind(...
+    size(duplicates_buffer), unique_indices_rows, unique_indices_columns...
+    );
+
 for i = 1:n_subject_cross_ratios
-    point_indices_subject = subject_combinations(i, :);
-    cross_ratio_subject = subject_cross_ratios(i);
-    for j = 1:n_query_cross_ratios
-        point_indices_query = query_combinations(j, :);
-        cross_ratio_query = query_cross_ratios(j);
-        cross_ratio_score = abs(cross_ratio_subject - cross_ratio_query) /...
-            cross_ratio_subject;
-        cross_ratio_score = max(1 - cross_ratio_score, 0);
-        cross_ratio_score_indices = sub2ind(...
-            size(cross_ratio_scores),...
-            repmat(point_indices_subject, 1, 2),...
-            [point_indices_query fliplr(point_indices_query)],...
-            [ones(1, 4), 2 * ones(1,4)]...
-            );
-        cross_ratio_scores(cross_ratio_score_indices) =...
-            cross_ratio_scores(cross_ratio_score_indices) + cross_ratio_score;
-    end
+    point_indices_subject = repmat(subject_combinations(i, :)', n_query_cross_ratios * 2, 1);
+    cross_ratio_subject = repmat(subject_cross_ratios(i), n_query_cross_ratios, 1);
+    cross_ratio_score = abs(cross_ratio_subject - query_cross_ratios) ./...
+        cross_ratio_subject;
+    cross_ratio_score = max(1 - cross_ratio_score, 0);
+    cross_ratio_score_indices = sub2ind(...
+        size(cross_ratio_scores),...
+        point_indices_subject,...
+        point_indices_query,...
+        point_indices_direction...
+        );
+    cross_ratio_score = repelem(repmat(cross_ratio_score, 2, 1), 4);
+    duplicates_buffer(duplicates_buffer_indices) = cross_ratio_score;
+    cross_ratio_score_indices = cross_ratio_score_indices(unique_indices_map);
+    cross_ratio_scores(cross_ratio_score_indices) =...
+        cross_ratio_scores(cross_ratio_score_indices) +...
+        sum(duplicates_buffer, 2);
 end
 
 % Rescale to the range `[0, 1]`
