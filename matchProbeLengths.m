@@ -34,13 +34,13 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % ## Input Arguments
 %
 % subject_lengths -- First sequence of collinear points
-%   A vector of length 'm' containing the 1D coordinates of points on a
-%   line. The elements of `subject_lengths` should be sorted.
+%   A column vector of length 'm' containing the 1D coordinates of points
+%   on a line. The elements of `subject_lengths` should be sorted.
 %
 % query_lengths -- Second sequence of collinear points
-%   A vector of length 'n' containing the 1D coordinates of points on the
-%   same or a different line from the points in `subject_lengths`. The
-%   points in `subject_lengths` and `query_lengths` can be in different
+%   A column vector of length 'n' containing the 1D coordinates of points
+%   on the same or a different line from the points in `subject_lengths`.
+%   The points in `subject_lengths` and `query_lengths` can be in different
 %   coordinate frames. The elements of `query_lengths` should be sorted.
 %
 % subject_gap_cost -- Score for gaps in the subject sequence
@@ -94,7 +94,7 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % 
 % The two series of points are matched based on their cross ratios, because
 % cross ratios (as opposed to positions or length ratios) are
-% invariant to projective transformations:
+% invariant to projective transformations.
 % 
 % First, all possible cross ratios (from all possible 4-point subsequences)
 % are generated for the two sets of points. Each cross ratio from the
@@ -215,7 +215,6 @@ for i = 1:n_subject_cross_ratios
     subject_cross_ratios(i) = crossRatio(points);
 end
 
-% Take all combinations of 4 points
 query_combinations = nchoosek(query_sequence, 4);
 n_query_cross_ratios = size(query_combinations, 1);
 query_cross_ratios = zeros(n_query_cross_ratios, 1);
@@ -331,8 +330,9 @@ if verbose
 end
 
 % Match sequences in the reverse directions with dynamic programming
+query_sequence_reverse = fliplr(query_sequence);
 [ alignment_reverse, score_reverse ] = swSequenceAlignmentAffine(...
-        subject_sequence, query_sequence,...
+        subject_sequence, query_sequence_reverse,...
         @f_similarity_reverse, threshold,...
         subject_gap_cost, query_gap_cost, 'SemiGlobal'...
     );
@@ -346,6 +346,8 @@ if score_forward > score_reverse
     alignment = alignment_forward;
 else
     alignment = alignment_reverse;
+    alignment_filter = (alignment(:, 2) ~= 0);
+    alignment(alignment_filter, 2) = query_sequence_reverse(alignment(alignment_filter, 2));
 end
 
 if verbose
