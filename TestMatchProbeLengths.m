@@ -25,7 +25,7 @@ query_colors = [
 
 subject_gap_cost_detection = -0.1;
 query_gap_cost_detection = 0.5;
-color_weight_detection = 0;
+color_weight_detection = 0.5;
 verbose = true;
 
 matches = matchProbeLengths(...
@@ -59,7 +59,7 @@ query_colors = [
 
 subject_gap_cost_detection = -0.1;
 query_gap_cost_detection = 0.5;
-color_weight_detection = 0;
+color_weight_detection = 0.5;
 verbose = true;
 
 matches = matchProbeLengths(...
