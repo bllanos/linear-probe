@@ -17,9 +17,19 @@
 % ### Probe detection result
 %
 % A '.mat' file containing the variables
-% 'probe_detection_matches_filtered', and 'model_filename', output by
-% '.\DetectProbe.m'. Refer to the documentation of '.\DetectProbe.m' for
-% details.
+% 'probe_detection_matches_filtered', and, optionally, 'model_filename',
+% output by '.\DetectProbe.m'. Refer to the documentation of
+% '.\DetectProbe.m' for details.
+%
+% ### Probe measurements
+%
+% The 'model_filename' parameter is the path to a '.mat' file containing a
+% structure called 'probe'. 'probe' is a set of user-provided measurements
+% of the physical probe. Refer to the documentation of
+% '.\CreateProbeDetectionModel.m' for details.
+%
+% This parameter is to be provided separately if not contained in the probe
+% detection results described above.
 %
 % ### Camera projection parameters
 %
@@ -27,11 +37,11 @@
 %
 % ### Image containing the probe
 %
-% The 'I_filename' variable from the '.mat' file produced by
-% '.\DetectProbe.m' is assumed to contain the path to the image in which
-% the probe was detected. This image is used to assist with probe
-% localization error visualization, but is not necessary for localizing the
-% probe.
+% The 'I_filename' variable, from the '.mat' file produced by
+% '.\DetectProbe.m', or provided separately, is assumed to contain the path
+% to the image in which the probe was detected. This image is used to
+% assist with probe localization error visualization, but is not necessary
+% for localizing the probe.
 %
 % The image must be an RGB image, in any format that can be loaded by
 % `imread`.
@@ -119,11 +129,14 @@ parameters_list = {
         'camera_filename'...
     };
 % The following variables are loaded from the file pointed to by
-% 'detection_filename':
+% 'detection_filename', unless they are defined below:
 parameters_list = [parameters_list {
         'model_filename',...
         'I_filename'...
     }];
+
+% Measurements of the probe object
+model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
 
 % Probe detection result
 detection_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170217_bambooSkewer_orangeBlue_probeDetectionResults_bottomCamera_rect.mat';
@@ -131,15 +144,27 @@ detection_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results
 % Camera projection matrix
 camera_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\camera_calibration_from_20160609\20170305_bottomCameraMatrix_identityExtrinsics.mat';
 
+% Debugging tools
+display_linear_estimation = true;
+
 %% Load input data
 detection_variables_required = {...
-        'probe_detection_matches_filtered',...
-        'model_filename',...
-        'I_filename'...
+        'probe_detection_matches_filtered'...
     };
-load(detection_model_filename, detection_variables_required{:});
+if ~exist('model_filename', 'var')
+    detection_variables_required = [detection_variables_required 'model_filename'];
+end
+if ~exist('I_filename', 'var')
+    detection_variables_required = [detection_variables_required 'I_filename'];
+end
+load(detection_filename, detection_variables_required{:});
 if ~all(ismember(detection_variables_required, who))
     error('One or more of the probe detection variables is not loaded.')
+end
+
+load(model_filename, 'probe');
+if ~exist('probe', 'var')
+    error('No variable called ''probe'' loaded from %s (which would contain probe measurements).', model_filename)
 end
 
 load(camera_filename, 'P');
@@ -148,3 +173,53 @@ if ~exist('P', 'var')
 end
 
 I = imread(I_filename);
+image_size = size(I);
+image_size = image_size(1:2);
+
+%% Linear estimation of probe location
+
+% Estimated centerline of the probe in the image
+allPoints = [
+    vertcat(probe_detection_matches_filtered(:).pointAbovePCAMajorAxis);
+    vertcat(probe_detection_matches_filtered(:).pointBelowPCAMajorAxis)
+    ];
+[ coeff, ~, ~, ~, ~, mu ] = pca(allPoints);
+
+% Express the PCA component vectors as lines in the space of the original data
+dx = coeff(1, :).';
+dy = coeff(2, :).';
+c = ones(2, 1);
+a = c ./ ((dx * mu(2) ./ dy) - mu(1));
+b = -a .* dx ./ dy;
+% Normalize
+scale = sqrt(a .^ 2 + b .^ 2);
+axes = [a, b, c] ./ repmat(scale, 1, 3);
+
+% The first axis is the estimated centerline of the probe
+image_centerline = axes(1, :);
+
+% The plane back-projected through the centerline of the probe
+% Result 8.2 from Multiple View Geometry in Computer Vision, 2nd Edition
+centerline_plane = image_centerline * P;
+
+% Normal vector to the plane
+centerline_plane_normal = centerline_plane(1:3);
+centerline_plane_normal = centerline_plane_normal ./ repmat(norm(centerline_plane_normal), 1, 3); 
+% Make sure the vector points to the bottom of the image
+centerline_plane_normal_image = (P * [centerline_plane_normal 0].').';
+if centerline_plane_normal_image(end) ~= 0
+    centerline_plane_normal_image = centerline_plane_normal_image(1:2) ./ centerline_plane_normal_image(end);
+end
+if centerline_plane_normal_image(2) < 0
+    centerline_plane_normal = -centerline_plane_normal;
+end
+
+% TODO Remember to change the sign for points below the PCA axis
+
+if display_linear_estimation
+    fg = figure; %#ok<UNRCH>
+    imshow(I);
+    line_points = lineToBorderPoints(image_centerline, image_size);
+    line(line_points([1,3]), line_points([2,4]), 'Color', 'c');
+    title('Reprojection of linear approximation of probe location')
+end
