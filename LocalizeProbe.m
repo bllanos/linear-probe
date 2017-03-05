@@ -110,3 +110,41 @@
 % Supervised by Dr. Y.H. Yang
 % University of Alberta, Department of Computing Science
 % File created March 2, 2017
+
+%% Input data and parameters
+
+% List of parameters to save with results
+parameters_list = {
+        'detection_filename',...
+        'camera_filename'...
+    };
+% The following variables are loaded from the file pointed to by
+% 'detection_filename':
+parameters_list = [parameters_list {
+        'model_filename',...
+        'I_filename'...
+    }];
+
+% Probe detection result
+detection_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170217_bambooSkewer_orangeBlue_probeDetectionResults_bottomCamera_rect.mat';
+
+% Camera projection matrix
+camera_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\camera_calibration_from_20160609\20170305_bottomCameraMatrix_identityExtrinsics.mat';
+
+%% Load input data
+detection_variables_required = {...
+        'probe_detection_matches_filtered',...
+        'model_filename',...
+        'I_filename'...
+    };
+load(detection_model_filename, detection_variables_required{:});
+if ~all(ismember(detection_variables_required, who))
+    error('One or more of the probe detection variables is not loaded.')
+end
+
+load(camera_filename, 'P');
+if ~exist('P', 'var')
+    error('No camera matrix found in ''%s''.',camera_filename)
+end
+
+I = imread(I_filename);
