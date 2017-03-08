@@ -198,23 +198,6 @@ axes = [a, b, c] ./ repmat(scale, 1, 3);
 % The first axis is the estimated centerline of the probe
 image_centerline = axes(1, :);
 
-% The plane back-projected through the centerline of the probe
-% Result 8.2 from Multiple View Geometry in Computer Vision, 2nd Edition
-centerline_plane = image_centerline * P;
-
-% Normal vector to the plane
-centerline_plane_normal = centerline_plane(1:3);
-centerline_plane_normal = centerline_plane_normal ./ repmat(norm(centerline_plane_normal), 1, 3); 
-% Make sure the vector points to the bottom of the image
-centerline_plane_normal_image = (P * [centerline_plane_normal 0].').';
-if centerline_plane_normal_image(end) ~= 0
-    centerline_plane_normal_image = centerline_plane_normal_image(1:2) ./ centerline_plane_normal_image(end);
-end
-if centerline_plane_normal_image(2) < 0
-    centerline_plane_normal = -centerline_plane_normal;
-end
-
-% TODO Remember to change the sign for points below the PCA axis
 
 if display_linear_estimation
     fg = figure; %#ok<UNRCH>
