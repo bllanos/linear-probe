@@ -47,11 +47,12 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 % threshold -- Convergence threshold
 %   When the relative change in the residual error between iterations of
 %   the linear solution drops below this threshold, return the current
-%   solution.
+%   solution. (Also used as the convergence threshold for the
+%   'homography1D.m' subroutine.)
 %
 % normalize -- Choice of image point normalization
-%   Whether or not to perform normalization of image point coordinates
-%   prior to estimating the probe tip and orientation.
+%   Whether or not to perform normalization of point coordinates
+%   prior to estimating a 1D homography as a subroutine, 'homography1D.m'.
 %
 % ## Output Arguments
 %
@@ -70,7 +71,7 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 % - R. Hartley and A. Zisserman. Multiple View Geometry in Computer Vision,
 %   2nd Edition. Cambridge, UK: Cambridge University Press, 2003.
 %
-% See also normalizePointsPCA
+% See also normalizePointsPCA, homography1D
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang
@@ -102,37 +103,98 @@ narginchk(8, 8);
 u = uFromImageLine(image_line);
 
 n = size(above, 1);
+above = [above, ones(n, 1)];
+below = [below, ones(n, 1)];
+allPoints = [above; below];
 
-% Normalize the points
-if normalize
-    [xNormalized, T] = normalizePointsPCA([above; below]);
-    PNormalized = T * P;
-else
-    xNormalized = [above; below];
-    PNormalized = P;
-end
-
-% From P * [(X_tip + l_i * d + r_i * u); 1] ~ x_i
-% So cross(P * [(X_tip + l_i * d + r_i * u); 1], x_i) = 0
-%
-% Express as a matrix A * [X_tip(1); X_tip(2); X_tip(3); d(1); d(2); d(3)] = b
-x1 = xNormalized(:, 1);
-x2 = xNormalized(:, 2);
 l = repmat(lengths, 2, 1);
+
+% Find an initial estimate of the probe tip in the image
+
+    function [X_tip_image] = probeTipInImageFromMidline(image_line)
+        % Convert the points to 1D coordinates on the estimated line
+        image_line_points = closestPointOnLine(repmat(image_line, n, 1), allPoints(:, 1:2));
+        tangent = [image_line(2), -image_line(1)];
+        tangent = tangent / norm(tangent);
+        image_distances = image_line_points - repmat(image_line_points(1, :), n, 1);
+        image_distances = dot(image_distances, repmat(tangent, n, 1), 2);
+        H = homography1D( l, image_distances, normalize, threshold );
+        X_tip_image = (H * [0, 1]).';
+    end
+
+[X_tip_image] = probeTipInImageFromMidline(image_line);
+
+% Parameterize the probe tip as a point on the ray through `X_tip_image`,
+% with some offset in the direction of `u`.
+P_inv = pinv(P); % Pseudoinverse
+P_center = null(P); % Camera center
+if P_center(end) ~= 0
+    P_center = P_center ./ repmat(P_center(end), 1, 4);
+end
+X_tip_basis_ray = (P_inv * X_tip_image.').';
+
+% From P * (X_tip + l_i * [d; 0] + r_i * [u; 0]) ~ x_i
+% So cross(P * (X_tip + l_i * [d; 0] + r_i * [u; 0]), x_i) = 0
+% Then substitute X_tip = P_center + lambda1 * X_tip_basis_ray + lambda2 * [u; 0]
+%
+% Express as a matrix A * [lambda1; lambda2; d(1); d(2); d(3)] = b
+x1 = allPoints(:, 1);
+x2 = allPoints(:, 2);
 r = repmat(widths / 2, 2, 1);
 r(n+1:end) = -r(n+1:end); % Account for the opposition between `above` and `below`
 
-A = [
-    (PNormalized(3,1)*x2 - PNormalized(2,1)), (PNormalized(3,2)*x2 - PNormalized(2,2)), (PNormalized(3,3)*x2 - PNormalized(2,3)), (PNormalized(3,1)*l.*x2 - PNormalized(2,1)*l), (PNormalized(3,2)*l.*x2 - PNormalized(2,2)*l), (PNormalized(3,3)*l.*x2 - PNormalized(2,3)*l);
-    (PNormalized(1,1) - PNormalized(3,1)*x1), (PNormalized(1,2) - PNormalized(3,2)*x1), (PNormalized(1,3) - PNormalized(3,3)*x1), (PNormalized(1,1)*l - PNormalized(3,1)*l.*x1), (PNormalized(1,2)*l - PNormalized(3,2)*l.*x1), (PNormalized(1,3)*l - PNormalized(3,3)*l.*x1);
-    (PNormalized(2,1)*x1 - PNormalized(1,1)*x2), (PNormalized(2,2)*x1 - PNormalized(1,2)*x2), (PNormalized(2,3)*x1 - PNormalized(1,3)*x2), (PNormalized(2,1)*l.*x1 - PNormalized(1,1)*l.*x2), (PNormalized(2,2)*l.*x1 - PNormalized(1,2)*l.*x2), (PNormalized(2,3)*l.*x1 - PNormalized(1,3)*l.*x2)
-    ];
+P1_1 = P(1,1);
+P1_2 = P(1,2);
+P1_3 = P(1,3);
+P1_4 = P(1,4);
+P2_1 = P(2,1);
+P2_2 = P(2,2);
+P2_3 = P(2,3);
+P2_4 = P(2,4);
+P3_1 = P(3,1);
+P3_2 = P(3,2);
+P3_3 = P(3,3);
+P3_4 = P(3,4);
+P_center1 = P_center(1);
+P_center2 = P_center(2);
+P_center3 = P_center(3);
+P_center4 = P_center(4);
+
+    function A = rhsFromU(u)
+        u1 = u(1);
+        u2 = u(2);
+        u3 = u(3);        
+        A = [
+            (x2*(P3_1*P_center1 + P3_2*P_center2 + P3_3*P_center3 + P3_4*P_center4) - P2_1*P_center1 - P2_2*P_center2 - P2_3*P_center3 - P2_4*P_center4),...
+            (x2*(P3_1*u1 + P3_2*u2 + P3_3*u3) - P2_2*u2 - P2_3*u3 - P2_1*u1),...
+            (P3_1*l*x2 - P2_1*l),...
+            (P3_2*l*x2 - P2_2*l),...
+            (P3_3*l*x2 - P2_3*l);
+
+            (P1_1*P_center1 - x1*(P3_1*P_center1 + P3_2*P_center2 + P3_3*P_center3 + P3_4*P_center4) + P1_2*P_center2 + P1_3*P_center3 + P1_4*P_center4),...
+            (P1_1*u1 + P1_2*u2 + P1_3*u3 - x1*(P3_1*u1 + P3_2*u2 + P3_3*u3)),...
+            (P1_1*l - P3_1*l*x1),...
+            (P1_2*l - P3_2*l*x1),...
+            (P1_3*l - P3_3*l*x1);
+
+            (x1*(P2_1*P_center1 + P2_2*P_center2 + P2_3*P_center3 + P2_4*P_center4) - x2*(P1_1*P_center1 + P1_2*P_center2 + P1_3*P_center3 + P1_4*P_center4)),...
+            (x1*(P2_1*u1 + P2_2*u2 + P2_3*u3) - x2*(P1_1*u1 + P1_2*u2 + P1_3*u3)),...
+            (P2_1*l*x1 - P1_1*l*x2),...
+            (P2_2*l*x1 - P1_2*l*x2),...
+            (P2_3*l*x1 - P1_3*l*x2)
+            ];
+    end
+
+A = rhsFromU(u);
 
     function b = lhsFromU(u)
+        u1 = u(1);
+        u2 = u(2);
+        u3 = u(3);
         b = [
-            x2.*(PNormalized(3,4) + PNormalized(3,1)*r*u(1) + PNormalized(3,2)*r*u(2) + PNormalized(3,3)*r*u(3)) - PNormalized(2,4) - PNormalized(2,1)*r*u(1) - PNormalized(2,2)*r*u(2) - PNormalized(2,3)*r*u(3);
-            PNormalized(1,4) - x1.*(PNormalized(3,4) + PNormalized(3,1)*r*u(1) + PNormalized(3,2)*r*u(2) + PNormalized(3,3)*r*u(3)) + PNormalized(1,1)*r*u(1) + PNormalized(1,2)*r*u(2) + PNormalized(1,3)*r*u(3);
-            x1.*(PNormalized(2,4) + PNormalized(2,1)*r*u(1) + PNormalized(2,2)*r*u(2) + PNormalized(2,3)*r*u(3)) - x2.*(PNormalized(1,4) + PNormalized(1,1)*r*u(1) + PNormalized(1,2)*r*u(2) + PNormalized(1,3)*r*u(3))
+            x2*(P3_1*(P_center1 + r*u1) + P3_2*(P_center2 + r*u2) + P3_3*(P_center3 + r*u3) + P3_4*P_center4) - P2_1*(P_center1 + r*u1) - P2_2*(P_center2 + r*u2) - P2_3*(P_center3 + r*u3) - P2_4*P_center4;
+            P1_1*(P_center1 + r*u1) - x1*(P3_1*(P_center1 + r*u1) + P3_2*(P_center2 + r*u2) + P3_3*(P_center3 + r*u3) + P3_4*P_center4) + P1_2*(P_center2 + r*u2) + P1_3*(P_center3 + r*u3) + P1_4*P_center4;
+            x1*(P2_1*(P_center1 + r*u1) + P2_2*(P_center2 + r*u2) + P2_3*(P_center3 + r*u3) + P2_4*P_center4) - x2*(P1_1*(P_center1 + r*u1) + P1_2*(P_center2 + r*u2) + P1_3*(P_center3 + r*u3) + P1_4*P_center4)
         ];
     end
 
@@ -143,13 +205,15 @@ p = A \ b;
 
 % Update the estimate of `u`
     function updateSolution(p)
-        d = p(4:end).';
+        d = p(3:end).';
         d = d ./ repmat(norm(d), 1, 3); % Normalize
         d_image = (P * [d 0].').';
-        X_tip = p(1:3).';
-        X_tip_image = (P * [X_tip 1].').';
+        X_tip = P_center + p(1) * X_tip_basis_ray + p(2) * [u; 0];
+        X_tip_image = (P * X_tip.').';
         image_line = cross(d_image, X_tip_image);
         u = uFromImageLine(image_line);
+        X_tip_image = probeTipInImageFromMidline(image_line);
+        X_tip_basis_ray = (P_inv * X_tip_image.').';
     end
 
 updateSolution(p);
@@ -161,6 +225,7 @@ while (l2Norm_past > l2Norm) &&...
         ((l2Norm_past - l2Norm) / l2Norm > threshold)
     l2Norm_past = l2Norm;
     
+    A = rhsFromU(u);
     b = lhsFromU(u);
     p = A \ b;
     updateSolution(p);
