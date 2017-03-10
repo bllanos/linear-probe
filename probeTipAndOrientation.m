@@ -113,7 +113,7 @@ i = 1; % Iteration counter
         u = u ./ repmat(norm(u), 1, 3); % Normalize
         % Make sure the vector points to the bottom of the image
         u_image = (P * [u 0].').';
-        u_image = u_image(1:2) / repmat(u_image(end), 1, 2);
+        u_image = u_image(1:2) ./ repmat(u_image(end), 1, 2);
         y_centerline = -(image_line(1) * u_image(1) + image_line(3)) / image_line(2);
         if y_centerline > u_image(2)
             u = -u;
@@ -132,6 +132,7 @@ l = repmat(lengths, 2, 1);
 
 % Find an initial estimate of the probe tip in the image
 
+    % `X_tip_image` is expressed in normalized homogenous coordinates
     function [X_tip_image] = probeTipInImageFromMidline(image_line)
         % Convert the points to 1D coordinates on the estimated line
         image_line_points = closestPointOnLine(repmat(image_line, nAll, 1), allPoints(:, 1:2));
@@ -140,7 +141,9 @@ l = repmat(lengths, 2, 1);
         image_distances = image_line_points - repmat(image_line_points(1, :), nAll, 1);
         image_distances = dot(image_distances, repmat(tangent, nAll, 1), 2);
         H = homography1D( l, image_distances, normalize, threshold );
-        X_tip_image = (H * [0, 1]).';
+        X_tip_image = (H * [0; 1]).';
+        X_tip_image = X_tip_image(1) / X_tip_image(2);
+        X_tip_image = [image_line_points(1, :) + tangent * X_tip_image, 1];
         
         if verbose
             figure;
@@ -150,10 +153,11 @@ l = repmat(lengths, 2, 1);
             line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'c');
             scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
             scatter(image_line_points(:, 1), image_line_points(:, 2), 'bo');
-            reprojected_points = (H * [image_distances ones(nAll, 1)].').';
-            reprojected_points = image_line_points(1, :) + repmat(tangent, nAll, 1) .* reprojected_points;
+            reprojected_points = (H * [l ones(nAll, 1)].').';
+            reprojected_points = reprojected_points(:, 1) ./ reprojected_points(:, 2);
+            reprojected_points = image_line_points(1, :) + repmat(tangent, nAll, 1) .* repmat(reprojected_points, 1, 2);
             scatter(reprojected_points(:, 1), reprojected_points(:, 2), 'r.');
-            scatter(X_tip_image(1) / X_tip_image(3), X_tip_image(2) / X_tip_image(3), 'm+');
+            scatter(X_tip_image(1), X_tip_image(2), 'm+');
             hold off
             legend('Estimated axis', 'Detected points', 'Projected onto axis', 'Reprojected from homography', 'Estimated tip');
             title(sprintf('1D Homography Estimation for iteration %d', i))
@@ -165,7 +169,7 @@ l = repmat(lengths, 2, 1);
 % Parameterize the probe tip as a point on the ray through `X_tip_image`,
 % with some offset in the direction of `u`.
 P_inv = pinv(P); % Pseudoinverse
-P_center = null(P); % Camera center
+P_center = null(P).'; % Camera center
 if P_center(end) ~= 0
     P_center = P_center ./ repmat(P_center(end), 1, 4);
 end
@@ -203,23 +207,23 @@ P_center4 = P_center(4);
         u2 = u(2);
         u3 = u(3);        
         A = [
-            (x2*(P3_1*P_center1 + P3_2*P_center2 + P3_3*P_center3 + P3_4*P_center4) - P2_1*P_center1 - P2_2*P_center2 - P2_3*P_center3 - P2_4*P_center4),...
-            (x2*(P3_1*u1 + P3_2*u2 + P3_3*u3) - P2_2*u2 - P2_3*u3 - P2_1*u1),...
-            (P3_1*l*x2 - P2_1*l),...
-            (P3_2*l*x2 - P2_2*l),...
-            (P3_3*l*x2 - P2_3*l);
+            (x2.*(P3_1.*P_center1 + P3_2.*P_center2 + P3_3.*P_center3 + P3_4.*P_center4) - P2_1.*P_center1 - P2_2.*P_center2 - P2_3.*P_center3 - P2_4.*P_center4),...
+            (x2.*(P3_1.*u1 + P3_2.*u2 + P3_3.*u3) - P2_2.*u2 - P2_3.*u3 - P2_1.*u1),...
+            (P3_1.*l.*x2 - P2_1.*l),...
+            (P3_2.*l.*x2 - P2_2.*l),...
+            (P3_3.*l.*x2 - P2_3.*l);
 
-            (P1_1*P_center1 - x1*(P3_1*P_center1 + P3_2*P_center2 + P3_3*P_center3 + P3_4*P_center4) + P1_2*P_center2 + P1_3*P_center3 + P1_4*P_center4),...
-            (P1_1*u1 + P1_2*u2 + P1_3*u3 - x1*(P3_1*u1 + P3_2*u2 + P3_3*u3)),...
-            (P1_1*l - P3_1*l*x1),...
-            (P1_2*l - P3_2*l*x1),...
-            (P1_3*l - P3_3*l*x1);
+            (P1_1.*P_center1 - x1.*(P3_1.*P_center1 + P3_2.*P_center2 + P3_3.*P_center3 + P3_4.*P_center4) + P1_2.*P_center2 + P1_3.*P_center3 + P1_4.*P_center4),...
+            (P1_1.*u1 + P1_2.*u2 + P1_3.*u3 - x1.*(P3_1.*u1 + P3_2.*u2 + P3_3.*u3)),...
+            (P1_1.*l - P3_1.*l.*x1),...
+            (P1_2.*l - P3_2.*l.*x1),...
+            (P1_3.*l - P3_3.*l.*x1);
 
-            (x1*(P2_1*P_center1 + P2_2*P_center2 + P2_3*P_center3 + P2_4*P_center4) - x2*(P1_1*P_center1 + P1_2*P_center2 + P1_3*P_center3 + P1_4*P_center4)),...
-            (x1*(P2_1*u1 + P2_2*u2 + P2_3*u3) - x2*(P1_1*u1 + P1_2*u2 + P1_3*u3)),...
-            (P2_1*l*x1 - P1_1*l*x2),...
-            (P2_2*l*x1 - P1_2*l*x2),...
-            (P2_3*l*x1 - P1_3*l*x2)
+            (x1.*(P2_1.*P_center1 + P2_2.*P_center2 + P2_3.*P_center3 + P2_4.*P_center4) - x2.*(P1_1.*P_center1 + P1_2.*P_center2 + P1_3.*P_center3 + P1_4.*P_center4)),...
+            (x1.*(P2_1.*u1 + P2_2.*u2 + P2_3.*u3) - x2.*(P1_1.*u1 + P1_2.*u2 + P1_3.*u3)),...
+            (P2_1.*l.*x1 - P1_1.*l.*x2),...
+            (P2_2.*l.*x1 - P1_2.*l.*x2),...
+            (P2_3.*l.*x1 - P1_3.*l.*x2)
             ];
     end
 
@@ -230,9 +234,9 @@ A = rhsFromU(u);
         u2 = u(2);
         u3 = u(3);
         b = [
-            x2*(P3_1*(P_center1 + r*u1) + P3_2*(P_center2 + r*u2) + P3_3*(P_center3 + r*u3) + P3_4*P_center4) - P2_1*(P_center1 + r*u1) - P2_2*(P_center2 + r*u2) - P2_3*(P_center3 + r*u3) - P2_4*P_center4;
-            P1_1*(P_center1 + r*u1) - x1*(P3_1*(P_center1 + r*u1) + P3_2*(P_center2 + r*u2) + P3_3*(P_center3 + r*u3) + P3_4*P_center4) + P1_2*(P_center2 + r*u2) + P1_3*(P_center3 + r*u3) + P1_4*P_center4;
-            x1*(P2_1*(P_center1 + r*u1) + P2_2*(P_center2 + r*u2) + P2_3*(P_center3 + r*u3) + P2_4*P_center4) - x2*(P1_1*(P_center1 + r*u1) + P1_2*(P_center2 + r*u2) + P1_3*(P_center3 + r*u3) + P1_4*P_center4)
+            x2.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) - P2_1.*(P_center1 + r.*u1) - P2_2.*(P_center2 + r.*u2) - P2_3.*(P_center3 + r.*u3) - P2_4.*P_center4;
+            P1_1.*(P_center1 + r.*u1) - x1.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4;
+            x1.*(P2_1.*(P_center1 + r.*u1) + P2_2.*(P_center2 + r.*u2) + P2_3.*(P_center3 + r.*u3) + P2_4.*P_center4) - x2.*(P1_1.*(P_center1 + r.*u1) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4)
         ];
     end
 
@@ -246,7 +250,7 @@ p = A \ b;
         d = p(3:end).';
         d = d ./ repmat(norm(d), 1, 3); % Normalize
         d_image = (P * [d 0].').';
-        X_tip = P_center + p(1) * X_tip_basis_ray + p(2) * [u; 0];
+        X_tip = P_center + p(1) * X_tip_basis_ray + p(2) * [u 0];
         X_tip_image = (P * X_tip.').';
         image_line = cross(d_image, X_tip_image);
         u = uFromImageLine(image_line);
@@ -264,7 +268,7 @@ p = A \ b;
             line_points_plotting = lineToBorderPoints(u_image_line, image_size);
             line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'r');
             scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
-            scatter(X_tip_image(1) / X_tip_image(3), X_tip_image(2) / X_tip_image(3), 'm+');
+            scatter(X_tip_image(1), X_tip_image(2), 'm+');
             hold off
             legend('Estimated axis', 'Estimated normal', 'Detected points', 'Estimated tip');
             title(sprintf('Linear solution obtained at iteration %d', i))

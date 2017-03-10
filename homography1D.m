@@ -45,7 +45,7 @@ function [H] = homography1D( x1, x2, normalize, varargin )
 % File created March 9, 2017
 
 nargoutchk(1,1);
-narginchk(4,4);
+narginchk(3,4);
 
 n = length(x1);
 
@@ -72,8 +72,8 @@ end
 
 % From lambda_i * x2_i = H * x1_i
 A = [
-    x1Normalized(:, 1), ones(n, 1), 0, 0, diag(-x2Normalized(:, 1));
-    0, 0, x1Normalized(:, 1), ones(n, 1), -eye(n)
+    x1Normalized(:, 1), ones(n, 1), zeros(n, 1), zeros(n, 1), diag(-x2Normalized(:, 1));
+    zeros(n, 1), zeros(n, 1), x1Normalized(:, 1), ones(n, 1), -eye(n)
     ];
 
 % Minimize L2 norm of A.h
