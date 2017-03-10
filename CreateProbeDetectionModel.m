@@ -48,11 +48,11 @@
 %     correspond to adjacent pairs of elements in `lengths` (i.e. The
 %     colour indices should be in order starting from the active end of the
 %     probe).
-% - widths: Width of the probe at the edges of bands. Widths must include
-%     the ends of the probe, with values of zero or approximate tip radii
-%     for ends that taper to points. (Probe tip widths are currently
-%     unused, so their values do not matter.) The elements of 'widths'
-%     should correspond to elements of 'lengths'.
+% - widths: Width (diameter) of the probe at the edges of bands. Widths
+%     must include the ends of the probe, with values of zero or
+%     approximate tip diameters for ends that taper to points. (Probe tip
+%     widths are currently unused, so their values do not matter.) The
+%     elements of 'widths' should correspond to elements of 'lengths'.
 %
 % Units are arbitrary, but should be consistent with the units of any
 % partial reconstruction of an object that the probe is used to refine.

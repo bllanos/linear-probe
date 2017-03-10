@@ -126,7 +126,9 @@
 % List of parameters to save with results
 parameters_list = {
         'detection_filename',...
-        'camera_filename'...
+        'camera_filename',...
+        'linear_convergence_threshold',...
+        'normalize_homography1D'...
     };
 % The following variables are loaded from the file pointed to by
 % 'detection_filename', unless they are defined below:
@@ -144,7 +146,15 @@ detection_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results
 % Camera projection matrix
 camera_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\camera_calibration_from_20160609\20170305_bottomCameraMatrix_identityExtrinsics.mat';
 
+% Linear Probe Localization
+% Error convergence threshold for linear probe estimation
+linear_convergence_threshold = 0.05;
+% Normalize lengths when estimating a 1D homography between the probe and
+% its image
+normalize_homography1D = false;
+
 % Debugging tools
+verbose_linear_estimation = true; % Requires `I_filename` to be valid
 display_linear_estimation = true;
 
 %% Load input data
@@ -179,10 +189,9 @@ image_size = image_size(1:2);
 %% Linear estimation of probe location
 
 % Estimated centerline of the probe in the image
-allPoints = [
-    vertcat(probe_detection_matches_filtered(:).pointAbovePCAMajorAxis);
-    vertcat(probe_detection_matches_filtered(:).pointBelowPCAMajorAxis)
-    ];
+above = vertcat(probe_detection_matches_filtered(:).pointAbovePCAMajorAxis);
+below = vertcat(probe_detection_matches_filtered(:).pointBelowPCAMajorAxis);
+allPoints = [ above; below ];
 [ coeff, ~, ~, ~, ~, mu ] = pca(allPoints);
 
 % Express the PCA component vectors as lines in the space of the original data
@@ -198,6 +207,19 @@ axes = [a, b, c] ./ repmat(scale, 1, 3);
 % The first axis is the estimated centerline of the probe
 image_centerline = axes(1, :);
 
+lengths = vertcat(probe_detection_matches_filtered(:).matchedLength);
+widths = vertcat(probe_detection_matches_filtered(:).matchedWidth);
+if verbose_linear_estimation
+    [X_tip, d, u] = probeTipAndOrientation(...
+        above, below, lengths, widths, P, image_centerline,...
+        linear_convergence_threshold, normalize_homography1D, I...
+    ); %#ok<UNRCH>
+else
+    [X_tip, d, u] = probeTipAndOrientation(...
+        above, below, lengths, widths, P, image_centerline,...
+        linear_convergence_threshold, normalize_homography1D...
+    );
+end
 
 if display_linear_estimation
     fg = figure; %#ok<UNRCH>

@@ -1,19 +1,21 @@
-function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, P, image_line, threshold, normalize )
+function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, P, image_line, threshold, normalize, varargin )
 %PROBETIPANDORIENTATION Linear estimation of probe tip and orientation
 %
 % ## Syntax
 % [X_tip, d, u] = probeTipAndOrientation(...
 %     above, below, lengths, widths, P, image_line, threshold, normalize...
+%     [, I]
 % )
 %
 % ## Description
 % [X_tip, d, u] = probeTipAndOrientation(...
 %     above, below, lengths, widths, P, image_line, threshold, normalize...
+%     [, I]
 % )
-%   Uses a linear method to calculate the position of the probe tip and the
-%   orientation of the probe, given the positions of points on the probe in
-%   the image, and given calibration information for the camera and the
-%   probe dimensions.
+%   Uses a linear method (minimization of algebraic, not geometric error)
+%   to calculate the position of the probe tip and the orientation of the
+%   probe, given the positions of points on the probe in the image, and
+%   given calibration information for the camera and the probe dimensions.
 %
 % ## Input Arguments
 %
@@ -54,6 +56,11 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 %   Whether or not to perform normalization of point coordinates
 %   prior to estimating a 1D homography as a subroutine, 'homography1D.m'.
 %
+% I -- Image for debugging visualization
+%   If passed, the function will plot intermediate results on top of this
+%   image, for debugging/visualization purposes. It will also output
+%   debugging information to the console.
+%
 % ## Output Arguments
 %
 % X_tip -- Probe tip
@@ -67,6 +74,11 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 %   the probe in space and the camera centre, pointing towards the bottom
 %   of the image.
 %
+% ## Side Effects
+%
+% - Opens figures for debugging visualizations, and produces console
+%   output, if `I` is passed as an input argument.
+%
 % ## References
 % - R. Hartley and A. Zisserman. Multiple View Geometry in Computer Vision,
 %   2nd Edition. Cambridge, UK: Cambridge University Press, 2003.
@@ -79,7 +91,15 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 % File created March 8, 2017
 
 nargoutchk(3, 3);
-narginchk(8, 8);
+narginchk(8, 9);
+
+verbose = ~isempty(varargin);
+if verbose
+    I = varargin{1};
+    image_size = size(I);
+    image_size = image_size(1:2);
+end
+i = 1; % Iteration counter
 
 % Find an initial estimate of `u`
     function [u] = uFromImageLine(image_line)
@@ -103,6 +123,7 @@ narginchk(8, 8);
 u = uFromImageLine(image_line);
 
 n = size(above, 1);
+nAll = 2 * n;
 above = [above, ones(n, 1)];
 below = [below, ones(n, 1)];
 allPoints = [above; below];
@@ -113,13 +134,30 @@ l = repmat(lengths, 2, 1);
 
     function [X_tip_image] = probeTipInImageFromMidline(image_line)
         % Convert the points to 1D coordinates on the estimated line
-        image_line_points = closestPointOnLine(repmat(image_line, n, 1), allPoints(:, 1:2));
+        image_line_points = closestPointOnLine(repmat(image_line, nAll, 1), allPoints(:, 1:2));
         tangent = [image_line(2), -image_line(1)];
         tangent = tangent / norm(tangent);
-        image_distances = image_line_points - repmat(image_line_points(1, :), n, 1);
-        image_distances = dot(image_distances, repmat(tangent, n, 1), 2);
+        image_distances = image_line_points - repmat(image_line_points(1, :), nAll, 1);
+        image_distances = dot(image_distances, repmat(tangent, nAll, 1), 2);
         H = homography1D( l, image_distances, normalize, threshold );
         X_tip_image = (H * [0, 1]).';
+        
+        if verbose
+            figure;
+            imshow(I);
+            hold on
+            line_points_plotting = lineToBorderPoints(image_line, image_size);
+            line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'c');
+            scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
+            scatter(image_line_points(:, 1), image_line_points(:, 2), 'bo');
+            reprojected_points = (H * [image_distances ones(nAll, 1)].').';
+            reprojected_points = image_line_points(1, :) + repmat(tangent, nAll, 1) .* reprojected_points;
+            scatter(reprojected_points(:, 1), reprojected_points(:, 2), 'r.');
+            scatter(X_tip_image(1) / X_tip_image(3), X_tip_image(2) / X_tip_image(3), 'm+');
+            hold off
+            legend('Estimated axis', 'Detected points', 'Projected onto axis', 'Reprojected from homography', 'Estimated tip');
+            title(sprintf('1D Homography Estimation for iteration %d', i))
+        end
     end
 
 [X_tip_image] = probeTipInImageFromMidline(image_line);
@@ -214,6 +252,23 @@ p = A \ b;
         u = uFromImageLine(image_line);
         X_tip_image = probeTipInImageFromMidline(image_line);
         X_tip_basis_ray = (P_inv * X_tip_image.').';
+        
+        if verbose
+            figure;
+            imshow(I);
+            hold on
+            line_points_plotting = lineToBorderPoints(image_line, image_size);
+            line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'c');
+            u_image = (P * [u 0].').';
+            u_image_line = cross(u_image, X_tip_image);
+            line_points_plotting = lineToBorderPoints(u_image_line, image_size);
+            line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'r');
+            scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
+            scatter(X_tip_image(1) / X_tip_image(3), X_tip_image(2) / X_tip_image(3), 'm+');
+            hold off
+            legend('Estimated axis', 'Estimated normal', 'Detected points', 'Estimated tip');
+            title(sprintf('Linear solution obtained at iteration %d', i))
+        end
     end
 
 updateSolution(p);
@@ -221,6 +276,12 @@ updateSolution(p);
 % Iteratively refine
 l2Norm_past = Inf;
 l2Norm = norm(A * p - b);
+if verbose
+    fprintf('l2Norm for iteration %d = %g\n', i, l2Norm);
+    X_tip %#ok<NOPRT>
+    d %#ok<NOPRT>
+    u %#ok<NOPRT>
+end
 while (l2Norm_past > l2Norm) &&...
         ((l2Norm_past - l2Norm) / l2Norm > threshold)
     l2Norm_past = l2Norm;
@@ -231,6 +292,14 @@ while (l2Norm_past > l2Norm) &&...
     updateSolution(p);
     
     l2Norm = norm(A * p - b);
+    i = i + 1;
+    if verbose
+        fprintf('l2Norm for iteration %d = %g\n', i, l2Norm);
+        X_tip %#ok<NOPRT>
+        d %#ok<NOPRT>
+        u %#ok<NOPRT>
+    end
+    
 end
 
 end
