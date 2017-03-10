@@ -131,9 +131,10 @@ allPoints = [above; below];
 l = repmat(lengths, 2, 1);
 
 % Find an initial estimate of the probe tip in the image
+[camera_xAxis, camera_yAxis, ~] = cameraAxes( P );
 
     % `X_tip_image` is expressed in normalized homogenous coordinates
-    function [X_tip_image] = probeTipInImageFromMidline(image_line)
+    function [X_tip_image, tangent_3D] = parametersFromMidline(image_line)
         % Convert the points to 1D coordinates on the estimated line
         image_line_points = closestPointOnLine(repmat(image_line, nAll, 1), allPoints(:, 1:2));
         tangent = [image_line(2), -image_line(1)];
@@ -162,14 +163,19 @@ l = repmat(lengths, 2, 1);
             legend('Estimated axis', 'Detected points', 'Projected onto axis', 'Reprojected from homography', 'Estimated tip');
             title(sprintf('1D Homography Estimation for iteration %d', i))
         end
+        
+        % Find the tangent vector in world coordinates (aligned with the
+        % image plane)
+        tangent_3D = camera_xAxis * tangent(1) + camera_yAxis * tangent(2);
+        tangent_3D = tangent_3D(1:3, :);
     end
 
-[X_tip_image] = probeTipInImageFromMidline(image_line);
+[X_tip_image, tangent_3D] = parametersFromMidline(image_line);
 
 i = 1;
 
 % Parameterize the probe tip as a point on the ray through `X_tip_image`,
-% with some offset in the direction of `u`.
+% with some offset in the direction of `tangent_3D`.
 P_inv = pinv(P); % Pseudoinverse
 P_center = null(P).'; % Camera center
 if P_center(end) ~= 0
@@ -181,12 +187,16 @@ X_tip_basis_ray = (P_inv * X_tip_image.').';
 % So cross(P * (X_tip + l_i * [d; 0] + r_i * [u; 0]), x_i) = 0
 % An image line and its known cross ratios have 5 degrees of freedom, so it
 % is necessary to reduce the number of parameters:
-%   Substitute X_tip = P_center + lambda1 * X_tip_basis_ray + lambda2 * [u; 0]
+%   Substitute `X_tip = P_center + lambda1 * X_tip_basis_ray + lambda2 * [tangent_3D; 0]`
+%   Note: `X_tip = P_center + lambda1 * X_tip_basis_ray + lambda2 * [u; 0]`
+%     produces a sub-optimal solution, in which the probe axis tilts until
+%     it is a diagonal of the approximate rectangle formed by the points
+%     detected along the probe.
 %
 % Express as a matrix A * [lambda1; lambda2; d(1); d(2); d(3)] = b
 x1 = allPoints(:, 1);
 x2 = allPoints(:, 2);
-r = repmat(widths / 2, 2, 1);
+r = repmat(widths / 2, 2, 1); % Take radii, not diameters
 r(n+1:end) = -r(n+1:end); % Account for the opposition between `above` and `below`
 
 P1_1 = P(1,1);
@@ -206,44 +216,44 @@ P_center2 = P_center(2);
 P_center3 = P_center(3);
 P_center4 = P_center(4);
 
-    function A = rhs(u, X_tip_basis_ray)
-        u1 = u(1);
-        u2 = u(2);
-        u3 = u(3);
+    function A = rhs(X_tip_basis_ray, tangent_3D)
         Xb1 = X_tip_basis_ray(1);
         Xb2 = X_tip_basis_ray(2);
         Xb3 = X_tip_basis_ray(3);
         Xb4 = X_tip_basis_ray(4);
+        t1 = tangent_3D(1);
+        t2 = tangent_3D(2);
+        t3 = tangent_3D(3);
         A = [
             (x2.*(P3_1.*Xb1 + P3_2.*Xb2 + P3_3.*Xb3 + P3_4.*Xb4) - P2_2.*Xb2 - P2_3.*Xb3 - P2_4.*Xb4 - P2_1.*Xb1),...
-            (x2.*(P3_1.*u1 + P3_2.*u2 + P3_3.*u3) - P2_2.*u2 - P2_3.*u3 - P2_1.*u1),...
+            (x2.*(P3_1.*t1 + P3_2.*t2 + P3_3.*t3) - P2_2.*t2 - P2_3.*t3 - P2_1.*t1),...
             (P3_1.*l.*x2 - P2_1.*l),...
             (P3_2.*l.*x2 - P2_2.*l),...
-            (P3_3.*l.*x2 - P2_3.*l); 
+            (P3_3.*l.*x2 - P2_3.*l);
             
             (P1_1.*Xb1 + P1_2.*Xb2 + P1_3.*Xb3 + P1_4.*Xb4 - x1.*(P3_1.*Xb1 + P3_2.*Xb2 + P3_3.*Xb3 + P3_4.*Xb4)),...
-            (P1_1.*u1 + P1_2.*u2 + P1_3.*u3 - x1.*(P3_1.*u1 + P3_2.*u2 + P3_3.*u3)),...
+            (P1_1.*t1 + P1_2.*t2 + P1_3.*t3 - x1.*(P3_1.*t1 + P3_2.*t2 + P3_3.*t3)),...
             (P1_1.*l - P3_1.*l.*x1),...
             (P1_2.*l - P3_2.*l.*x1),...
             (P1_3.*l - P3_3.*l.*x1);
-            
+             
             (x1.*(P2_1.*Xb1 + P2_2.*Xb2 + P2_3.*Xb3 + P2_4.*Xb4) - x2.*(P1_1.*Xb1 + P1_2.*Xb2 + P1_3.*Xb3 + P1_4.*Xb4)),...
-            (x1.*(P2_1.*u1 + P2_2.*u2 + P2_3.*u3) - x2.*(P1_1.*u1 + P1_2.*u2 + P1_3.*u3)),...
+            (x1.*(P2_1.*t1 + P2_2.*t2 + P2_3.*t3) - x2.*(P1_1.*t1 + P1_2.*t2 + P1_3.*t3)),...
             (P2_1.*l.*x1 - P1_1.*l.*x2),...
             (P2_2.*l.*x1 - P1_2.*l.*x2),...
             (P2_3.*l.*x1 - P1_3.*l.*x2)
             ];
     end
 
-A = rhs(u, X_tip_basis_ray);
+A = rhs(X_tip_basis_ray, tangent_3D);
 
     function b = lhs(u)
         u1 = u(1);
         u2 = u(2);
         u3 = u(3);
         b = [
-            x2.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) - P2_1.*(P_center1 + r.*u1) - P2_2.*(P_center2 + r.*u2) - P2_3.*(P_center3 + r.*u3) - P2_4.*P_center4
-            P1_1.*(P_center1 + r.*u1) - x1.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4
+            x2.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) - P2_1.*(P_center1 + r.*u1) - P2_2.*(P_center2 + r.*u2) - P2_3.*(P_center3 + r.*u3) - P2_4.*P_center4;
+            P1_1.*(P_center1 + r.*u1) - x1.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4;
             x1.*(P2_1.*(P_center1 + r.*u1) + P2_2.*(P_center2 + r.*u2) + P2_3.*(P_center3 + r.*u3) + P2_4.*P_center4) - x2.*(P1_1.*(P_center1 + r.*u1) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4)
         ];
     end
@@ -258,11 +268,11 @@ p = A \ b;
         d = p(3:end).';
         d = d ./ repmat(norm(d), 1, 3); % Normalize
         d_image = (P * [d 0].').';
-        X_tip = P_center + p(1) * X_tip_basis_ray + p(2) * [u 0];
+        X_tip = P_center + p(1) * X_tip_basis_ray + p(2) * [tangent_3D.' 0];
         X_tip_image = (P * X_tip.').';
         image_line = cross(d_image, X_tip_image);
         u = uFromImageLine(image_line);
-        X_tip_image = probeTipInImageFromMidline(image_line);
+        [X_tip_image, tangent_3D] = parametersFromMidline(image_line);
         X_tip_basis_ray = (P_inv * X_tip_image.').';
         
         if verbose
@@ -276,9 +286,12 @@ p = A \ b;
             line_points_plotting = lineToBorderPoints(u_image_line, image_size);
             line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'r');
             scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
+            reprojected_points = (P * (repmat(X_tip, nAll, 1) + l .* repmat([d 0], nAll, 1) + r .* repmat([u 0], nAll, 1)).').';
+            reprojected_points = reprojected_points(:, 1:2) ./ repmat(reprojected_points(:, 3), 1, 2);
+            scatter(reprojected_points(:, 1), reprojected_points(:, 2), 'r.');
             scatter(X_tip_image(1), X_tip_image(2), 'm+');
             hold off
-            legend('Estimated axis', 'Estimated normal', 'Detected points', 'Estimated tip');
+            legend('Estimated axis', 'Estimated normal', 'Detected points', 'Reprojected 3D points', 'Estimated tip');
             title(sprintf('Linear solution obtained at iteration %d', i))
         end
     end
@@ -300,7 +313,7 @@ while (l2Norm_past > l2Norm) &&...
     
     i = i + 1;
     
-    A = rhs(u, X_tip_basis_ray);
+    A = rhs(X_tip_basis_ray, tangent_3D);
     b = lhs(u);
     p = A \ b;
     updateSolution(p);
