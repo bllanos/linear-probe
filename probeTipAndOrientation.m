@@ -177,7 +177,9 @@ X_tip_basis_ray = (P_inv * X_tip_image.').';
 
 % From P * (X_tip + l_i * [d; 0] + r_i * [u; 0]) ~ x_i
 % So cross(P * (X_tip + l_i * [d; 0] + r_i * [u; 0]), x_i) = 0
-% Then substitute X_tip = P_center + lambda1 * X_tip_basis_ray + lambda2 * [u; 0]
+% An image line and its known cross ratios have 5 degrees of freedom, so it
+% is necessary to reduce the number of parameters:
+%   Substitute X_tip = P_center + lambda1 * X_tip_basis_ray + lambda2 * [u; 0]
 %
 % Express as a matrix A * [lambda1; lambda2; d(1); d(2); d(3)] = b
 x1 = allPoints(:, 1);
@@ -202,24 +204,28 @@ P_center2 = P_center(2);
 P_center3 = P_center(3);
 P_center4 = P_center(4);
 
-    function A = rhsFromU(u)
+    function A = rhs(u, X_tip_basis_ray)
         u1 = u(1);
         u2 = u(2);
-        u3 = u(3);        
+        u3 = u(3);
+        Xb1 = X_tip_basis_ray(1);
+        Xb2 = X_tip_basis_ray(2);
+        Xb3 = X_tip_basis_ray(3);
+        Xb4 = X_tip_basis_ray(4);
         A = [
-            (x2.*(P3_1.*P_center1 + P3_2.*P_center2 + P3_3.*P_center3 + P3_4.*P_center4) - P2_1.*P_center1 - P2_2.*P_center2 - P2_3.*P_center3 - P2_4.*P_center4),...
+            (x2.*(P3_1.*Xb1 + P3_2.*Xb2 + P3_3.*Xb3 + P3_4.*Xb4) - P2_2.*Xb2 - P2_3.*Xb3 - P2_4.*Xb4 - P2_1.*Xb1),...
             (x2.*(P3_1.*u1 + P3_2.*u2 + P3_3.*u3) - P2_2.*u2 - P2_3.*u3 - P2_1.*u1),...
             (P3_1.*l.*x2 - P2_1.*l),...
             (P3_2.*l.*x2 - P2_2.*l),...
-            (P3_3.*l.*x2 - P2_3.*l);
-
-            (P1_1.*P_center1 - x1.*(P3_1.*P_center1 + P3_2.*P_center2 + P3_3.*P_center3 + P3_4.*P_center4) + P1_2.*P_center2 + P1_3.*P_center3 + P1_4.*P_center4),...
+            (P3_3.*l.*x2 - P2_3.*l); 
+            
+            (P1_1.*Xb1 + P1_2.*Xb2 + P1_3.*Xb3 + P1_4.*Xb4 - x1.*(P3_1.*Xb1 + P3_2.*Xb2 + P3_3.*Xb3 + P3_4.*Xb4)),...
             (P1_1.*u1 + P1_2.*u2 + P1_3.*u3 - x1.*(P3_1.*u1 + P3_2.*u2 + P3_3.*u3)),...
             (P1_1.*l - P3_1.*l.*x1),...
             (P1_2.*l - P3_2.*l.*x1),...
             (P1_3.*l - P3_3.*l.*x1);
-
-            (x1.*(P2_1.*P_center1 + P2_2.*P_center2 + P2_3.*P_center3 + P2_4.*P_center4) - x2.*(P1_1.*P_center1 + P1_2.*P_center2 + P1_3.*P_center3 + P1_4.*P_center4)),...
+            
+            (x1.*(P2_1.*Xb1 + P2_2.*Xb2 + P2_3.*Xb3 + P2_4.*Xb4) - x2.*(P1_1.*Xb1 + P1_2.*Xb2 + P1_3.*Xb3 + P1_4.*Xb4)),...
             (x1.*(P2_1.*u1 + P2_2.*u2 + P2_3.*u3) - x2.*(P1_1.*u1 + P1_2.*u2 + P1_3.*u3)),...
             (P2_1.*l.*x1 - P1_1.*l.*x2),...
             (P2_2.*l.*x1 - P1_2.*l.*x2),...
@@ -227,20 +233,20 @@ P_center4 = P_center(4);
             ];
     end
 
-A = rhsFromU(u);
+A = rhs(u, X_tip_basis_ray);
 
-    function b = lhsFromU(u)
+    function b = lhs(u)
         u1 = u(1);
         u2 = u(2);
         u3 = u(3);
         b = [
-            x2.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) - P2_1.*(P_center1 + r.*u1) - P2_2.*(P_center2 + r.*u2) - P2_3.*(P_center3 + r.*u3) - P2_4.*P_center4;
-            P1_1.*(P_center1 + r.*u1) - x1.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4;
+            x2.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) - P2_1.*(P_center1 + r.*u1) - P2_2.*(P_center2 + r.*u2) - P2_3.*(P_center3 + r.*u3) - P2_4.*P_center4
+            P1_1.*(P_center1 + r.*u1) - x1.*(P3_1.*(P_center1 + r.*u1) + P3_2.*(P_center2 + r.*u2) + P3_3.*(P_center3 + r.*u3) + P3_4.*P_center4) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4
             x1.*(P2_1.*(P_center1 + r.*u1) + P2_2.*(P_center2 + r.*u2) + P2_3.*(P_center3 + r.*u3) + P2_4.*P_center4) - x2.*(P1_1.*(P_center1 + r.*u1) + P1_2.*(P_center2 + r.*u2) + P1_3.*(P_center3 + r.*u3) + P1_4.*P_center4)
         ];
     end
 
-b = lhsFromU(u);
+b = lhs(u);
 
 % Minimize L2 norm of (A.p - b)
 p = A \ b;
@@ -290,8 +296,8 @@ while (l2Norm_past > l2Norm) &&...
         ((l2Norm_past - l2Norm) / l2Norm > threshold)
     l2Norm_past = l2Norm;
     
-    A = rhsFromU(u);
-    b = lhsFromU(u);
+    A = rhs(u, X_tip_basis_ray);
+    b = lhs(u);
     p = A \ b;
     updateSolution(p);
     
