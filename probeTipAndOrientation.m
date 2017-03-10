@@ -99,7 +99,7 @@ if verbose
     image_size = size(I);
     image_size = image_size(1:2);
 end
-i = 1; % Iteration counter
+i = 0; % Iteration counter
 
 % Find an initial estimate of `u`
     function [u] = uFromImageLine(image_line)
@@ -165,6 +165,8 @@ l = repmat(lengths, 2, 1);
     end
 
 [X_tip_image] = probeTipInImageFromMidline(image_line);
+
+i = 1;
 
 % Parameterize the probe tip as a point on the ray through `X_tip_image`,
 % with some offset in the direction of `u`.
@@ -296,13 +298,15 @@ while (l2Norm_past > l2Norm) &&...
         ((l2Norm_past - l2Norm) / l2Norm > threshold)
     l2Norm_past = l2Norm;
     
+    i = i + 1;
+    
     A = rhs(u, X_tip_basis_ray);
     b = lhs(u);
     p = A \ b;
     updateSolution(p);
     
     l2Norm = norm(A * p - b);
-    i = i + 1;
+    
     if verbose
         fprintf('l2Norm for iteration %d = %g\n', i, l2Norm);
         X_tip %#ok<NOPRT>
