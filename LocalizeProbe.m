@@ -67,7 +67,8 @@
 %   locations of the two endpoints of one detected edge between probe
 %   bands. Only probe bands matched to measured positions on the physical
 %   probe are included; This structure is based on
-%   'probe_detection_matches_filtered' output by '.\DetectProbe.m'. The
+%   'probe_detection_matches_filtered', output by '.\DetectProbe.m', except
+%   that the points are reprojected from their estimated 3D locations. The
 %   fields of the structure vector are as follows:
 %   - index: The index of the detected edge between two bands of colour
 %       on the probe. The indices of edges correspond to the order of the
@@ -208,6 +209,12 @@ scale = sqrt(a .^ 2 + b .^ 2);
 axes = [a, b, c] ./ repmat(scale, 1, 3);
 
 % The first axis is the estimated centerline of the probe
+%
+% I have not found a way to estimate the true axis of the probe (taking
+% projective distortion into account) that remains numerically stable as
+% the width of the probe decreases. However, as the width of the probe
+% decreases, the first PCA axis becomes an increasingly good approximation
+% of the true probe axis.
 image_centerline = axes(1, :);
 
 lengths = vertcat(probe_detection_matches_filtered(:).matchedLength);
