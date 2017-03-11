@@ -84,7 +84,7 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 % - R. Hartley and A. Zisserman. Multiple View Geometry in Computer Vision,
 %   2nd Edition. Cambridge, UK: Cambridge University Press, 2003.
 %
-% See also normalizePointsPCA, homography1D
+% See also homography1D
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang
@@ -276,23 +276,10 @@ p = A \ b;
         X_tip_basis_ray = (P_inv * X_tip_image.').';
         
         if verbose
-            figure;
-            imshow(I);
-            hold on
-            line_points_plotting = lineToBorderPoints(image_line, image_size);
-            line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'c');
-            u_image = (P * [u 0].').';
-            u_image_line = cross(u_image, X_tip_image);
-            line_points_plotting = lineToBorderPoints(u_image_line, image_size);
-            line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'r');
-            scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
-            reprojected_points = (P * (repmat(X_tip, nAll, 1) + l .* repmat([d 0], nAll, 1) + r .* repmat([u 0], nAll, 1)).').';
-            reprojected_points = reprojected_points(:, 1:2) ./ repmat(reprojected_points(:, 3), 1, 2);
-            scatter(reprojected_points(:, 1), reprojected_points(:, 2), 'r.');
-            scatter(X_tip_image(1), X_tip_image(2), 'm+');
-            hold off
-            legend('Estimated axis', 'Estimated normal', 'Detected points', 'Reprojected 3D points', 'Estimated tip');
-            title(sprintf('Linear solution obtained at iteration %d', i))
+            plotProbeReprojection(...
+                I, above, below, lengths, widths, P, d, u, X_tip(1:3),...
+                sprintf('Linear solution obtained at iteration %d', i)...
+            );
         end
     end
 

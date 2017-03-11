@@ -55,7 +55,8 @@
 %     elements of 'widths' should correspond to elements of 'lengths'.
 %
 % Units are arbitrary, but should be consistent with the units of any
-% partial reconstruction of an object that the probe is used to refine.
+% partial reconstruction of an object that the probe is used to refine, and
+% with the units used for camera calibration.
 %
 % ### Image of probe
 % An RGB image in any format that can be loaded by `imread` showing the

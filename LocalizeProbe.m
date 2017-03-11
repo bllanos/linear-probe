@@ -35,6 +35,9 @@
 %
 % The 3 x 4 camera projection matrix, 'P', provided in a '.mat' file.
 %
+% Note: The camera should be calibrated using the same units of measurement
+% as used for the measurements of the probe in 'model_filename'.
+%
 % ### Image containing the probe
 %
 % The 'I_filename' variable, from the '.mat' file produced by
@@ -148,14 +151,14 @@ camera_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20
 
 % Linear Probe Localization
 % Error convergence threshold for linear probe estimation
-linear_convergence_threshold = 0.05;
+linear_convergence_threshold = 0.01;
 % Normalize lengths when estimating a 1D homography between the probe and
 % its image
-normalize_homography1D = false;
+normalize_homography1D = true;
 
 % Debugging tools
-verbose_linear_estimation = true; % Requires `I_filename` to be valid
-display_linear_estimation = true;
+verbose_linear_estimation = false; % Requires `I_filename` to be valid
+display_linear_estimation = true; % Requires `I_filename` to be valid
 
 %% Load input data
 detection_variables_required = {...
@@ -222,9 +225,8 @@ else
 end
 
 if display_linear_estimation
-    fg = figure; %#ok<UNRCH>
-    imshow(I);
-    line_points = lineToBorderPoints(image_centerline, image_size);
-    line(line_points([1,3]), line_points([2,4]), 'Color', 'c');
-    title('Reprojection of linear approximation of probe location')
+    plotProbeReprojection(...
+                I, above, below, lengths, widths, P, d, u, X_tip,...
+                'Reprojection of linear approximation of probe location'...
+            );
 end
