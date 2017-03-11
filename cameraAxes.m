@@ -39,9 +39,12 @@ narginchk(1,1);
 M = P(:, 1:3);
 m3 = M(end, :);
 z = det(M) * m3;
+z = z.' ./ norm(z);
 P_inv = pinv(P); % Pseudoinverse
 x = P_inv * [1; 0; 0];
+x = x(1:3) ./ norm(x);
 y = P_inv * [0; 1; 0];
+y = y(1:3) ./ norm(y);
 
 end
 

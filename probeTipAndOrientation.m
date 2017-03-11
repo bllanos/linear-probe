@@ -40,7 +40,8 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 %
 % P -- Camera projection matrix
 %   The camera matrix (intrinsic and extrinsic parameters) corresponding to
-%   the image points in `above` and `below`.
+%   the image points in `above` and `below`. The camera must be a finite
+%   camera, not an affine camera.
 %
 % image_line -- Estimated probe axis in image
 %   A 3-vector containing the homogenous coordinates of a line in the image
@@ -131,7 +132,7 @@ allPoints = [above; below];
 l = repmat(lengths, 2, 1);
 
 % Find an initial estimate of the probe tip in the image
-[camera_xAxis, camera_yAxis, ~] = cameraAxes( P );
+[camera_xAxis, camera_yAxis, camera_zAxis] = cameraAxes( P );
 
     % `X_tip_image` is expressed in normalized homogenous coordinates
     function [X_tip_image, tangent_3D] = parametersFromMidline(image_line)
@@ -178,9 +179,8 @@ i = 1;
 % with some offset in the direction of `tangent_3D`.
 P_inv = pinv(P); % Pseudoinverse
 P_center = null(P).'; % Camera center
-if P_center(end) ~= 0
-    P_center = P_center ./ repmat(P_center(end), 1, 4);
-end
+% Assume P_center(end) ~= 0 (i.e. Finite camera)
+P_center = P_center ./ repmat(P_center(end), 1, 4);
 X_tip_basis_ray = (P_inv * X_tip_image.').';
 
 % From P * (X_tip + l_i * [d; 0] + r_i * [u; 0]) ~ x_i
@@ -327,6 +327,15 @@ while (l2Norm_past > l2Norm) &&...
         u %#ok<NOPRT>
     end
     
+end
+
+% The probe must be in-front of the camera
+X_tip = X_tip(1:3) / X_tip(4);
+depth_X_tip = depthFromCamera(P, X_tip);
+if depth_X_tip < 0
+    X_tip = P_center(1:3) - (X_tip - P_center(1:3));
+    camera_zAxis = camera_zAxis.';
+    d = d - 2 * dot(camera_zAxis, d) * camera_zAxis;
 end
 
 end
