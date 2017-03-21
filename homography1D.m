@@ -85,7 +85,7 @@ if ~isempty(varargin)
     % Minimize L1 norm of A.h
     % See 'l1DLT.pdf' provided with the lab instructions
     eta = abs(A * h);
-    eta(eta == 0) = 1; % Avoid zero weights
+    eta(eta <= 0) = 1; % Avoid zero or negative weights
     l1Norm_past = Inf;
     l1Norm = sum(eta);
     threshold = varargin{1};
@@ -96,8 +96,8 @@ if ~isempty(varargin)
         [~,~,V] = svd(etaA);
         h = V(:, end);
         eta_new = abs(A * h);
-        % Avoid zero weights
-        eta(eta_new ~= 0) = eta_new(eta_new ~= 0);
+        % Avoid zero or negative weights
+        eta(eta_new >= 0) = eta_new(eta_new >= 0);
         l1Norm = sum(eta);
         % disp(l1Norm);
     end
