@@ -284,13 +284,19 @@ p = A \ b;
 % Update the estimate of `u`
     function updateSolution(p)
         X_tip = P_center + p(1) * X_tip_basis_ray + p(2) * [tangent_3D.' 0];
-        X_tip_image = (P * X_tip.').';
-        
         X_end = P_center + p(3) * X_end_basis_ray + p(4) * [tangent_3D.' 0];
-        X_end_image = (P * X_end.').';
         
         d = X_end(1:3) - X_tip(1:3);
-        d = d ./ repmat(norm(d), 1, 3); % Normalize
+        estimated_length = norm(d);
+        scale = max(lengths) / estimated_length;
+        
+        % Rescale so that the probe has the correct length
+        X_tip = P_center + scale * (p(1) * X_tip_basis_ray + p(2) * [tangent_3D.' 0]);
+        X_end = P_center + scale * (p(3) * X_end_basis_ray + p(4) * [tangent_3D.' 0]);
+        
+        X_tip_image = (P * X_tip.').';
+        X_end_image = (P * X_end.').';
+        d = d ./ repmat(estimated_length, 1, 3); % Normalize
         d_image = (P * [d 0].').';
         
         image_line = cross(d_image, X_tip_image);

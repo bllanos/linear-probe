@@ -158,7 +158,7 @@ linear_convergence_threshold = 0.01;
 normalize_homography1D = true;
 
 % Debugging tools
-verbose_linear_estimation = true; % Requires `I_filename` to be valid
+verbose_linear_estimation = false; % Requires `I_filename` to be valid
 display_linear_estimation = true; % Requires `I_filename` to be valid
 
 %% Load input data
