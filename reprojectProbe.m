@@ -1,18 +1,12 @@
-function [above, below, axis] = reprojectProbe( lengths, widths, P, d, X_tip )
+function [above, below] = reprojectProbe( lengths, widths, P, d, X_tip )
 %REPROJECTPROBE Reproject measured points on the probe
 %
 % ## Syntax
 % [above, below] = reprojectProbe( lengths, widths, P, d, X_tip )
 %
-% [above, below, axis] = reprojectProbe( lengths, widths, P, d, X_tip )
-%
 % ## Description
 % [above, below] = reprojectProbe( lengths, widths, P, d, X_tip )
 %   Reproject the measured points on the probe onto the image plane.
-%
-% [above, below, axis] = reprojectProbe( lengths, widths, P, d, X_tip )
-%   Additionally return the 3D locations of the corresponding points along
-%   the probe axis.
 %
 % ## Input Arguments
 %
@@ -50,11 +44,6 @@ function [above, below, axis] = reprojectProbe( lengths, widths, P, d, X_tip )
 %   the probe, at distances along the axis of the probe corresponding to
 %   the elements of `lengths`.
 %
-% axis -- 3D points along probe axis
-%   The locations in space of points along the axis of the probe at
-%   distances from the probe tip corresponding to the elements of
-%   `lengths`. An n x 3 array of 3D coordinates.
-%
 % See also planeNormalFromImageLine
 
 % Bernard Llanos
@@ -62,7 +51,7 @@ function [above, below, axis] = reprojectProbe( lengths, widths, P, d, X_tip )
 % University of Alberta, Department of Computing Science
 % File created March 27, 2017
 
-nargoutchk(2, 3);
+nargoutchk(2, 2);
 narginchk(5, 5);
 
 d_image = (P * [d 0].').';

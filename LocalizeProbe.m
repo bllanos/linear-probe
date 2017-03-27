@@ -56,11 +56,11 @@
 %
 % - 'model_filename': The path to the '.mat' file containing user-provided
 %   measurements of the probe in the structure 'probe'. The
-%   'model_filename' parameter is provided to this script via the output of
-%   '.\DetectProbe.m', and so 'model_filename' is actually an indirect
-%   parameter of this script. It is retrieved from the output of
-%   '.\DetectProbe.m' and copied to the output of this script for
-%   completeness.
+%   'model_filename' parameter may be provided to this script via the
+%   output of '.\DetectProbe.m' (see above), in which case 'model_filename'
+%   is actually an indirect parameter of this script. It is retrieved from
+%   the output of '.\DetectProbe.m' and copied to the output of this script
+%   for completeness.
 %
 % - 'probe_band_locations': A structure vector describing the positions of
 %   the detected interest points on the probe. Each element contains the
@@ -158,8 +158,9 @@ linear_convergence_threshold = 0.01;
 normalize_homography1D = true;
 
 % Debugging tools
-verbose_linear_estimation = false; % Requires `I_filename` to be valid
+verbose_linear_estimation = true; % Requires `I_filename` to be valid
 display_linear_estimation = true; % Requires `I_filename` to be valid
+display_axis_points = true; % Requires `I_filename` to be valid
 
 %% Load input data
 detection_variables_required = {...
@@ -220,12 +221,12 @@ image_centerline = axes(1, :);
 lengths = vertcat(probe_detection_matches_filtered(:).matchedLength);
 widths = vertcat(probe_detection_matches_filtered(:).matchedWidth);
 if verbose_linear_estimation
-    [X_tip, d, u] = probeTipAndOrientation(...
+    [X_tip, probe_axis, u] = probeTipAndOrientation(...
         above, below, lengths, widths, P, image_centerline,...
         linear_convergence_threshold, normalize_homography1D, I...
     ); %#ok<UNRCH>
 else
-    [X_tip, d, u] = probeTipAndOrientation(...
+    [X_tip, probe_axis, u] = probeTipAndOrientation(...
         above, below, lengths, widths, P, image_centerline,...
         linear_convergence_threshold, normalize_homography1D...
     );
@@ -233,7 +234,49 @@ end
 
 if display_linear_estimation
     plotProbeReprojection(...
-                I, above, below, lengths, widths, P, d, u, X_tip,...
+                I, above, below, lengths, widths, P, probe_axis, X_tip,...
                 'Reprojection of linear approximation of probe location'...
             );
 end
+
+%% Generate data to output
+
+[above_reprojected, below_reprojected] = reprojectProbe(...
+    lengths, widths, P, probe_axis, X_tip...
+    );
+
+probe_band_locations = struct(...
+        'index', {probe_detection_matches_filtered.index}.',...
+        'pointAbovePCAMajorAxis', num2cell(above_reprojected, 2),...
+        'pointBelowPCAMajorAxis', num2cell(below_reprojected, 2),...
+        'matchedLengthIndex', {probe_detection_matches_filtered.matchedLengthIndex}.'...
+    );
+
+n = size(probe.lengths, 1);
+axis_points = repmat(X_tip, n, 1) + repmat(probe.lengths, 1, 3) .* repmat(probe_axis, n, 1);
+axis_points_image = (P * [axis_points, ones(n,1)].').';
+axis_points_image = axis_points_image(:, 1:2) ./ repmat(axis_points_image(:, end), 1, 2);
+
+if display_axis_points
+    figure;
+    imshow(I);
+    hold on
+    scatter(axis_points_image(:, 1), axis_points_image(:, 2), 'ro'); %#ok<UNRCH>
+    hold off
+    title('Points along the probe axis')
+end
+
+probe_axis_locations = struct(...
+        'imagePoint', num2cell(axis_points_image, 2),...
+        'objectPoint', num2cell(axis_points, 2)...
+    );
+
+
+%% Save results to a file
+save_variables_list = [ parameters_list, {...
+        'model_filename',...
+        'probe_band_locations',...
+        'probe_axis_locations',...
+        'probe_axis'...
+    } ];
+uisave(save_variables_list,'probeLocalizationResults')

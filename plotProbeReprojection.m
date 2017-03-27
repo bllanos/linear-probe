@@ -100,7 +100,7 @@ line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'r');
 allPoints = [above; below];
 scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
 
-[above, below, ~] = reprojectProbe( lengths, widths, P, d, X_tip );
+[above, below] = reprojectProbe( lengths, widths, P, d, X_tip );
 allPoints = [above; below];
 scatter(allPoints(:, 1), allPoints(:, 2), 'r.');
 
