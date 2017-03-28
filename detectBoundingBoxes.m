@@ -1,11 +1,115 @@
-function [ probe_mask_initial ] = detectBoundingBoxes(...
+function [ mask ] = detectBoundingBoxes(...
     I, probe,...
     probe_color_distribution_resolution, probe_color_distributions,...
     probe_color_distribution_increment, rgb_sigma_polyfit,...
     params, varargin...
     )
-%UNTITLED2 Summary of this function goes here
-%   Detailed explanation goes here
+%DETECTBOUNDINGBOXES Find a bounding box containing the probe
+%
+% ## Syntax
+% mask = detectBoundingBoxes(...
+%     I, probe,...
+%     probe_color_distribution_resolution, probe_color_distributions,...
+%     probe_color_distribution_increment, rgb_sigma_polyfit,...
+%     params [, verbose]...
+% )
+%
+% ## Description
+% mask = detectBoundingBoxes(...
+%     I, probe,...
+%     probe_color_distribution_resolution, probe_color_distributions,...
+%     probe_color_distribution_increment, rgb_sigma_polyfit,...
+%     params [, verbose]...
+% )
+%   Returns a binary image describing the probe's bounding region.
+%
+% ## Input Arguments
+%
+% I -- Image containing the probe
+%   An RGB image showing enough of the probe for detection to be possible.
+%   The image has ideally been taken by the same camera, and under the same
+%   camera parameters, as the image used to create the probe detection
+%   model. Ideally, the lighting conditions in the image are similar to
+%   those in the context of which the detection model was created.
+%
+%   The image should have been corrected for lens distortion.
+%
+% probe -- Probe measurements
+%   Refer to the documentation of './CreateProbeDetectionModel.m' for
+%   details.
+%
+% probe_color_distribution_resolution -- Probe colour estimator sample count
+%   The number of equally-spaced samples in the range of hue values from 0
+%   (inclusive) to 1 (inclusive) at which the variable kernel density
+%   estimators for probe colour bands have been evaluated.
+%
+% probe_color_distributions -- Probe colour estimators
+%   Discretized variable kernel density estimators of image hue values
+%   corresponding to the different coloured bands on the probe, in the same
+%   order (starting from the active tip of the probe). The i-th column of
+%   this 2D array stores the estimator for the i-th probe segment.
+%
+% probe_color_distribution_increment -- Probe colour estimator sample spacing
+%   A scalar equal to the spacing between the samples of hue values in the
+%   range [0, 1] at which the variable kernel density estimators have been
+%   evaluated to produce 'probe_band_color_distributions'.
+%
+% rgb_sigma_polyfit -- Camera RGB noise model
+%   An array describing the variation in RGB channel standard deviations
+%   with RGB values in the image. This information should be computed from
+%   images taken under the same conditions and with the same camera
+%   parameters as the image (`I`) in which the probe is to be detected, if
+%   not computed from this same image.
+%
+%   Refer to the documentation of './EstimateRGBStandardDeviations.m' for
+%   details.
+%
+% params -- Fixed parameters
+%   Parameters that should be stable across a variety of input images and
+%   probe models. `params` is a structure containing the following fields:
+%   - noise_threshold: Threshold for identifying noise pixels in initial
+%       histogram backprojections. If empty (`[]`), a threshold will be
+%       selected automatically using Otsu's method.
+%   - erosion_radius: Radius for morphological erosion of the binary images
+%       describing the probe colour regions. The `radius` parameter of
+%       'extractBinaryRegions()'
+%   - radius_adj: Pixel radius used to filter candidate probe colour
+%       regions to those close to regions for other colours. The
+%       `radius_adj` parameter of 'detectProbeBinaryRegions()'.
+%   - axis_distance_outlier_threshold: Number of standard deviations from
+%       the initial estimate of the probe axis beyond which a region is
+%       determined to be distinct from the probe. The
+%       `axis_distance_outlier_threshold` parameter of
+%       'detectProbeBinaryRegions()'.
+%   - dilation_radius: Radius for dilating the candidate probe colour
+%       regions to include some of the background. This parameter is used
+%       as part of bounding region construction.
+%   - region_expansion_factor_length: Factor by which to expand oriented
+%       boxes fitted to the dilated candidate probe colour regions, along
+%       their major axis directions.
+%   - region_expansion_factor_width: Factor by which to expand oriented
+%       boxes fitted to the dilated candidate probe colour regions, along
+%       their minor axis directions.
+%
+% verbose -- Debugging flags
+%   If recognized fields of `verbose` are true, corresponding graphical
+%   output will be generated for debugging purposes.
+%
+%   All debugging flags default to false if `verbose` is not passed.
+%
+% ## Output Arguments
+%
+% mask -- Probe bounding region
+%   A binary image (with the same width and height as `I`), where nonzero
+%   pixels indicate bounding areas for the coloured bands of the probe. In
+%   general, there are multiple, disconnected regions.
+%
+% See also hueVariableKernelDensityEstimator, extractBinaryRegions, detectProbeBinaryRegions
+
+% Bernard Llanos
+% Supervised by Dr. Y.H. Yang
+% University of Alberta, Department of Computing Science
+% File created March 28, 2017
 
 %% Parse input arguments
 
@@ -189,9 +293,9 @@ for i = 1:n_initial_regions
 end
 
 % Obtain a mask for the initial bounding boxes
-probe_mask_initial = false(image_height, image_width);
+mask = false(image_height, image_width);
 for i = 1:n_initial_regions
-    probe_mask_initial = probe_mask_initial | roipoly(...
+    mask = mask | roipoly(...
             I, initial_region_rect_corners{i}(:, 1), initial_region_rect_corners{i}(:, 2)...
         );
 end
@@ -200,7 +304,7 @@ if display_region_expansion
     probe_regions_bw_initial_all_display = repmat(probe_regions_bw_initial_all, 1, 1, 3);
     probe_regions_bw_initial_all_display(:, :, 1) =...
         probe_regions_bw_initial_all_display(:, :, 1) |...
-        imdilate(bwperim(probe_mask_initial), strel('disk', 2));
+        imdilate(bwperim(mask), strel('disk', 2));
     imshow(double(probe_regions_bw_initial_all_display));
     title('Initial probe colour regions after dilation, with outline of initial mask')
 end

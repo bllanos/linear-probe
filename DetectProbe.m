@@ -25,7 +25,7 @@
 %
 % ### Image containing the probe
 % An RGB image, in any format that can be loaded by `imread`, showing enough
-% of the probe for detection to be possible. The image should have been
+% of the probe for detection to be possible. The image has ideally been
 % taken by the same camera, and under the same camera parameters, as the
 % image used to create the probe detection model. Ideally, the lighting
 % conditions in the image are similar to those in the context of which the
@@ -139,22 +139,12 @@ rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results
 request_bounding_region = true;
 
 % Determination of the probe's bounding region
-% Threshold for identifying noise pixels in initial histogram backprojections
 detectBoundingBoxesParams.noise_threshold = []; % Select automatically using Otsu's method
-% Radius for eroding images used to find initial bounds for the probe
 erosion_radius = 5;
 detectBoundingBoxesParams.erosion_radius = erosion_radius;
-% Radius used to filter candidate probe colour regions to those close to
-% regions for other colours
 detectBoundingBoxesParams.radius_adj = 2 * erosion_radius + 10;
-% Number of standard deviations from the initial estimate of the probe axis
-% beyond which a region is determined to be distinct from the probe
 detectBoundingBoxesParams.axis_distance_outlier_threshold = 3;
-% Radius for dilating the candidate probe colour regions to include some of
-% the background
 detectBoundingBoxesParams.dilation_radius = 4 * erosion_radius;
-% Factor by which to expand oriented boxes fitted to the initial probe
-% colour regions
 detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
