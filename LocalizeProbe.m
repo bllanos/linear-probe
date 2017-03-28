@@ -58,9 +58,8 @@
 %   measurements of the probe in the structure 'probe'. The
 %   'model_filename' parameter may be provided to this script via the
 %   output of '.\DetectProbe.m' (see above), in which case 'model_filename'
-%   is actually an indirect parameter of this script. It is retrieved from
-%   the output of '.\DetectProbe.m' and copied to the output of this script
-%   for completeness.
+%   is actually an indirect parameter of this script. It is copied to the
+%   output of this script for completeness.
 %
 % - 'probe_band_locations': A structure vector describing the positions of
 %   the detected interest points on the probe. Each element contains the
