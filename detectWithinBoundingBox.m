@@ -6,8 +6,147 @@ function [...
         probe_color_distribution_increment, rgb_sigma_polyfit,...
         params, varargin...
     )
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
+%DETECTWITHINBOUNDINGBOX Find the probe within a bounding region
+%
+% ## Syntax
+% [ interest_points ] = detectWithinBoundingBox(...
+%       I, probe, mask, probe_color_distribution_resolution,...
+%       probe_color_distributions,...
+%       probe_color_distribution_increment, rgb_sigma_polyfit,...
+%       params [, verbose]...
+% )
+% [...
+%     interest_points, probe_regions_bw_filtered...
+% ] = detectWithinBoundingBox(...
+%       I, probe, mask, probe_color_distribution_resolution,...
+%       probe_color_distributions,...
+%       probe_color_distribution_increment, rgb_sigma_polyfit,...
+%       params [, verbose]...
+% )
+%
+% ## Description
+% [ interest_points ] = detectWithinBoundingBox(...
+%       I, probe, mask, probe_color_distribution_resolution,...
+%       probe_color_distributions,...
+%       probe_color_distribution_increment, rgb_sigma_polyfit,...
+%       params [, verbose]...
+% )
+%   Returns candidate probe colour band junction endpoints within the
+%   bounding region.
+%
+% [...
+%     interest_points, probe_regions_bw_filtered...
+% ] = detectWithinBoundingBox(...
+%       I, probe, mask, probe_color_distribution_resolution,...
+%       probe_color_distributions,...
+%       probe_color_distribution_increment, rgb_sigma_polyfit,...
+%       params [, verbose]...
+% )
+%   Additionally returns the binary images defining the probe colour bands
+%   detected within the bounding region.
+%
+% ## Input Arguments
+%
+% I -- Image containing the probe
+%   An RGB image containing the probe.
+%
+% probe -- Probe measurements
+%   Refer to the documentation of './CreateProbeDetectionModel.m' for
+%   details.
+%
+% mask -- Probe bounding region
+%   A binary image with the same dimensions as `I` (but with only one
+%   channel, not three), where the nonzero pixels ideally define regions
+%   containing the colour bands of the probe.
+%
+% probe_color_distribution_resolution -- Probe colour estimator sample count
+%   The number of equally-spaced samples in the range of hue values from 0
+%   (inclusive) to 1 (inclusive) at which the variable kernel density
+%   estimators for probe colour bands have been evaluated.
+%
+% probe_color_distributions -- Probe colour estimators
+%   Discretized variable kernel density estimators of image hue values
+%   corresponding to the different coloured bands on the probe, in the same
+%   order (starting from the active tip of the probe). The i-th column of
+%   this 2D array stores the estimator for the i-th probe segment.
+%
+% probe_color_distribution_increment -- Probe colour estimator sample spacing
+%   A scalar equal to the spacing between the samples of hue values in the
+%   range [0, 1] at which the variable kernel density estimators have been
+%   evaluated to produce 'probe_band_color_distributions'.
+%
+% rgb_sigma_polyfit -- Camera RGB noise model
+%   An array describing the variation in RGB channel standard deviations
+%   with RGB values in the image. This information should be computed from
+%   images taken under the same conditions and with the same camera
+%   parameters as the image (`I`) in which the probe is to be detected, if
+%   not computed from this same image.
+%
+%   Refer to the documentation of './EstimateRGBStandardDeviations.m' for
+%   details.
+%
+% params -- Fixed parameters
+%   Parameters that should be stable across a variety of input images and
+%   probe models. `params` is a structure containing the following fields:
+%   - noise_threshold: Threshold for identifying noise pixels in
+%       histogram backprojections. If empty (`[]`), a threshold will be
+%       selected automatically using Otsu's method.
+%   - erosion_radius: Radius for morphological erosion of the binary images
+%       describing the probe colour regions. The `radius` parameter of
+%       'extractBinaryRegions()'
+%   - radius_adj: Pixel radius used to filter candidate probe colour
+%       regions to those close to regions for other colours. The
+%       `radius_adj` parameter of 'detectProbeBinaryRegions()'.
+%   - axis_distance_outlier_threshold: Number of standard deviations from
+%       the estimate of the probe axis beyond which a region is determined
+%       to be distinct from the probe. The
+%       `axis_distance_outlier_threshold` parameter of
+%       'detectProbeBinaryRegions()'.
+%   - band_edge_distance_threshold: Search distance from detected probe
+%       colour regions for pixels on the edges between adjacent colour
+%       regions.
+%   - edge_refinement_edge_width: Characteristic ("typical") width of the
+%       edges in the image between adjacent colour regions on the probe.
+%   - edge_refinement_angle_std: Standard deviation parameter for the
+%       Gaussian model of the orientations of edges between adjacent colour
+%       regions on the probe. The image is filtered, by
+%       'detectProbeEdgeEndpoints()' using a kernel constructed with this
+%       parameter, and with the `edge_refinement_edge_width` parameter.
+%   - edge_refinement_filter_threshold: The threshold applied to the
+%       filtered image within 'detectProbeEdgeEndpoints()'.
+%
+% verbose -- Debugging flags
+%   If recognized fields of `verbose` are true, corresponding graphical
+%   output will be generated for debugging purposes.
+%
+%   All debugging flags default to false if `verbose` is not passed.
+%
+% ## Output Arguments
+%
+% interest_points -- Detected probe edge endpoints
+%   A two column array containing the image x and y-coordinates (in the
+%   first and second columns, respectively) of candidate endpoints of the
+%   edges between the coloured bands of the probe.
+%
+%   Ideally, each edge will be represented by two endpoints in this array.
+%   In practice, points will be detected along the probe's contour, far
+%   from the actual edges between coloured bands, and towards the interior
+%   of the probe, rather than where the edges meet the probe's contour.
+%
+% probe_regions_bw_filtered -- Detected probe colour bands
+%   A three-dimensional logical array of size image_height x image_width x
+%   n_colors. `probe_regions_bw_filtered(:, :, i)` stores the binary image
+%   representing where the i-th probe colour was detected within the area
+%   defined by `mask`. (`probe_regions_bw_filtered(:, :, i)` may therefore
+%   define several disconnected regions, if there are multiple patches of
+%   the i-th colour in the bounding mask.)
+%
+% See also hueVariableKernelDensityEstimator, extractBinaryRegions, detectProbeBinaryRegions, detectProbeEdgeEndpoints
+
+% Bernard Llanos
+% Supervised by Dr. Y.H. Yang
+% University of Alberta, Department of Computing Science
+% File created March 28, 2017
 
 %% Parse input arguments
 

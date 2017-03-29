@@ -67,7 +67,7 @@ function [ mask ] = detectBoundingBoxes(...
 % params -- Fixed parameters
 %   Parameters that should be stable across a variety of input images and
 %   probe models. `params` is a structure containing the following fields:
-%   - noise_threshold: Threshold for identifying noise pixels in initial
+%   - noise_threshold: Threshold for identifying noise pixels in
 %       histogram backprojections. If empty (`[]`), a threshold will be
 %       selected automatically using Otsu's method.
 %   - erosion_radius: Radius for morphological erosion of the binary images
@@ -77,8 +77,8 @@ function [ mask ] = detectBoundingBoxes(...
 %       regions to those close to regions for other colours. The
 %       `radius_adj` parameter of 'detectProbeBinaryRegions()'.
 %   - axis_distance_outlier_threshold: Number of standard deviations from
-%       the initial estimate of the probe axis beyond which a region is
-%       determined to be distinct from the probe. The
+%       the estimate of the probe axis beyond which a region is determined
+%       to be distinct from the probe. The
 %       `axis_distance_outlier_threshold` parameter of
 %       'detectProbeBinaryRegions()'.
 %   - dilation_radius: Radius for dilating the candidate probe colour

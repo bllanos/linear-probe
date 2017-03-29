@@ -149,29 +149,19 @@ detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
-% Threshold for identifying noise pixels in final histogram backprojections
 detectWithinBoundingBoxParams.noise_threshold = 0.2;
-% Radius for eroding images
 erosion_radius_final = 2;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
-% Radius used to filter probe colour regions to those close to regions for
-% other colours
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
-% Number of standard deviations from the estimate of the probe axis beyond
-% which a region is determined to be distinct from the probe
 detectWithinBoundingBoxParams.axis_distance_outlier_threshold = 3;
 
 % Location of probe edge points
-% Search distance from the probe colour regions for band junction pixels
 band_edge_distance_threshold = 2 * erosion_radius_final + 1;
 detectWithinBoundingBoxParams.band_edge_distance_threshold = band_edge_distance_threshold;
 
 % Location of probe edge endpoints
-% Characteristic edge width
 detectWithinBoundingBoxParams.edge_refinement_edge_width = band_edge_distance_threshold;
-% Standard deviation for the Gaussian filter applied to edge orientations
 detectWithinBoundingBoxParams.edge_refinement_angle_std = pi / 12;
-% Threshold for the filtered edge image
 detectWithinBoundingBoxParams.edge_refinement_filter_threshold = 0.3;
 
 % Matching edge endpoints to general probe structure
