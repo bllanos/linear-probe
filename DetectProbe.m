@@ -125,7 +125,7 @@ parameters_list = {
         'I_filename',...
         'rgb_sigma_filename',...
         'detectBoundingBoxesParams',...
-        'detectWithinBoundingBoxesParams'
+        'detectWithinBoundingBoxParams'
     };
 
 % Probe detection model
@@ -136,44 +136,48 @@ I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\2016081
 rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Ask for probe's bounding region
-request_bounding_region = true;
+request_bounding_region = false;
 
 % Determination of the probe's bounding region
 detectBoundingBoxesParams.noise_threshold = []; % Select automatically using Otsu's method
-erosion_radius = 5;
-detectBoundingBoxesParams.erosion_radius = erosion_radius;
-detectBoundingBoxesParams.radius_adj = 2 * erosion_radius + 10;
+erosion_radius_initial = 5;
+detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
+detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
 detectBoundingBoxesParams.axis_distance_outlier_threshold = 3;
-detectBoundingBoxesParams.dilation_radius = 4 * erosion_radius;
+detectBoundingBoxesParams.dilation_radius = 4 * erosion_radius_initial;
 detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
 % Threshold for identifying noise pixels in final histogram backprojections
-noise_threshold_final = 0.2;
+detectWithinBoundingBoxParams.noise_threshold = 0.2;
 % Radius for eroding images
 erosion_radius_final = 2;
+detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 % Radius used to filter probe colour regions to those close to regions for
 % other colours
-radius_adj_final = 2 * erosion_radius_final + 4;
+detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
 % Number of standard deviations from the estimate of the probe axis beyond
 % which a region is determined to be distinct from the probe
-axis_distance_outlier_threshold_final = 3;
+detectWithinBoundingBoxParams.axis_distance_outlier_threshold = 3;
 
 % Location of probe edge points
 % Search distance from the probe colour regions for band junction pixels
 band_edge_distance_threshold = 2 * erosion_radius_final + 1;
+detectWithinBoundingBoxParams.band_edge_distance_threshold = band_edge_distance_threshold;
 
 % Location of probe edge endpoints
 % Characteristic edge width
-edge_refinement_edge_width = band_edge_distance_threshold;
+detectWithinBoundingBoxParams.edge_refinement_edge_width = band_edge_distance_threshold;
 % Standard deviation for the Gaussian filter applied to edge orientations
-edge_refinement_angle_std = pi / 12;
+detectWithinBoundingBoxParams.edge_refinement_angle_std = pi / 12;
 % Threshold for the filtered edge image
-edge_refinement_filter_threshold = 0.3;
+detectWithinBoundingBoxParams.edge_refinement_filter_threshold = 0.3;
+
+% Matching edge endpoints to general probe structure
+detected_point_alignment_outlier_threshold = 5;
 
 % Matching edge endpoints to probe measurements
-detected_point_alignment_outlier_threshold = 5;
 color_sum_outlier_threshold = 1;
 color_dominance_threshold = 1.5;
 subject_gap_cost_detection = -1;
@@ -182,22 +186,24 @@ query_gap_cost_detection = 0;
 color_weight_detection = 0.5;
 
 % Debugging tools
-detectBoundingBoxesVerbose.display_original_image = true;
-detectBoundingBoxesVerbose.display_hue_image = true;
-detectBoundingBoxesVerbose.plot_global_hue_estimator = true;
-detectBoundingBoxesVerbose.plot_ratio_estimators = true;
-detectBoundingBoxesVerbose.display_ratio_distribution_backprojections = true;
-detectBoundingBoxesVerbose.verbose_region_extraction = true;
-detectBoundingBoxesVerbose.verbose_region_filtering = true;
-detectBoundingBoxesVerbose.display_region_expansion = true;
-plot_bounding_area_hue_estimator = false;
-plot_final_ratio_estimators = false;
-display_final_ratio_distribution_backprojections = false;
-verbose_final_region_extraction = false;
-verbose_final_region_filtering = false;
-display_final_regions_colored = false;
-display_band_edge_extraction = false;
-verbose_edge_endpoint_extraction = false;
+detectBoundingBoxesVerbose.display_original_image = false;
+detectBoundingBoxesVerbose.display_hue_image = false;
+detectBoundingBoxesVerbose.plot_global_hue_estimator = false;
+detectBoundingBoxesVerbose.plot_ratio_estimators = false;
+detectBoundingBoxesVerbose.display_ratio_distribution_backprojections = false;
+detectBoundingBoxesVerbose.verbose_region_extraction = false;
+detectBoundingBoxesVerbose.verbose_region_filtering = false;
+detectBoundingBoxesVerbose.display_region_expansion = false;
+
+detectWithinBoundingBoxVerbose.plot_bounding_area_hue_estimator = false;
+detectWithinBoundingBoxVerbose.plot_ratio_estimators = false;
+detectWithinBoundingBoxVerbose.display_ratio_distribution_backprojections = false;
+detectWithinBoundingBoxVerbose.verbose_region_extraction = false;
+detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
+detectWithinBoundingBoxVerbose.display_regions_colored = false;
+detectWithinBoundingBoxVerbose.display_band_edge_extraction = false;
+detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = false;
+
 display_detected_model_from_image = true;
 display_final_clipped_regions_colored = false;
 verbose_detected_point_sequence_matching = false;
@@ -226,28 +232,10 @@ if ~all(ismember(model_variables_required, who))
     error('One or more of the probe detection model variables is not loaded.')
 end
 
-n_colors = size(probe_color_distributions, 2);
-
-%% Compute variables used later
-
-% Obtain hue values
-H = rgb2hue(I);
-
 load(rgb_sigma_filename, 'rgb_sigma_polyfit');
 if ~exist('rgb_sigma_polyfit', 'var')
     error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
 end
-
-I_double = im2double(I);
-R = I_double(:, :, 1);
-G = I_double(:, :, 2);
-B = I_double(:, :, 3);
-
-% Identify which pairs of colours can be adjacent
-probe_color_pairs = [probe.colors(1:(end - 1)), probe.colors(2:end)];
-probe_color_pairs = sort(probe_color_pairs, 2);
-probe_color_pairs = unique(probe_color_pairs, 'rows');
-n_color_pairs = size(probe_color_pairs, 1);
 
 %% Manual bounding region selection (if enabled)
 if request_bounding_region
@@ -267,143 +255,15 @@ else
     );
 end
 
-%% Compute the hue variable kernel density estimator for the bounding region
+%% Detect interest points and refined probe colour regions within the bounding box
 
 [...
-    bound_color_distribution,...
-    bound_color_distribution_increment...
-] = hueVariableKernelDensityEstimator(...
-    H, R, G, B, probe_mask_initial,...
-    rgb_sigma_polyfit, probe_color_distribution_resolution...
-);
-
-if plot_bounding_area_hue_estimator
-    legend_names = cell(n_colors + 1, 1); %#ok<UNRCH>
-    legend_names{1} = 'Bounding area';
-    for i = 1:n_colors
-        legend_names{i + 1} = sprintf('Probe colour %d', i);
-    end
-    plotHueVariableKernelDensityEstimator(...
-        bound_color_distribution_increment,...
-        [bound_color_distribution, probe_color_distributions], legend_names...
-    );
-    title('Hue variable kernel density estimator for the initial bounding area')
-end
-
-%% Transform the image using histogram backprojection for the bounding region
-
-% Ratio distributions with respect to the background
-ratio_distributions_bounding = zeros(...
-        probe_color_distribution_resolution, n_colors...
-    );
-for i = 1:n_colors
-    ratio_distributions_bounding(:, i) = ratioDistribution(...
-            probe_color_distributions(:, i), bound_color_distribution...
-        );
-end
-
-if plot_final_ratio_estimators
-    legend_names = cell(n_colors, 1); %#ok<UNRCH>
-    for i = 1:n_colors
-        legend_names{i} = sprintf('Probe colour %d', i);
-    end
-    plotHueVariableKernelDensityEstimator(...
-        probe_color_distribution_increment, ratio_distributions_bounding, legend_names...
-    );
-    title('Ratio hue variable kernel density estimators for probe colours with respect to the bounding area')
-end
-
-% Histogram backprojection
-ratio_distributions_backprojected_bounding = zeros(image_height, image_width, n_colors);
-for i = 1:n_colors
-    ratio_distributions_backprojected_bounding(:, :, i) = queryDiscretized1DFunction(...
-            H, ratio_distributions_bounding(:, i), bound_color_distribution_increment...
-        );
-end
-
-if display_final_ratio_distribution_backprojections
-    for i = 1:n_colors %#ok<UNRCH>
-        figure
-        imshow(...
-                ratio_distributions_backprojected_bounding(:, :, i) /...
-                max(max(ratio_distributions_backprojected_bounding(:, :, i)))...
-            );
-        title(sprintf('Ratio distribution backprojection for probe band %d with respect to the bounding area', i))
-    end
-end
-
-%% Find final regions corresponding to probe colours
-
-[ probe_regions_final, probe_regions_bw_final] = extractBinaryRegions(...
-        ratio_distributions_backprojected_bounding,...
-        noise_threshold_final,...
-        erosion_radius_final,...
-        probe_mask_initial,...
-        verbose_final_region_extraction...
-    );
-
-[
-    probe_regions_final_filtered,...
-    probe_regions_bw_final_filtered...
-] = detectProbeBinaryRegions(...
-        probe_regions_final,...
-        probe_regions_bw_final,...
-        probe_color_pairs,...
-        radius_adj_final,...
-        axis_distance_outlier_threshold_final,...
-        verbose_final_region_filtering...
-    );
-
-if display_final_regions_colored
-    probe_regions_bw_final_display = zeros(image_height, image_width, image_n_channels); %#ok<UNRCH>
-    for i = 1:n_colors
-        [ ~, peak_hue_index ] = max(probe_color_distributions(:, i));
-        peak_hue = (peak_hue_index - 1) * probe_color_distribution_increment;
-        peak_rgb = hsv2rgb([peak_hue, 1, 1]);
-        probe_regions_bw_final_filtered_i = probe_regions_bw_final_filtered(:, :, i);
-        probe_regions_bw_final_display = probe_regions_bw_final_display +...
-            cat(3,...
-                    peak_rgb(1) * probe_regions_bw_final_filtered_i,...
-                    peak_rgb(2) * probe_regions_bw_final_filtered_i,...
-                    peak_rgb(3) * probe_regions_bw_final_filtered_i...
-                );
-    end
-    figure
-    imshow(probe_regions_bw_final_display);
-    title('Final detected probe regions')
-end
-
-%% Extract points along the edges between coloured bands
-
-% Find candidate edges as places where the distance to adjacent pairs of
-% colours is small
-probe_color_pairs_bwdist = zeros(image_height, image_width, n_color_pairs);
-for i = 1:n_color_pairs
-    pair = probe_color_pairs(i, :);
-    probe_regions_bw_final_filtered_1 = probe_regions_bw_final_filtered(:, :, pair(1));
-    distances_color1 = bwdist(probe_regions_bw_final_filtered_1);
-    distances_color1(probe_regions_bw_final_filtered_1) = Inf;
-    probe_regions_bw_final_filtered_2 = probe_regions_bw_final_filtered(:, :, pair(2));
-    distances_color2 = bwdist(probe_regions_bw_final_filtered_2);
-    distances_color2(probe_regions_bw_final_filtered_2) = Inf;
-    probe_color_pairs_bwdist(:, :, i) = max(distances_color1, distances_color2);
-end
-probe_color_pairs_bwdist_all = min(probe_color_pairs_bwdist, [], 3);
-probe_color_pairs_bwdist_all = (probe_color_pairs_bwdist_all <= band_edge_distance_threshold);
-
-if display_band_edge_extraction
-    figure %#ok<UNRCH>
-    imshow(probe_color_pairs_bwdist_all);
-    title(sprintf('Euclidean distances of %g or less to adjacent probe colour regions', band_edge_distance_threshold))
-end
-
-% Refine the edges between bands
-interest_points_detected = detectProbeEdgeEndpoints(...
-        probe_color_pairs_bwdist_all,...
-        edge_refinement_edge_width,...
-        edge_refinement_angle_std,...
-        edge_refinement_filter_threshold,...
-        verbose_edge_endpoint_extraction...
+    interest_points_detected, probe_regions_bw_final_filtered...
+] = detectWithinBoundingBox(...
+    I, probe, probe_mask_initial, probe_color_distribution_resolution,...
+    probe_color_distributions,...
+    probe_color_distribution_increment, rgb_sigma_polyfit,...
+    detectWithinBoundingBoxParams, detectWithinBoundingBoxVerbose...
     );
 
 %% Organize the detected points into per-edge pairs, and filter outliers
@@ -506,6 +366,7 @@ polygons_points([1, n_detected_band_edges + 2, n_detected_band_edges + 3, end], 
 clipping_mask = roipoly(I, polygons_points(:, 1), polygons_points(:, 2));
 probe_regions_bw_final_clipped = probe_regions_bw_final_filtered;
 
+n_colors = size(probe_color_distributions, 2);
 for i = 1:n_colors
     probe_regions_bw_final_clipped(:, :, i) = probe_regions_bw_final_clipped(:, :, i) & clipping_mask;
 end

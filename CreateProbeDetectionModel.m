@@ -151,13 +151,13 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
+model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
 % Image of probe
-I_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
 % Annotations for image of probe
-I_annotations_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\annotated\probePrePaperOcclusion_1_b_rect.png';
+I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\annotated\probePrePaperOcclusion_1_b_rect.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 4; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
