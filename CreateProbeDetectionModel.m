@@ -105,7 +105,7 @@
 %   estimators of image hue values corresponding to the different coloured
 %   bands on the probe, in the same order (starting from the active tip of
 %   the probe). The i-th column of this 2D array stores the estimator for
-%   the i-th probe segment.
+%   the i-th colour class of probe segments.
 % - 'probe_band_color_distribution_increment': A scalar equal to the spacing
 %   between the samples of hue values in the range [0, 1] at which the
 %   variable kernel density estimators have been evaluated to produce

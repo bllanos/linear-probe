@@ -3,8 +3,139 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
     probe_regions_bw,...
     model_pca_space, model, model_transform, params, varargin...
 )
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%LABELDETECTEDCOLORS Robustly associate detected probe regions with colour classes
+%
+% ## Syntax
+% [ colors_left, colors_right ] = labelDetectedColors(...
+%     I, probe_color_distributions, probe_color_distribution_increment,...
+%     probe_regions_bw,...
+%     model_pca_space, model, model_transform, params [, verbose]...
+% )
+%
+% ## Description
+% [ colors_left, colors_right ] = labelDetectedColors(...
+%     I, probe_color_distributions, probe_color_distribution_increment,...
+%     probe_regions_bw,...
+%     model_pca_space, model, model_transform, params [, verbose]...
+% )
+%   Returns the colour labels associated with the regions to either side of
+%   each detected edge between the coloured bands of the probe.
+%
+% ## Input Arguments
+%
+% I -- Image containing the probe
+%   An RGB image containing the probe.
+%
+% probe_color_distributions -- Probe colour estimators
+%   Discretized variable kernel density estimators of image hue values
+%   corresponding to the different coloured bands on the probe, in the same
+%   order (starting from the active tip of the probe). The i-th column of
+%   this 2D array stores the estimator for the i-th colour class of probe
+%   segments. (There are `n_colors` columns in total.)
+%
+%   Presently, this argument is only used for producing graphical debugging
+%   output, so an empty array could be passed if graphical debugging output
+%   is disabled.
+%
+% probe_color_distribution_increment -- Probe colour estimator sample spacing
+%   A scalar equal to the spacing between the samples of hue values in the
+%   range [0, 1] at which the variable kernel density estimators have been
+%   evaluated to produce 'probe_band_color_distributions'.
+%
+%   Presently, this argument is only used for producing graphical debugging
+%   output, so an empty array could be passed if graphical debugging output
+%   is disabled.
+%
+% probe_regions_bw -- Detected probe colour bands
+%   A three-dimensional logical array of size image_height x image_width x
+%   n_colors. `probe_regions_bw_filtered(:, :, i)` stores the binary image
+%   representing where the i-th probe colour was detected in the image.
+%   `probe_regions_bw` would normally be produced by
+%   'detectWithinBoundingBox()', as its `probe_regions_bw_filtered` output
+%   argument.
+%
+% model_pca_space -- Bilateral model of detected probe edge endpoints (PCA space)
+%   The `model` output argument of 'bilateralModel()', when
+%   'bilateralModel()' is called on the probe band edge endpoints detected
+%   from the regions in `probe_regions_bw`.
+%
+% model -- Bilateral model of detected probe edge endpoints (image space)
+%   The `model_px` output argument of 'bilateralModel()', when
+%   'bilateralModel()' is called on the probe band edge endpoints detected
+%   from the regions in `probe_regions_bw`.
+%
+% model_transform -- Mapping from PCA space to image space
+%   The `transform` output argument of 'bilateralModel()', when
+%   'bilateralModel()' is called on the probe band edge endpoints detected
+%   from the regions in `probe_regions_bw`.
+%
+% params -- Fixed parameters
+%   Parameters that should be stable across a variety of input images and
+%   probe models. `params` is a structure containing the following fields:
+%   - color_sum_outlier_threshold: Number of standard deviations from
+%       the average score for a colour label below which a colour label is
+%       deemed to have insufficient support. The region is assigned a label
+%       of 'no colour' (0).
+%   - color_dominance_threshold: If the colour label with the highest score
+%       for a given region has a score that is less than
+%       `color_dominance_threshold` times the score of the label with the
+%       second-highest score, then the region is assigned a label of 'any
+%       colour' (-1).
+%
+% verbose -- Debugging flags
+%   If recognized fields of `verbose` are true, corresponding graphical
+%   output will be generated for debugging purposes.
+%
+%   All debugging flags default to false if `verbose` is not passed.
+%
+% ## Output Arguments
+%
+% colors_left -- Labels for colours to the left of detected band edges
+%   A column vector containing the labels assigned to the colours to the
+%   left of the detected edges between the coloured bands of the probe.
+%   "left" means smaller coordinates along the first PCA axis defined by
+%   `model_pca_space` than the coordinates of the detected edges.
+%
+% colors_right -- Labels for colours to the right of detected band edges
+%   Similar to `colors_left`, but for colours to the right of the detected
+%   edges between the coloured bands of the probe.
+%
+% ## Algorithm
+%
+% The probe has a series of coloured bands, belonging to two or more colour
+% classes, as labelled by the user. Edges between bands therefore lie
+% between regions with different colour labels. It may seem trivial to
+% determine the labels on either side of a detected edge, given that edges
+% are detected by finding narrow spaces between detected regions with
+% different colour labels. However, some of the detected regions are false
+% positives. Other detected regions may poorly overlap with their ground
+% truth shapes in the image.
+%
+% This function attempts to robustly determine the appropriate colour label
+% between detected edges, by considering the total area between the edges
+% occupied by each colour. The score for a given colour is a weighted count
+% of the pixels assigned to that colour between two detected edges. Weights
+% are presently distances (measured parallel to the estimated axis of the
+% probe) from the edge for which the colour label is being computed. Only
+% pixels lying within the bounding box defined by the edge endpoints are
+% counted.
+%
+% Following the weighted counting operation, colour label scores are
+% processed according to the fields of `params`, as described above.
+%
+% ## Notes
+% - This function computes binary images for the probe colours that are
+%   clipped to the bounding quadrilaterals defined by the image edges and
+%   by the detected endpoints of the edges between probe colour bands.
+%   These binary images might be useful for other tasks, and could be
+%   assigned to an output argument in the future.
+%
+% See also detectWithinBoundingBox, bilateralModel
+
+% Bernard Llanos
+% Supervised by Dr. Y.H. Yang
+% University of Alberta, Department of Computing Science
+% File created March 28, 2017
 
 %% Parse input arguments
 
@@ -92,7 +223,7 @@ polygons_points([1, n_detected_band_edges + 2, n_detected_band_edges + 3, end], 
 clipping_mask = roipoly(I, polygons_points(:, 1), polygons_points(:, 2));
 probe_regions_bw_final_clipped = probe_regions_bw;
 
-n_colors = size(probe_color_distributions, 2);
+n_colors = size(probe_regions_bw, 3);
 for i = 1:n_colors
     probe_regions_bw_final_clipped(:, :, i) = probe_regions_bw_final_clipped(:, :, i) & clipping_mask;
 end

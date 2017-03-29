@@ -68,7 +68,8 @@ function [...
 %   Discretized variable kernel density estimators of image hue values
 %   corresponding to the different coloured bands on the probe, in the same
 %   order (starting from the active tip of the probe). The i-th column of
-%   this 2D array stores the estimator for the i-th probe segment.
+%   this 2D array stores the estimator for the i-th colour class of probe
+%   segments.
 %
 % probe_color_distribution_increment -- Probe colour estimator sample spacing
 %   A scalar equal to the spacing between the samples of hue values in the
