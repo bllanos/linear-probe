@@ -159,6 +159,21 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
         score = scores(s, q, 2);
     end
 
+    function plotScores(scores, str)
+        for index = 1:2
+            figure;
+            imagesc(scores(:, :, index))
+            colorbar
+            if index == 1
+                title(sprintf('Forward %s', str))
+            else
+                title(sprintf('Reverse %s', str))
+            end
+            xlabel('Query sequence index')
+            ylabel('Subject sequence index')
+        end
+    end
+
 nargoutchk(1, 1);
 narginchk(4, 8);
 
@@ -305,14 +320,7 @@ if match_cross_ratios
     cross_ratio_scores(isnan(cross_ratio_scores)) = 0;
 
     if verbose
-        figure;
-        imagesc(cross_ratio_scores(:, :, 1))
-        colorbar
-        title('Forward cross ratio matching scores')
-        figure;
-        imagesc(cross_ratio_scores(:, :, 2))
-        colorbar
-        title('Reverse cross ratio matching scores')
+        plotScores(cross_ratio_scores, 'cross ratio matching scores');
     end
 end
 
@@ -339,14 +347,7 @@ if match_colors
         );
     
     if verbose
-        figure;
-        imagesc(color_scores(:, :, 1))
-        colorbar
-        title('Forward colour matching scores')
-        figure;
-        imagesc(color_scores(:, :, 2))
-        colorbar
-        title('Reverse colour matching scores')
+        plotScores(color_scores, 'colour matching scores');
     end
     
     if match_cross_ratios
@@ -354,14 +355,7 @@ if match_colors
             (cross_ratio_scores * (1 - color_weight));
     
         if verbose
-            figure;
-            imagesc(scores(:, :, 1))
-            colorbar
-            title('Forward combined matching scores')
-            figure;
-            imagesc(scores(:, :, 2))
-            colorbar
-            title('Reverse combined matching scores')
+            plotScores(scores, 'combined matching scores');
         end
     else
         scores = color_scores;

@@ -145,25 +145,43 @@ for i = 1:n
     centroids{i} = cat(1, s.Centroid);
 end
 centroids = cell2mat(centroids);
+n_regions_all = size(centroids, 1);
+
+% Find region pixel coordinates
+image_points = cell(n_regions_all, 1);
+offset = 1;
+for i = 1:n
+    px_indices = regions_filtered(i).PixelIdxList;
+    for j = 1:regions_filtered(i).NumObjects
+        [row, col] = ind2sub([image_height, image_width], px_indices{j});
+        image_points{offset} = [col, row];
+        offset = offset + 1;
+    end
+end
+
+    function b = isOnBothSides(signs)
+        b = sum(signs < 0) & sum(signs >= 0);
+    end
 
 % RANSAC-based estimation of probe axis
 trial = 1;
-n_regions_all = size(centroids, 1);
 n_trials = nchoosek(n_regions_all, 2); % Number of outliers is unknown - This is the worst case
 n_inliers_max = 0;
 inliers_count_threshold = n_regions_all; % Number of inliers is unknown - This is the worst case
 p = 0.99; % Require 99 percent probability that at least one of `n_trials` samples contains only inliers
 while trial <= n_trials
-    sample = centroids(randi(n_regions_all, 2, 1), :);
-    distances = distanceToLine(centroids, sample);
+    sample_indices = randsample(n_regions_all, 2);
+    sample = repmat({centroids(sample_indices, :)}, n_regions_all, 1);
     
-    mu = mean(distances);
-    sigma = std(distances);
-    mu_rep = repmat(mu,n_regions_all,1);
-    sigma_rep = repmat(sigma,n_regions_all,1);
-    inliers_filter_candidate = abs(distances - mu_rep) < axis_distance_outlier_threshold * sigma_rep;
+    % Rather than define outliers based on their distance to the estimated
+    % axis (as in past versions of this function), define outliers as
+    % regions which contain pixels on only one side of the estimated axis.
+    [~, signs] = cellfun(@distanceToLine, image_points, sample, 'UniformOutput', false);
+    inliers_filter_candidate = cellfun(@isOnBothSides, signs, 'UniformOutput', true);
+    
     n_inliers = sum(inliers_filter_candidate);
     if n_inliers > n_inliers_max
+        successful_sample = sample{1};
         n_inliers_max = n_inliers;
         inliers_filter = inliers_filter_candidate;
         n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_regions_all) ^ 2));
@@ -214,6 +232,9 @@ if nargout > 1
             figure
             imshow(bw_filtered_i);
             title(sprintf('Final binary image %d', i))
+            hold on
+            line(successful_sample(:, 1), successful_sample(:, 2))
+            hold off
         end
     end
 end
