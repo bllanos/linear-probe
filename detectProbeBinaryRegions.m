@@ -193,6 +193,10 @@ while trial <= n_trials
 end
 
 % Finalize set of inliers
+% This time, use distances from region centroids to the estimated probe
+% axis, which is a less restrictive outlier detection method than the one
+% used during RANSAC iteration. The previous outlier detection method is
+% too harsh, given the uncertainty in the estimated probe axis.
 diff_n_inliers = 1;
 while diff_n_inliers > 0
     [coeff_pca, ~, ~, ~, ~, mu_pca] = pca(centroids(inliers_filter, :));
