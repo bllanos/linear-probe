@@ -32,11 +32,11 @@
 % ### Probe measurements
 % A '.mat' file containing a structure called 'probe' with the following
 % fields:
-% - lengths: Distances of edges of bands from the active end of the probe,
-%     including a distance of 0.0 for the active end of the probe, and a
-%     distance for the other end of the probe (i.e. the length of the
-%     entire probe). Distances are measured along the probe's axis of
-%     cylindrical symmetry, and are listed in order starting from the
+% - lengths: A vector of distances of edges of bands from the active end of
+%     the probe, including a distance of 0.0 for the active end of the
+%     probe, and a distance for the other end of the probe (i.e. the length
+%     of the entire probe). Distances are measured along the probe's axis
+%     of cylindrical symmetry, and are listed in order starting from the
 %     active end of the probe.
 % - colors: A vector with `length(lengths) - 1` elements specifying colour
 %     indices for the bands of the probe. Colour indices should be

@@ -165,7 +165,9 @@ P_center = null(P).'; % Camera center
 % Assume P_center(end) ~= 0 (i.e. Finite camera)
 P_center = P_center ./ repmat(P_center(end), 1, 4);
 X_tip_basis_ray = (P_inv * X_tip_image.').';
+X_tip_basis_ray = [((X_tip_basis_ray(1:3) / X_tip_basis_ray(end)) - P_center(1:3)), 0];
 X_end_basis_ray = (P_inv * X_end_image.').';
+X_end_basis_ray = [((X_end_basis_ray(1:3) / X_end_basis_ray(end)) - P_center(1:3)), 0];
 
 % From P * (X_tip + l_i * [d; 0] + r * [u; 0]) ~ x_i
 % So cross(P * (X_tip + l_i * [d; 0] + r * [u; 0]), x_i) = 0
