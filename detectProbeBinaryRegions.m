@@ -162,12 +162,13 @@ end
 % RANSAC-based estimation of probe axis
 trial = 1;
 n_trials = nchoosek(n_regions_all, 2); % Number of outliers is unknown - This is the worst case
+sample_indices = nchoosek(1:n_regions_all, 2);
+sample_indices = sample_indices(randperm(n_trials), :);
 n_inliers_max = 0;
 inliers_count_threshold = n_regions_all; % Number of inliers is unknown - This is the worst case
-p = 0.99; % Require 99 percent probability that at least one of `n_trials` samples contains only inliers
+p = 0.99; % Require this probability that at least one of `n_trials` samples contains only inliers
 while trial <= n_trials
-    sample_indices = randsample(n_regions_all, 2);
-    sample = centroids(sample_indices, :);
+    sample = centroids(sample_indices(trial, :), :);
     
     % Rather than define outliers based on their distance to the estimated
     % axis (as in past versions of this function), define outliers as
