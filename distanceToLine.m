@@ -33,7 +33,7 @@ function [ d, s ] = distanceToLine(p, line_points)
 %   An n x 1 array, where `s(i)` represents which side of the line
 %   the point `p(i, :)` is on. `s(i)` is the sign of the z-component of the
 %   cross product of the direction vector of the line (from
-%   `line_points(1,:)` to `line_points(2,:)` with the vector perpendicular
+%   `line_points(1,:)` to `line_points(2,:)`) with the vector perpendicular
 %   to the line towards `p(i, :)`.
 %
 %   This output argument can only be requested if `k` is 2 (i.e. the points
@@ -41,6 +41,8 @@ function [ d, s ] = distanceToLine(p, line_points)
 %
 % ## References
 % - https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+%
+% See also distanceToHomog2DLine, closestPointOnLine
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

@@ -159,10 +159,6 @@ for i = 1:n
     end
 end
 
-    function b = isOnBothSides(signs)
-        b = sum(signs < 0) & sum(signs >= 0);
-    end
-
 % RANSAC-based estimation of probe axis
 trial = 1;
 n_trials = nchoosek(n_regions_all, 2); % Number of outliers is unknown - This is the worst case
@@ -171,17 +167,16 @@ inliers_count_threshold = n_regions_all; % Number of inliers is unknown - This i
 p = 0.99; % Require 99 percent probability that at least one of `n_trials` samples contains only inliers
 while trial <= n_trials
     sample_indices = randsample(n_regions_all, 2);
-    sample = repmat({centroids(sample_indices, :)}, n_regions_all, 1);
+    sample = centroids(sample_indices, :);
     
     % Rather than define outliers based on their distance to the estimated
     % axis (as in past versions of this function), define outliers as
     % regions which contain pixels on only one side of the estimated axis.
-    [~, signs] = cellfun(@distanceToLine, image_points, sample, 'UniformOutput', false);
-    inliers_filter_candidate = cellfun(@isOnBothSides, signs, 'UniformOutput', true);
+    inliers_filter_candidate = isOnBothSidesOfLine( image_points, sample );
     
     n_inliers = sum(inliers_filter_candidate);
     if n_inliers > n_inliers_max
-        successful_sample = sample{1};
+        successful_sample = sample;
         n_inliers_max = n_inliers;
         inliers_filter = inliers_filter_candidate;
         n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_regions_all) ^ 2));

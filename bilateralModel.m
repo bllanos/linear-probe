@@ -152,6 +152,8 @@ function [ model, lengths, axes, model_px, transform ] = bilateralModel( points,
 %
 %   For convenience, lines have been normalized as described here:
 %   http://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/BEARDSLEY/node2.html
+%   ("Manipulating Points and Lines," by Bob Fisher,
+%    Fri Nov 7 12:08:26 GMT 1997)
 %
 % model_px -- Bilaterally-symmetric representation of points in pixel space
 %   The equivalent of `model`, but the points are in pixel space as opposed
