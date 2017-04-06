@@ -1,7 +1,7 @@
 function [ colors_left, colors_right ] = labelDetectedColors(...
     I, probe_color_distributions, probe_color_distribution_increment,...
     probe_regions_bw,...
-    model_pca_space, model, model_transform, params, varargin...
+    model_pca_space, model, model_transform, varargin...
 )
 %LABELDETECTEDCOLORS Robustly associate detected probe regions with colour classes
 %
@@ -9,14 +9,14 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 % [ colors_left, colors_right ] = labelDetectedColors(...
 %     I, probe_color_distributions, probe_color_distribution_increment,...
 %     probe_regions_bw,...
-%     model_pca_space, model, model_transform, params [, verbose]...
+%     model_pca_space, model, model_transform [, verbose]...
 % )
 %
 % ## Description
 % [ colors_left, colors_right ] = labelDetectedColors(...
 %     I, probe_color_distributions, probe_color_distribution_increment,...
 %     probe_regions_bw,...
-%     model_pca_space, model, model_transform, params [, verbose]...
+%     model_pca_space, model, model_transform [, verbose]...
 % )
 %   Returns the colour labels associated with the regions to either side of
 %   each detected edge between the coloured bands of the probe.
@@ -69,24 +69,10 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 %   'bilateralModel()' is called on the probe band edge endpoints detected
 %   from the regions in `probe_regions_bw`.
 %
-% params -- Fixed parameters
-%   Parameters that should be stable across a variety of input images and
-%   probe models. `params` is a structure containing the following fields:
-%   - color_sum_outlier_threshold: Number of standard deviations from
-%       the average score for a colour label below which a colour label is
-%       deemed to have insufficient support. The region is assigned a label
-%       of 'no colour' (0).
-%   - color_dominance_threshold: If the colour label with the highest score
-%       for a given region has a score that is less than
-%       `color_dominance_threshold` times the score of the label with the
-%       second-highest score, then the region is assigned a label of 'any
-%       colour' (-1).
+% verbose -- Debugging flag
+%   If true, graphical output will be generated for debugging purposes.
 %
-% verbose -- Debugging flags
-%   If recognized fields of `verbose` are true, corresponding graphical
-%   output will be generated for debugging purposes.
-%
-%   All debugging flags default to false if `verbose` is not passed.
+%   Defaults to false if not passed.
 %
 % ## Output Arguments
 %
@@ -107,21 +93,18 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 % between regions with different colour labels. It may seem trivial to
 % determine the labels on either side of a detected edge, given that edges
 % are detected by finding narrow spaces between detected regions with
-% different colour labels. However, some of the detected regions are false
-% positives. Other detected regions may poorly overlap with their ground
-% truth shapes in the image.
+% different colour labels. However, detected regions may poorly overlap
+% with their ground truth shapes in the image.
 %
 % This function attempts to robustly determine the appropriate colour label
-% between detected edges, by considering the total area between the edges
-% occupied by each colour. The score for a given colour is a weighted count
-% of the pixels assigned to that colour between two detected edges. Weights
-% are presently distances (measured parallel to the estimated axis of the
-% probe) from the edge for which the colour label is being computed. Only
-% pixels lying within the bounding box defined by the edge endpoints are
-% counted.
-%
-% Following the weighted counting operation, colour label scores are
-% processed according to the fields of `params`, as described above.
+% between detected edges. Instead of assigning labels based on the closest
+% detected colour regions to each detected edge, it assigns labels based on
+% the closest centroids of detected colour regions to each detected edge.
+% Centroids are computed after clipping the detected coloured regions to
+% the quadrilaterals defined by the endpoints of adjacent detected edges.
+% Assigning colour labels based on distances to centroids provides
+% robustness to slight biases of detected edge positions towards the
+% interiors of detected colour regions.
 %
 % ## Notes
 % - This function computes binary images for the probe colours that are
@@ -140,21 +123,18 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 %% Parse input arguments
 
 nargoutchk(2,2);
-narginchk(8,9);
+narginchk(7,8);
 
 if ~isempty(varargin)
     verbose = varargin{1};
-    display_final_clipped_regions_colored = verbose.display_final_clipped_regions_colored;
 else
-    display_final_clipped_regions_colored = false;
+    verbose = false;
 end
 
 image_width = size(I, 2);
 image_height = size(I, 1);
 
 n_detected_band_edges = size(model_pca_space.above, 1);
-
-%% Label the colours between detected probe band edges
 
 % Clip the detected colour regions to the area between the probe edge
 % endpoints. Extrapolate the clipping area to the tips of the probe by extending the
@@ -221,116 +201,87 @@ polygons_points([1, n_detected_band_edges + 2, n_detected_band_edges + 3, end], 
 
 % Perform the clipping
 clipping_mask = roipoly(I, polygons_points(:, 1), polygons_points(:, 2));
-probe_regions_bw_final_clipped = probe_regions_bw;
+probe_regions_bw_clipped = probe_regions_bw;
 
 n_colors = size(probe_regions_bw, 3);
 for i = 1:n_colors
-    probe_regions_bw_final_clipped(:, :, i) = probe_regions_bw_final_clipped(:, :, i) & clipping_mask;
+    probe_regions_bw_clipped(:, :, i) = probe_regions_bw_clipped(:, :, i) & clipping_mask;
 end
 
-if display_final_clipped_regions_colored
-    probe_regions_bw_final_clipped_display = zeros(image_height, image_width, 3);
+if verbose
+    probe_regions_bw_clipped_display = zeros(image_height, image_width, 3);
     for i = 1:n_colors
         [ ~, peak_hue_index ] = max(probe_color_distributions(:, i));
         peak_hue = (peak_hue_index - 1) * probe_color_distribution_increment;
         peak_rgb = hsv2rgb([peak_hue, 1, 1]);
-        probe_regions_bw_final_clipped_filtered_i = probe_regions_bw_final_clipped(:, :, i);
-        probe_regions_bw_final_clipped_display = probe_regions_bw_final_clipped_display +...
+        probe_regions_bw_clipped_filtered_i = probe_regions_bw_clipped(:, :, i);
+        probe_regions_bw_clipped_display = probe_regions_bw_clipped_display +...
             cat(3,...
-                    peak_rgb(1) * probe_regions_bw_final_clipped_filtered_i,...
-                    peak_rgb(2) * probe_regions_bw_final_clipped_filtered_i,...
-                    peak_rgb(3) * probe_regions_bw_final_clipped_filtered_i...
+                    peak_rgb(1) * probe_regions_bw_clipped_filtered_i,...
+                    peak_rgb(2) * probe_regions_bw_clipped_filtered_i,...
+                    peak_rgb(3) * probe_regions_bw_clipped_filtered_i...
                 );
     end
     figure
-    imshow(probe_regions_bw_final_clipped_display);
-    title('Final detected probe regions, clipped to detected probe edges')
+    imshow(probe_regions_bw_clipped_display);
+    title('Detected probe regions, clipped to detected probe edges')
 end
 
-% Find the first components of the PCA-space coordinates of the probe colour regions
-probe_regions_pca_space_x = cell(n_colors, 1);
+% Extract region centroids
+
+regions = struct('Connectivity', cell(n_colors, 1), 'ImageSize', cell(n_colors, 1),...
+    'NumObjects', cell(n_colors, 1), 'PixelIdxList', cell(n_colors, 1));
+
 for i = 1:n_colors
-    probe_regions_bw_final_clipped_i = probe_regions_bw_final_clipped(:, :, i);
-    pixel_indices_i = find(probe_regions_bw_final_clipped_i);
-    [y,x] = ind2sub([image_height, image_width],pixel_indices_i);
-    probe_regions_pca_space_xi = [x, y, ones(length(x),1)];
-    probe_regions_pca_space_xi = probe_regions_pca_space_xi / model_transform;
-    % Normalization (dividing by the homogenous coordinate) is not
-    % necessary, as `model_transform` is an affine transformation.
-    probe_regions_pca_space_x{i} = probe_regions_pca_space_xi(:, 1);
+    regions(i) = bwconncomp(probe_regions_bw_clipped(:, :, i));
 end
 
-% Iterate over each probe band to find the colours dominating at either end
-probe_color_scores_left = zeros(n_detected_band_edges, n_colors);
-probe_color_scores_right = zeros(n_detected_band_edges, n_colors);
+centroids = cell(n_colors, 1);
+for i = 1:n_colors
+    s = regionprops(regions(i), 'centroid');
+    centroids{i} = cat(1, s.Centroid);
+end
+centroids_all = cell2mat(centroids);
+n_regions_all = size(centroids_all, 1);
+
+centroids_color_index = zeros(n_regions_all, 1);
+offset = 0;
+for i = 1:n_colors
+    centroids_color_index((1+offset):(offset + size(centroids{i}, 1))) = i;
+    offset = offset + size(centroids{i}, 1);
+end
+
+% Label the colours between detected probe band edges
+
+% Find the first components of the PCA-space coordinates of the centriods
+centroids_pca_space_x = [
+        centroids_all(:, 1),...
+        centroids_all(:, 2),...
+        ones(n_regions_all,1)
+        ] / model_transform;
+% Normalization (dividing by the homogenous coordinate) is not
+% necessary, as `model_transform` is an affine transformation.
+centroids_pca_space_x = centroids_pca_space_x(:, 1);
+
+% Iterate over each probe band to find the colour of the closest centroid
+colors_left = zeros(n_detected_band_edges, 1);
+colors_right = zeros(n_detected_band_edges, 1);
 for i = 1:n_detected_band_edges
-    if i > 1
-        min_coord = mean(...
-            [model_pca_space.above(i-1,1),...
-            model_pca_space.below(i-1,1)]...
-            );
-    else
-        min_coord = -Inf;
-    end
-    if i < n_detected_band_edges
-        max_coord = mean(...
-            [model_pca_space.above(i+1,1),...
-            model_pca_space.below(i+1,1)]...
-            );
-    else
-        max_coord = Inf;
-    end
     center_coord = mean(...
             [model_pca_space.above(i,1),...
             model_pca_space.below(i,1)]...
             );
-    for j = 1:n_colors
-        probe_regions_pca_space_xi = probe_regions_pca_space_x{j};
-        left_x = probe_regions_pca_space_xi > min_coord &...
-            probe_regions_pca_space_xi <= center_coord;
-        left_x = probe_regions_pca_space_xi(left_x);
-        left_x = repmat(center_coord, length(left_x), 1) - left_x;
-        probe_color_scores_left(i,j) = sum(left_x);
-        right_x = probe_regions_pca_space_xi >= center_coord &...
-            probe_regions_pca_space_xi < max_coord;
-        right_x = probe_regions_pca_space_xi(right_x);
-        right_x = right_x - repmat(center_coord, length(right_x), 1);
-        probe_color_scores_right(i,j) = sum(right_x);
-    end
-end
-
-% Pick the dominant colour, provided it dominates by a sufficient factor
-for i = 1:2
-    if i == 1
-        scores = probe_color_scores_left;
-    else
-        scores = probe_color_scores_right;
-    end
-    [scores_max, scores_maxind] = max(scores, [], 2);
     
-    % Filter out outlier small scores
-    mu_scores_max = mean(scores_max);
-    sigma_scores_max = std(scores_max);
-    mu_scores_max_rep = repmat(mu_scores_max,n_detected_band_edges,1);
-    sigma_scores_max_rep = repmat(sigma_scores_max,n_detected_band_edges,1);
-    scores_max_filter = (mu_scores_max_rep - scores_max) > params.color_sum_outlier_threshold * sigma_scores_max_rep;
-    scores_max(scores_max_filter) = 0;
-
-    scores_nomax = scores;
-    scores_nomax(...
-        sub2ind(size(scores), (1:n_detected_band_edges)', scores_maxind)...
-        ) = 0;
-    scores_max2 = max(scores_nomax, [], 2);
-    colors = scores_max ./ scores_max2;
-    colors_filter = colors >= params.color_dominance_threshold;
-    colors(~colors_filter) = -1; % Any colour
-    colors(scores_max == 0) = 0; % No colour
-    colors(colors_filter) = scores_maxind(colors_filter);
-    if i == 1
-        colors_left = colors;
-    else
-        colors_right = colors;
-    end
+    distances = centroids_pca_space_x - center_coord;
+    distances_left = distances;
+    distances_left(distances > 0) = -Inf;
+    [~, index] = max(distances_left);
+    colors_left(i) = centroids_color_index(index);
+    
+    distances_right = distances;
+    distances_right(distances < 0) = Inf;
+    [~, index] = min(distances_right);
+    colors_right(i) = centroids_color_index(index);
 end
 
 end
