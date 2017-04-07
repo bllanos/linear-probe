@@ -169,7 +169,7 @@ function [ alignment, score ] = swSequenceAlignmentAffine(...
 % File created August 12, 2016
 
 nargoutchk(1, 2);
-narginchk(7, 7);
+narginchk(7, 8);
 
 if ~(...
         strcmp(type, 'Global') ||...
@@ -250,11 +250,11 @@ for i = 2:(m + 1)
         max_val = max(candidates);
         H(i, j, 1) = max_val;
         ind = find(candidates == max_val);
-        ind = ind(ind ~= 4);
+        ind = ind(ind ~= 4).';
         max_count = length(ind);
         back_pointers(i, j, 1, 1:max_count, :) = [
-            repmat(i-1, max_count),...
-            repmat(j-1, max_count),...
+            repmat(i-1, max_count, 1),...
+            repmat(j-1, max_count, 1),...
             ind
         ];
         
@@ -265,11 +265,11 @@ for i = 2:(m + 1)
         candidates = [value_match_previous, value_gap_query, value_gap_subject_previous];
         max_val = max(candidates);
         H(i, j, 2) = max_val;
-        ind = find(candidates == max_val);
+        ind = find(candidates == max_val).';
         max_count = length(ind);
         back_pointers(i, j, 2, 1:max_count, :) = [
-            repmat(i-1, max_count),...
-            repmat(j, max_count),...
+            repmat(i-1, max_count, 1),...
+            repmat(j, max_count, 1),...
             ind
         ];
         
@@ -280,17 +280,17 @@ for i = 2:(m + 1)
         candidates = [value_match_previous, value_gap_query_previous, value_gap_subject];
         max_val = max(candidates);
         H(i, j, 3) = max_val;
-        ind = find(candidates == max_val);
+        ind = find(candidates == max_val).';
         max_count = length(ind);
         back_pointers(i, j, 3, 1:max_count, :) = [
-            repmat(i, max_count),...
-            repmat(j-1, max_count),...
+            repmat(i, max_count, 1),...
+            repmat(j-1, max_count, 1),...
             ind
         ];
     end
 end
 
-    function [alignment, score] = tracePath()
+    function [alignment, score] = tracePath(israndom)
         % Trace backpointers to recover the path
         path = zeros(m + n, 3);
         if strcmp(type, 'Global')
@@ -298,7 +298,11 @@ end
             score = max(scores);
             scores_ind = find(scores == score);
             scores_count = length(scores_ind);
-            k = scores_ind(randi(scores_count));
+            if israndom
+                k = scores_ind(randi(scores_count));
+            else
+                k = scores_ind(1);
+            end
             p = m + 1;
             q = n + 1;
         elseif strcmp(type, 'SemiGlobal')
@@ -308,12 +312,20 @@ end
             for column_index = 1:size(H, 3)
                 column_scores_ind = find(candidate_column_scores(:, :, column_index) == column_scores(column_index));
                 column_scores_count = length(column_scores_ind);
-                row_indices(column_index) = column_scores_ind(randi(column_scores_count));
+                if israndom
+                    row_indices(column_index) = column_scores_ind(randi(column_scores_count));
+                else
+                    row_indices(column_index) = column_scores_ind(1);
+                end
             end
             score = max(column_scores);
             scores_ind = find(column_scores == score);
             scores_count = length(scores_ind);
-            k = scores_ind(randi(scores_count));
+            if israndom
+                k = scores_ind(randi(scores_count));
+            else
+                k = scores_ind(1);
+            end
             p = row_indices(k);
             q = n + 1;
         else
@@ -324,7 +336,11 @@ end
                 for column_index = 1:size(H, 3)
                     sheet_column_scores_ind = find(H(:, sheet_column_index, column_index) == sheet_column_scores(:, sheet_column_index, column_index));
                     sheet_column_scores_count = length(sheet_column_scores_ind);
-                    sheet_row_indices(sheet_column_index, column_index) = sheet_column_scores_ind(randi(sheet_column_scores_count));
+                    if israndom
+                        sheet_row_indices(sheet_column_index, column_index) = sheet_column_scores_ind(randi(sheet_column_scores_count));
+                    else
+                        sheet_row_indices(sheet_column_index, column_index) = sheet_column_scores_ind(1);
+                    end
                 end
             end
             
@@ -333,13 +349,21 @@ end
             for column_index = 1:size(H, 3)
                 column_scores_ind = find(sheet_column_scores(:, :, column_index) == sheet_scores(column_index));
                 column_scores_count = length(column_scores_ind);
-                sheet_column_indices(column_index) = column_scores_ind(randi(column_scores_count));
+                if israndom
+                    sheet_column_indices(column_index) = column_scores_ind(randi(column_scores_count));
+                else
+                    sheet_column_indices(column_index) = column_scores_ind(1);
+                end
             end
             
             score = max(sheet_scores);
             scores_ind = find(sheet_scores == score);
             scores_count = length(scores_ind);
-            k = scores_ind(randi(scores_count));
+            if israndom
+                k = scores_ind(randi(scores_count));
+            else
+                k = scores_ind(1);
+            end
             q = sheet_column_indices(k);
             p = sheet_row_indices(q, k);
         end
@@ -352,7 +376,11 @@ end
             candidate_pointers = squeeze(candidate_pointers);
             candidate_pointers_filter = logical(candidate_pointers(:, 1));
             candidate_pointers = candidate_pointers(candidate_pointers_filter, :);
-            pointer = candidate_pointers(randi(size(candidate_pointers, 1)), :);
+            if israndom
+                pointer = candidate_pointers(randi(size(candidate_pointers, 1)), :);
+            else
+                pointer = candidate_pointers(1, :);
+            end
             path(path_length, :) = pointer;
             p = path(path_length, 1);
             q = path(path_length, 2);
@@ -383,6 +411,18 @@ end
         end
     end
 
-[alignment, score] = tracePath();
+if sample_count > 1
+    alignment = cell(1, sample_count);
+    score = zeros(1, sample_count);
+    for sample_index = 1:sample_count
+        [alignment{sample_index}, score(sample_index)] = tracePath(true);
+    end
+    if any(score ~= score(1))
+        error('Internal bug: Inconsistent optimal scores.')
+    end
+    score = score(1);
+else
+    [alignment, score] = tracePath(false);
+end
 
 end
