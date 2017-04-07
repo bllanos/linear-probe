@@ -1,40 +1,25 @@
-function [ subject_match_indices ] = matchProbeLengths(...
+function [ subject_match_indices ] = matchProbeLengthsRandom(...
     subject_lengths, query_lengths,...
     subject_gap_cost, query_gap_cost,...
-    affine_weight, varargin...
+    subject_colors, query_colors, direction_threshold, inlier_threshold,...
+    varargin...
 )
-% MATCHPROBELENGTHS  Align sequences of points on two lines using cross ratios and colour adjacency relationships
+% MATCHPROBELENGTHSRANDOM  Align sequences of points on two lines using colour adjacency relationships and geometric verification
 %
 % ## Syntax
 % subject_match_indices = matchProbeLengths(...
 %   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   affine_weight [, verbose]...
-% )
-%
-% subject_match_indices = matchProbeLengths(...
-%   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   affine_weight, subject_colors, query_colors, color_weight...
-%   [, verbose]...
+%   subject_colors, query_colors, direction_threshold, inlier_threshold [, verbose]...
 % )
 %
 % ## Description
 % subject_match_indices = matchProbeLengths(...
 %   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   affine_weight [, verbose]...
+%   subject_colors, query_colors, direction_threshold, inlier_threshold [, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
-%   points in the query sequence. The matching is based on point cross
-%   ratios and/or length ratios.
-%
-% subject_match_indices = matchProbeLengths(...
-%   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   affine_weight, subject_colors, query_colors, color_weight...
-%   [, verbose]...
-% )
-%   Returns the indices of points in the subject sequence which match
-%   points in the query sequence. The matching is based on point cross
-%   ratios and/or length ratios, and on the colours to the left and right
-%   of each point.
+%   points in the query sequence. The matching is based on the colours to
+%   the left and right of each point, followed by geometric verification.
 %
 % ## Input Arguments
 %
@@ -61,22 +46,6 @@ function [ subject_match_indices ] = matchProbeLengths(...
 %   Analogous to `subject_gap_cost`: The score to assign to gaps of any
 %   length in the query sequence.
 %
-% affine_weight -- Weight of length ratio scores
-%   Under affine distortion conditions, points can be aligned using length
-%   ratios, whereas under projective distortion conditions, length ratios
-%   are no longer preserved, and points should be aligned using cross
-%   ratios.
-%
-%   An affine approximation is relatively accurate in many cases, and
-%   length ratios tend to be more discriminating than cross ratios.
-%   Furthermore, length ratios are faster to compute.
-%
-%   This parameter is the weight to apply to the length ratio-based portion
-%   of the alignment scores with respect to the cross ratio-based portion
-%   of the alignment scores. It ranges from `0` to `1`, where `0` enforces
-%   matching based on cross ratios, and `1` enforces matching based on
-%   length ratios.
-%
 % subject_colors -- Colours for the first sequence of collinear points
 %   A matrix of size 'm x 2', where the i-th row describes the colours
 %   surrounding the i-th point in `subject_lengths`.
@@ -92,12 +61,16 @@ function [ subject_match_indices ] = matchProbeLengths(...
 %   surrounding the i-th point in `query_lengths`. Analogous to
 %   `subject_colors`.
 %
-% color_weight -- Weight of colour adjacency scores
-%   The weight to apply to the colour portion of the alignment scores.
-%   `color_weight` ranges from `0` to `1`, where `0` enforces matching
-%   based only on geometric constraints (cross ratios and/or length
-%   ratios), and `1` enforces matching based only on colour adjacency
-%   constraints.
+% direction_threshold -- Threshold for orientation disambiguation
+%   As discussed in the 'Algorithm' section below, if the alignment scores
+%   for the two possible relative orientations of the subject and query
+%   sequences differ by a factor equal to or greater than `direction_threshold`, the
+%   lower-scoring orientation is discarded.
+%
+% inlier_threshold -- Threshold for selecting inliers
+%   As discussed in the 'Algorithm' section below, final matches between
+%   the subject and query sequences are filtered to those with colour-based
+%   matching scores greater than or equal to `inlier_threshold`.
 %
 % verbose -- Debugging flag
 %   If true, graphical output will be generated for debugging purposes.
@@ -113,37 +86,11 @@ function [ subject_match_indices ] = matchProbeLengths(...
 %   any point in `subject`.
 %
 % ## Algorithm
-% 
-% The two series of points are matched based on a combination of their
-% cross ratios, because cross ratios (as opposed to positions or length
-% ratios) are invariant to projective transformations, and their length
-% ratios, because affine distortion is often a reasonable approximation to
-% the actual transformation.
-% 
-% First, all possible cross ratios (from all possible 4-point subsequences)
-% are generated for the two sets of points. Each cross ratio from the
-% subject points is compared to each cross ratio from the query points, and
-% the degree of agreement between the two cross ratios is computed. The
-% agreement score is then added to the cross ratio matching scores of the
-% points used to form the two cross ratios.
 %
-% The same procedure is repeated for length ratios, except using all
-% possible 3-point subsequences.
-%
-% For example, if the cross ratios of points `(a, b, c, d)` and `(i, j, k,
-% l)` were compared, the resulting score would be added to the matching
-% scores for the pairings `(a, i)`, `(b, j)`, `(c, k)`, and `(d, l)`.
-%
-% The cross ratio-based matching scores are normalized to the range `[0,1]`
-% using the counts of cross ratios compared to generate each score. The
-% same normalization procedure is applied to length ratio-based matching
-% scores, and the two sets of scores are combined, using the
-% `affine_weight` weighting factor, to form the final geometric matching
-% scores.
-%
-% Next, if colour arguments have been provided, a second table of scores
-% is computed to reflect the agreement between the colours to the left and
-% right of the points.
+% Points are first matched using colour information: A table of matching
+% scores for all possible pairs of subject and query points is generated.
+% The two sequences of points are aligned using
+% `swSequenceAlignmentAffine`, with a local alignment scheme.
 %
 % For a point in the subject sequence, and a point in the query sequence,
 % their colour-based matching score is the sum of the scores determined for
@@ -155,32 +102,38 @@ function [ subject_match_indices ] = matchProbeLengths(...
 %
 % Consequently, colour-based matching scores are between zero and one.
 %
-% The final matching scores for the points in the subject and query
-% sequences are weighted averages of the geometry-based scores and the
-% colour-based scores. The weight on the colour-based scores is
-% `color_weight`.
+% The alignment is computed in two directions, to account for the two
+% possible relative orientations of the point sequences. For each
+% direction, multiple optimal alignments (sampled uniformly at random) are
+% requested, because there are generally too few colours for unambiguous
+% matching, and since there may be errors in colour labelling. Note that
+% separate colour-based matching scores are computed for each alignment
+% direction.
 %
-% Finally, the sequences of points are aligned using
-% `swSequenceAlignmentAffine`, in combination with the matching scores
-% determined as described above. A semi-global alignment scheme is used, as
-% `query` is assumed to contain valid points, but possibly be missing
-% points, whereas `subject` is assumed to be the sequence of all valid
-% points. Consequently, the complete alignment of `query` will be favoured,
-% whereas the process will not penalize the extension of `subject` outside
-% the aligned region.
+% If one direction produces an alignment score less than `direction_threshold` times
+% the alignment score of the other direction, all of its sample alignments
+% are excluded from further processing.
 %
-% The alignment is tested in both the forward and reverse directions, and
-% the final output, `subject_match_indices`, corresponds to the direction
-% producing the highest alignment score. Note that geometric and
-% colour-based point matching scores must be computed for each of the
-% alignment directions.
+% In the next stage, geometric verification, triplets of corresponding
+% points are selected at random from the optimal alignments. Each triplet
+% is used to compute a 1D homography between the subject and query points.
+% Matches for the remaining query points are computed by finding the
+% closest subject points to the locations of the query points following
+% transformation by the homography. The triplet is given a score equal to
+% the sum of the colour-based matching scores for all matches.
 %
-% See also crossRatio, lengthRatio, swSequenceAlignmentAffine, matchProbeLengthsRandom
+% The triplet selection and scoring process amounts to the RANSAC
+% algorithm. When the random sampling of triplets is finished, inlier
+% matches are set to those whose colour-based matching scores are greater
+% than or equal to `inlier_threshold`. Query points in outlier matches are
+% then paired with zeros in `subject_match_indices`.
+%
+% See also swSequenceAlignmentAffine, matchProbeLengths
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang
 % University of Alberta, Department of Computing Science
-% File created February 9, 2017
+% File created April 7, 2017
 
     function [ score ] = f_similarity_forward(s, q)
         score = scores(s, q, 1);

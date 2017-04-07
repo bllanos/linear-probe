@@ -86,7 +86,7 @@ h = V(:, end);
     
 if ~isempty(varargin)
     % Minimize L1 norm of A.h
-    % See 'l1DLT.pdf' provided with the lab instructions
+    % See 'l1DLT.pdf' provided with the CMPUT615 Lab 2 instructions
     eta = abs(A * h);
     eta(eta == 0) = 1; % Avoid zero weights
     l1Norm_past = Inf;
