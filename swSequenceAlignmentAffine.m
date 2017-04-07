@@ -201,7 +201,15 @@ n = length(query);
 % - H(:, :, 2) is 'I_x'
 % - H(:, :, 3) is 'I_y'
 H = -Inf(m + 1, n + 1, 3);
-back_pointers = zeros(m + 1, n + 1, 3, 3);
+% Dimensions of `back_pointers` represent the following:
+% 1 - Index of subject point
+% 2 - Index of query point
+% 3 - Which table the pointer is for ('M', 'I_x', 'I_y')
+% 4 - Which possible path (in cases where there are multiple maximum
+%     scoring paths)
+% 5 - Value of the backpointer, which points to a subject point, query
+%     point, and table location
+back_pointers = zeros(m + 1, n + 1, 3, 3, 3);
 subject_gap_penalty_1 = subject_gap_penalty(1);
 subject_gap_penalty_2 = subject_gap_penalty(2);
 query_gap_penalty_1 = query_gap_penalty(1);
@@ -209,19 +217,19 @@ query_gap_penalty_2 = query_gap_penalty(2);
 
 if strcmp(type, 'Global')
     H(1, :, 3) = subject_gap_penalty_1 + subject_gap_penalty_2 * (-1:1:n-1);
-    back_pointers(1, 2:end, 3, 1) = 1;
-    back_pointers(1, 2:end, 3, 2) = 1:n;
-    back_pointers(1, 2:end, 3, 3) = 3;
+    back_pointers(1, 2:end, 3, 1, 1) = 1;
+    back_pointers(1, 2:end, 3, 1, 2) = 1:n;
+    back_pointers(1, 2:end, 3, 1, 3) = 3;
     H(:, 1, 2) = query_gap_penalty_1 + query_gap_penalty_2 * (-1:1:m-1);
-    back_pointers(2:end, 1, 2, 1) = 1:m;
-    back_pointers(2:end, 1, 2, 2) = 1;
-    back_pointers(2:end, 1, 2, 3) = 2;
+    back_pointers(2:end, 1, 2, 1, 1) = 1:m;
+    back_pointers(2:end, 1, 2, 1, 2) = 1;
+    back_pointers(2:end, 1, 2, 1, 3) = 2;
     H(1, 1, 1) = 0;
 elseif strcmp(type, 'SemiGlobal')
     H(1, :, 3) = subject_gap_penalty_1 + subject_gap_penalty_2 * (-1:1:n-1);
-    back_pointers(1, 2:end, 3, 1) = 1;
-    back_pointers(1, 2:end, 3, 2) = 1:n;
-    back_pointers(1, 2:end, 3, 3) = 3;
+    back_pointers(1, 2:end, 3, 1, 1) = 1;
+    back_pointers(1, 2:end, 3, 1, 2) = 1:n;
+    back_pointers(1, 2:end, 3, 1, 3) = 3;
     H(:, 1, 1) = zeros(m + 1, 1);
 else
     % Local alignment
@@ -238,24 +246,47 @@ for i = 2:(m + 1)
         value_match_previous = H(i-1, j-1, 1) + value_match;
         value_gap_query = H(i-1, j-1, 2) + value_match;
         value_gap_subject = H(i-1, j-1, 3) + value_match;
-        [H(i, j, 1), ind] = max([value_match_previous, value_gap_query, value_gap_subject, threshold]);
-        if ind ~= 4
-            back_pointers(i, j, 1, :) = [i-1, j-1, ind];
-        end
+        candidates = [value_match_previous, value_gap_query, value_gap_subject, threshold];
+        max_val = max(candidates);
+        H(i, j, 1) = max_val;
+        ind = find(candidates == max_val);
+        ind = ind(ind ~= 4);
+        max_count = length(ind);
+        back_pointers(i, j, 1, 1:max_count, :) = [
+            repmat(i-1, max_count),...
+            repmat(j-1, max_count),...
+            ind
+        ];
         
         % Update 'I_x'
         value_match_previous = H(i-1, j, 1) + query_gap_penalty_1;
         value_gap_query = H(i-1, j, 2) + query_gap_penalty_2;
         value_gap_subject_previous = H(i-1, j, 3) + query_gap_penalty_1;
-        [H(i, j, 2), ind] = max([value_match_previous, value_gap_query, value_gap_subject_previous]);
-        back_pointers(i, j, 2, :) = [i-1, j, ind];
+        candidates = [value_match_previous, value_gap_query, value_gap_subject_previous];
+        max_val = max(candidates);
+        H(i, j, 2) = max_val;
+        ind = find(candidates == max_val);
+        max_count = length(ind);
+        back_pointers(i, j, 2, 1:max_count, :) = [
+            repmat(i-1, max_count),...
+            repmat(j, max_count),...
+            ind
+        ];
         
         % Update 'I_y'
         value_match_previous = H(i, j-1, 1) + subject_gap_penalty_1;
         value_gap_query_previous = H(i, j-1, 2) + subject_gap_penalty_1;
         value_gap_subject = H(i, j-1, 3) + subject_gap_penalty_2;
-        [H(i, j, 3), ind] = max([value_match_previous, value_gap_query_previous, value_gap_subject]);
-        back_pointers(i, j, 3, :) = [i, j-1, ind];
+        candidates = [value_match_previous, value_gap_query_previous, value_gap_subject];
+        max_val = max(candidates);
+        H(i, j, 3) = max_val;
+        ind = find(candidates == max_val);
+        max_count = length(ind);
+        back_pointers(i, j, 3, 1:max_count, :) = [
+            repmat(i, max_count),...
+            repmat(j-1, max_count),...
+            ind
+        ];
     end
 end
 
@@ -263,28 +294,66 @@ end
         % Trace backpointers to recover the path
         path = zeros(m + n, 3);
         if strcmp(type, 'Global')
-            [score, k] = max(H(end, end, :));
+            scores = H(end, end, :);
+            score = max(scores);
+            scores_ind = find(scores == score);
+            scores_count = length(scores_ind);
+            k = scores_ind(randi(scores_count));
             p = m + 1;
             q = n + 1;
         elseif strcmp(type, 'SemiGlobal')
-            [column_scores, row_indices] = max(H(:, end, :));
-            [score, k] = max(column_scores);
+            candidate_column_scores = H(:, end, :);
+            column_scores = max(candidate_column_scores);
+            row_indices = zeros(size(H, 3));
+            for column_index = 1:size(H, 3)
+                column_scores_ind = find(candidate_column_scores(:, :, column_index) == column_scores(column_index));
+                column_scores_count = length(column_scores_ind);
+                row_indices(column_index) = column_scores_ind(randi(column_scores_count));
+            end
+            score = max(column_scores);
+            scores_ind = find(column_scores == score);
+            scores_count = length(scores_ind);
+            k = scores_ind(randi(scores_count));
             p = row_indices(k);
             q = n + 1;
         else
             % Local alignment
-            [sheet_column_scores, sheet_row_indices] = max(H);
-            [sheet_scores, sheet_column_indices] = max(sheet_column_scores);
-            [score, k] = max(sheet_scores);
+            sheet_column_scores = max(H);
+            sheet_row_indices = zeros(size(H, 2), size(H, 3));
+            for sheet_column_index = 1:size(H, 2)
+                for column_index = 1:size(H, 3)
+                    sheet_column_scores_ind = find(H(:, sheet_column_index, column_index) == sheet_column_scores(:, sheet_column_index, column_index));
+                    sheet_column_scores_count = length(sheet_column_scores_ind);
+                    sheet_row_indices(sheet_column_index, column_index) = sheet_column_scores_ind(randi(sheet_column_scores_count));
+                end
+            end
+            
+            sheet_scores = max(sheet_column_scores);
+            sheet_column_indices = zeros(size(H, 3));
+            for column_index = 1:size(H, 3)
+                column_scores_ind = find(sheet_column_scores(:, :, column_index) == sheet_scores(column_index));
+                column_scores_count = length(column_scores_ind);
+                sheet_column_indices(column_index) = column_scores_ind(randi(column_scores_count));
+            end
+            
+            score = max(sheet_scores);
+            scores_ind = find(sheet_scores == score);
+            scores_count = length(scores_ind);
+            k = scores_ind(randi(scores_count));
             q = sheet_column_indices(k);
-            p = sheet_row_indices(1, q, k);
+            p = sheet_row_indices(q, k);
         end
 
         path(1, :) = [p, q, k];
         path_length = 1;
         while p > 1 && q > 1 && k > 0
             path_length = path_length + 1;
-            path(path_length, :) = back_pointers(p, q, k, :);
+            candidate_pointers = back_pointers(p, q, k, :, :);
+            candidate_pointers = squeeze(candidate_pointers);
+            candidate_pointers_filter = logical(candidate_pointers(:, 1));
+            candidate_pointers = candidate_pointers(candidate_pointers_filter, :);
+            pointer = candidate_pointers(randi(size(candidate_pointers, 1)), :);
+            path(path_length, :) = pointer;
             p = path(path_length, 1);
             q = path(path_length, 2);
             k = path(path_length, 3);
