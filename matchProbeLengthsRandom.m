@@ -267,10 +267,14 @@ if verbose
         for j = 1:size(alignment, 1)
             s = alignment(j, 1);
             q = alignment(j, 2);
-            votes(s, q) = votes(s, q) + 1;
+            if i <= n_alignments
+                votes(s, q, 1) = votes(s, q, 1) + 1;
+            else
+                votes(s, q, 2) = votes(s, q, 2) + 1;
+            end
         end
     end
-    plotScores(color_scores, 'matching frequencies');
+    plotScores(votes, 'matching frequencies');
 end
 
 if score_forward >= (direction_threshold * score_reverse)

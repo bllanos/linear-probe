@@ -174,8 +174,8 @@ detectWithinBoundingBoxParams.edge_refinement_filter_threshold = 0.3;
 detected_point_alignment_outlier_threshold = 5;
 
 % Matching edge endpoints to probe measurements
-subject_gap_cost_detection = 0;
-query_gap_cost_detection = 0;
+subject_gap_cost_detection = -1;
+query_gap_cost_detection = -1;
 direction_threshold = 2;
 alignment_inlier_threshold = 0.5;
 
@@ -200,9 +200,9 @@ detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = false;
 
 display_detected_model_from_image = true;
 
-display_final_clipped_regions_colored = true;
+display_final_clipped_regions_colored = false;
 
-verbose_detected_point_sequence_matching = false;
+verbose_detected_point_sequence_matching = true;
 display_detected_model_matching = true;
 
 %% Load the image containing the probe in an unknown pose
