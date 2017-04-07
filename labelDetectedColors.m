@@ -1,7 +1,7 @@
 function [ colors_left, colors_right ] = labelDetectedColors(...
     I, probe_color_distributions, probe_color_distribution_increment,...
     probe_regions_bw,...
-    model_pca_space, model, model_transform, varargin...
+    model_pca_space, model, model_transform, axis, varargin...
 )
 %LABELDETECTEDCOLORS Robustly associate detected probe regions with colour classes
 %
@@ -9,14 +9,14 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 % [ colors_left, colors_right ] = labelDetectedColors(...
 %     I, probe_color_distributions, probe_color_distribution_increment,...
 %     probe_regions_bw,...
-%     model_pca_space, model, model_transform [, verbose]...
+%     model_pca_space, model, model_transform, axis [, verbose]...
 % )
 %
 % ## Description
 % [ colors_left, colors_right ] = labelDetectedColors(...
 %     I, probe_color_distributions, probe_color_distribution_increment,...
 %     probe_regions_bw,...
-%     model_pca_space, model, model_transform [, verbose]...
+%     model_pca_space, model, model_transform, axis [, verbose]...
 % )
 %   Returns the colour labels associated with the regions to either side of
 %   each detected edge between the coloured bands of the probe.
@@ -69,6 +69,10 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 %   'bilateralModel()' is called on the probe band edge endpoints detected
 %   from the regions in `probe_regions_bw`.
 %
+% axis -- Estimated probe axis in image
+%   A 3-vector containing the homogenous coordinates of a line in the image
+%   approximating the probe axis.
+%
 % verbose -- Debugging flag
 %   If true, graphical output will be generated for debugging purposes.
 %
@@ -94,17 +98,21 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 % determine the labels on either side of a detected edge, given that edges
 % are detected by finding narrow spaces between detected regions with
 % different colour labels. However, detected regions may poorly overlap
-% with their ground truth shapes in the image.
+% with their ground truth shapes in the image, and there may be spurious,
+% small detected regions.
 %
-% This function attempts to robustly determine the appropriate colour label
-% between detected edges. Instead of assigning labels based on the closest
-% detected colour regions to each detected edge, it assigns labels based on
-% the closest centroids of detected colour regions to each detected edge.
-% Centroids are computed after clipping the detected coloured regions to
-% the quadrilaterals defined by the endpoints of adjacent detected edges.
+% Instead of assigning labels based on the closest detected colour regions
+% to each detected edge, this function assigns labels based on the closest
+% centroids of detected colour regions to each detected edge. Centroids are
+% computed after clipping the detected coloured regions to the
+% quadrilaterals defined by the endpoints of adjacent detected edges.
 % Assigning colour labels based on distances to centroids provides
 % robustness to slight biases of detected edge positions towards the
 % interiors of detected colour regions.
+%
+% Centroids are first filtered to those whose regions (as they appear after
+% clipping) cross the estimated axis of the probe. This step eliminates
+% many small, spurious detected regions.
 %
 % ## Notes
 % - This function computes binary images for the probe colours that are
@@ -120,10 +128,10 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 % University of Alberta, Department of Computing Science
 % File created March 28, 2017
 
-%% Parse input arguments
+% Parse input arguments
 
 nargoutchk(2,2);
-narginchk(7,8);
+narginchk(8,9);
 
 if ~isempty(varargin)
     verbose = varargin{1};
@@ -251,13 +259,33 @@ for i = 1:n_colors
     offset = offset + size(centroids{i}, 1);
 end
 
+% Filter out regions which do not cross the estimated probe axis
+
+% Find region pixel coordinates
+image_points = cell(n_regions_all, 1);
+offset = 1;
+for i = 1:n_colors
+    px_indices = regions(i).PixelIdxList;
+    for j = 1:regions(i).NumObjects
+        [row, col] = ind2sub([image_height, image_width], px_indices{j});
+        image_points{offset} = [col, row];
+        offset = offset + 1;
+    end
+end
+
+% Filter to regions which cross the estimated probe axis
+regions_filter = isOnBothSidesOfLine( image_points, axis );
+centroids_filtered = centroids_all(regions_filter, :);
+centroids_color_index = centroids_color_index(regions_filter);
+n_regions_filtered = length(centroids_color_index);
+
 % Label the colours between detected probe band edges
 
 % Find the first components of the PCA-space coordinates of the centriods
 centroids_pca_space_x = [
-        centroids_all(:, 1),...
-        centroids_all(:, 2),...
-        ones(n_regions_all,1)
+        centroids_filtered(:, 1),...
+        centroids_filtered(:, 2),...
+        ones(n_regions_filtered,1)
         ] / model_transform;
 % Normalization (dividing by the homogenous coordinate) is not
 % necessary, as `model_transform` is an affine transformation.
@@ -275,13 +303,27 @@ for i = 1:n_detected_band_edges
     distances = centroids_pca_space_x - center_coord;
     distances_left = distances;
     distances_left(distances > 0) = -Inf;
-    [~, index] = max(distances_left);
-    colors_left(i) = centroids_color_index(index);
+    [val, index] = max(distances_left);
+    if isfinite(val)
+        colors_left(i) = centroids_color_index(index);
+    end
     
     distances_right = distances;
     distances_right(distances < 0) = Inf;
-    [~, index] = min(distances_right);
-    colors_right(i) = centroids_color_index(index);
+    [val, index] = min(distances_right);
+    if isfinite(val)
+        colors_right(i) = centroids_color_index(index);
+    end
+end
+
+if verbose    
+    figure
+    imshow(probe_regions_bw_clipped_display);
+    hold on
+    scatter(centroids_all(~regions_filter, 1), centroids_all(~regions_filter, 2), 'ro');
+    scatter(centroids_filtered(:, 1), centroids_filtered(:, 2), 'go');
+    hold off
+    title('Centroids used for colour labelling (green) and rejected centriods (red)')
 end
 
 end

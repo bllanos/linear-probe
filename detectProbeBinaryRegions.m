@@ -181,7 +181,7 @@ while trial <= n_trials
         n_inliers_max = n_inliers;
         inliers_filter = inliers_filter_candidate;
         n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_regions_all) ^ 2));
-        if n_inliers > inliers_count_threshold
+        if n_inliers >= inliers_count_threshold
             break;
         end
     end
