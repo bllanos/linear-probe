@@ -225,9 +225,7 @@ if ~isempty(varargin)
         end
     else
         error('Incorrect number of input arguments')
-    end
-else
-    
+    end    
 end
 
 n_subject = length(subject_lengths);
