@@ -1,12 +1,17 @@
-function [ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, type )
+function [ alignment, score ] = swSequenceAlignmentAffine(...
+    subject, query, f_similarity, threshold,...
+    subject_gap_penalty, query_gap_penalty, type, varargin...
+)
 % SWSEQUENCEALIGNMENT  Optimal global, semi-global, or local pairwise sequence alignment for affine or simpler gap penalty functions
 %
 % ## Syntax
 % alignment = swSequenceAlignmentAffine(...
-%   subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, type...
+%   subject, query, f_similarity, threshold,...
+%   subject_gap_penalty, query_gap_penalty, type [, sample_count]...
 % )
 % [ alignment, score ] = swSequenceAlignmentAffine(...
-%   subject, query, f_similarity, threshold, subject_gap_penalty, query_gap_penalty, type...
+%   subject, query, f_similarity, threshold,...
+%   subject_gap_penalty, query_gap_penalty, type [, sample_count]...
 % )
 %
 % ## Description
@@ -98,6 +103,20 @@ function [ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_sim
 %     with low scores, then this scheme makes it more likely that the final
 %     alignment will span only a portion of each sequence.
 %
+% sample_count -- Number of alignments to output
+%   If `sample_count` is greater than one, `alignment` will be a cell row
+%   vector of length `sample_count`. Each element of `alignment` will be an
+%   optimal sequence alignment sampled using a random walk through the
+%   forest of back pointers defining possible optimal sequence alignments.
+%
+%   `sample_count` is used to obtain a representative set of optimal
+%   alignments in cases where the optimal alignment is not unique.
+%   Enumerating every possible optimal alignment may be computationally
+%   infeasible; A fixed number of samples trades completeness for
+%   efficiency.
+%
+%   Defaults to 1 if not passed.
+%
 % ## Output Arguments
 %
 % alignment -- Optimal sequence alignment
@@ -117,6 +136,10 @@ function [ alignment, score ] = swSequenceAlignmentAffine( subject, query, f_sim
 %     length 15, and `query(13:end)` is matched with a trailing gap in
 %     `subject`, or `query` has length 12, and `subject(15:end)` is matched
 %     with a trailing gap in `query`.
+%
+%   If `sample_count` is greater than 1, `alignment` is a cell vector of
+%   optimal sequence alignments. Refer to the documentation of
+%   `sample_count` above.
 %
 % score -- Optimal sequence alignment score
 %   The score corresponding to the alignment returned in `alignment`, which
@@ -158,6 +181,15 @@ end
 
 if ~strcmp(type, 'Local') && threshold ~= -Inf
     warning('For a global or semi-global alignment, the value of `threshold` should be `-Inf`.');
+end
+
+if ~isempty(varargin)
+    sample_count = varargin{1};
+else
+    sample_count = 1;
+end
+if sample_count < 1
+    error('Value of `sample_count` input argument must be one or greater.')
 end
 
 % Initialization
@@ -227,57 +259,61 @@ for i = 2:(m + 1)
     end
 end
 
-% Trace backpointers to recover the path
-path = zeros(m + n, 3);
-if strcmp(type, 'Global')
-    [score, k] = max(H(end, end, :));
-    i = m + 1;
-    j = n + 1;
-elseif strcmp(type, 'SemiGlobal')
-    [column_scores, row_indices] = max(H(:, end, :));
-    [score, k] = max(column_scores);
-    i = row_indices(k);
-    j = n + 1;
-else
-    % Local alignment
-    [sheet_column_scores, sheet_row_indices] = max(H);
-    [sheet_scores, sheet_column_indices] = max(sheet_column_scores);
-    [score, k] = max(sheet_scores);
-    j = sheet_column_indices(k);
-    i = sheet_row_indices(1, j, k);
-end
+    function [alignment, score] = tracePath()
+        % Trace backpointers to recover the path
+        path = zeros(m + n, 3);
+        if strcmp(type, 'Global')
+            [score, k] = max(H(end, end, :));
+            p = m + 1;
+            q = n + 1;
+        elseif strcmp(type, 'SemiGlobal')
+            [column_scores, row_indices] = max(H(:, end, :));
+            [score, k] = max(column_scores);
+            p = row_indices(k);
+            q = n + 1;
+        else
+            % Local alignment
+            [sheet_column_scores, sheet_row_indices] = max(H);
+            [sheet_scores, sheet_column_indices] = max(sheet_column_scores);
+            [score, k] = max(sheet_scores);
+            q = sheet_column_indices(k);
+            p = sheet_row_indices(1, q, k);
+        end
 
-path(1, :) = [i, j, k];
-path_length = 1;
-while i > 1 && j > 1 && k > 0
-    path_length = path_length + 1;
-    path(path_length, :) = back_pointers(i, j, k, :);
-    i = path(path_length, 1);
-    j = path(path_length, 2);
-    k = path(path_length, 3);
-end
+        path(1, :) = [p, q, k];
+        path_length = 1;
+        while p > 1 && q > 1 && k > 0
+            path_length = path_length + 1;
+            path(path_length, :) = back_pointers(p, q, k, :);
+            p = path(path_length, 1);
+            q = path(path_length, 2);
+            k = path(path_length, 3);
+        end
 
-% Trace the path to recover the alignment
-path = [ ones(1, 3); path(path_length:-1:1, :) ];
-alignment = zeros(path_length, 2);
-for s = 1:path_length
-    pair = path(s + 1, 1:2) - 1;
-    k = path(s + 1, 3);
-    if k == 1
-        % Match or mismatch
-        alignment(s, :) = pair;
-    elseif k == 2
-        % Gap in query
-        alignment(s, 1) = pair(1);
-    else
-        % Gap in subject
-        alignment(s, 2) = pair(2);
+        % Trace the path to recover the alignment
+        path = [ ones(1, 3); path(path_length:-1:1, :) ];
+        alignment = zeros(path_length, 2);
+        for s = 1:path_length
+            pair = path(s + 1, 1:2) - 1;
+            k = path(s + 1, 3);
+            if k == 1
+                % Match or mismatch
+                alignment(s, :) = pair;
+            elseif k == 2
+                % Gap in query
+                alignment(s, 1) = pair(1);
+            else
+                % Gap in subject
+                alignment(s, 2) = pair(2);
+            end
+        end
+
+        % Strip redundant gap
+        if alignment(1, 1) == 0 || alignment(1, 2) == 0
+            alignment = alignment(2:end, :);
+        end
     end
-end
 
-% Strip redundant gap
-if alignment(1, 1) == 0 || alignment(1, 2) == 0
-    alignment = alignment(2:end, :);
-end
+[alignment, score] = tracePath();
 
 end
