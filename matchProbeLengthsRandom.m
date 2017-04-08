@@ -146,6 +146,20 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
         score = color_scores(s, q, 2);
     end
 
+    function evaluateModel(H)
+        x1_mapped = (H * x1.').';
+        x1_mapped = x1_mapped(:, 1) ./ x1_mapped(:, 2);
+        
+        % Find nearest neighbours and corresponding colour scores
+        for i_fn = 1:n_query
+            [~, nearest_ind(i)] = min(abs(x2(:, 1) - x1_mapped(i_fn)));
+            inliers_filter(i_fn) =...
+                (color_scores(nearest_ind(i), i_fn, alignment_column(end-1)) >=...
+                inlier_threshold);
+        end
+        n_inliers = sum(inliers_filter);
+    end
+
     function plotScores(scores, str)
         for index = 1:2
             figure;
@@ -177,7 +191,8 @@ n_query = length(query_lengths);
 query_sequence = 1:n_query;
 
 % Computing a 1D homography requires at least 3 points.
-if n_subject < 3 || n_query < 3
+sample_size = 3;
+if n_subject < sample_size || n_query < sample_size
     verify_matching = false;
     warning('Insufficient points available for geometric verification of alignments.')
 else
@@ -277,55 +292,176 @@ if verbose
     plotScores(votes, 'matching frequencies, raw');
 end
 
-if score_forward >= (direction_threshold * score_reverse)
-    all_alignments = all_alignments(1:n_alignments);
-    n_all_alignments = n_alignments;
-elseif score_reverse >= (direction_threshold * score_forward)
-    all_alignments = all_alignments((n_alignments + 1):end);
-    n_all_alignments = n_alignments;
-end
-
-% Deduplicate sequence alignments
-n_pairs_max = min(n_subject, n_query);
-n_pairs_max_plus1 = n_pairs_max+1;
-alignments_matrix = zeros(n_all_alignments, 2 * n_pairs_max + 1);
-for i = 1:n_all_alignments
-    alignment = all_alignments{i};
-    n_pairs_i = size(alignment, 1);
-    alignments_matrix(i, end) = n_pairs_i;
-    alignments_matrix(i, 1:n_pairs_i) = alignment(:, 1);
-    alignments_matrix(i, n_pairs_max_plus1:(n_pairs_max + n_pairs_i)) = alignment(:, 2);
-end
-% Note transpose: Matrices are stored in a column-major format in MATLAB
-alignments_matrix = unique(alignments_matrix, 'rows').';
-% The last row stores the number of pairs in the alignments
-n_all_alignments = size(alignments_matrix, 2);
-
-% Visualize the specificity of point matches after deduplication
-if verbose
-    votes = zeros(n_subject, n_query);
+if verify_matching
+    if score_forward >= (direction_threshold * score_reverse)
+        all_alignments = all_alignments(1:n_alignments);
+        n_all_alignments = n_alignments;
+        forward_only = true;
+    elseif score_reverse >= (direction_threshold * score_forward)
+        all_alignments = all_alignments((n_alignments + 1):end);
+        n_all_alignments = n_alignments;
+        reverse_only = true;
+    else
+        forward_only = false;
+        reverse_only = false;
+    end
+    
+    % Deduplicate sequence alignments
+    n_pairs_max = min(n_subject, n_query);
+    n_pairs_max_plus1 = n_pairs_max+1;
+    alignments_matrix = zeros(n_all_alignments, 2 * n_pairs_max + 2);
+    for i = 1:n_all_alignments
+        alignment = all_alignments{i};
+        n_pairs_i = size(alignment, 1);
+        alignments_matrix(i, end) = n_pairs_i;
+        if forward_only
+            alignments_matrix(i, end-1) = 1;
+        elseif reverse_only
+            alignments_matrix(i, end-1) = 2;
+        elseif i <= n_alignments
+            alignments_matrix(i, end-1) = 1;
+        else
+            alignments_matrix(i, end-1) = 2;
+        end
+        alignments_matrix(i, 1:n_pairs_i) = alignment(:, 1);
+        alignments_matrix(i, n_pairs_max_plus1:(n_pairs_max + n_pairs_i)) = alignment(:, 2);
+    end
+    % Note transpose: Matrices are stored in a column-major format in MATLAB
+    alignments_matrix = unique(alignments_matrix, 'rows').';
+    % The last row stores the number of pairs in the alignments
+    n_all_alignments = size(alignments_matrix, 2);
+    
+    % Count unique matches
+    if forward_only || reverse_only
+        votes = zeros(n_subject, n_query, 2);
+    else
+        votes = zeros(n_subject, n_query);
+    end
     for i = 1:n_all_alignments
         for j = 1:alignments_matrix(end, i)
             s = alignments_matrix(j, i);
             q = alignments_matrix(j + n_pairs_max, i);
-            votes(s, q) = votes(s, q) + 1;
+            if forward_only || reverse_only
+                votes(s, q) = votes(s, q) + 1;
+            else
+                direction = alignments_matrix(end-1, i);
+                votes(s, q, direction) = votes(s, q, direction) + 1;
+            end
         end
     end
-    figure;
-    imagesc(votes)
-    colorbar
-    title('Matching frequencies after sequence alignment deduplication')
-    xlabel('Query sequence index')
-    ylabel('Subject sequence index')
+    if forward_only || reverse_only
+        n_matches = sum(sum(votes ~= 0));
+    else
+        n_matches = sum(sum(sum(votes ~= 0)));
+    end
+    
+    % Visualize the specificity of point matches after deduplication
+    if verbose
+        if forward_only || reverse_only
+            figure;
+            imagesc(votes)
+            colorbar
+            title('Matching frequencies after sequence alignment deduplication')
+            xlabel('Query sequence index')
+            ylabel('Subject sequence index')
+        else
+            plotScores(votes, 'matching frequencies, deduplicated');
+        end
+    end
+    
+    % Geometric verification is only possible for sufficiently long
+    % sequences
+    alignments_matrix = alignments_matrix(...
+        :, alignments_matrix(end, :) >= sample_size...
+        );
+    n_all_alignments = size(alignments_matrix, 2);
+    if n_all_alignments == 0
+        warning('Alignments have insufficient lengths for geometric verification')
+        
+        % Just pick the first alignment from the best scoring direction
+        if score_forward >= (direction_threshold * score_reverse)
+            alignment = all_alignments{1};
+        elseif score_reverse >= (direction_threshold * score_forward)
+            alignment = all_alignments{1};
+        elseif score_forward > score_reverse
+            alignment = all_alignments{1};
+        elseif score_forward == score_reverse
+            warning('Scores for forward and reverse alignments are equal. Orientation is ambiguous. Forward orientation is assumed.')
+            alignment = all_alignments{1};
+        else
+            alignment = all_alignments{n_alignments + 1};
+        end
+    else
+        % Geometric verification
+    
+        % Pre-normalize the points for homography estimation
+        x1 = [subject_lengths ones(n_subject, 1)];
+        x2 = [query_lengths ones(n_query, 1)];
+        x1 = normalizePointsPCA(x1);
+        x2 = normalizePointsPCA(x2);
+
+        % RANSAC-based estimation of the final alignment
+        trial = 1;
+        % Number of outliers is unknown - This is the worst case
+        n_trials = nchoosek(n_matches, sample_size);
+        alignment_indices = randi(n_all_alignments, n_trials, 1);
+        n_inliers_max = 0;
+        % Number of inliers is unknown - This is the worst case
+        inliers_count_threshold = max(alignments_matrix(end, :));
+        % Require this probability that at least one of `n_trials` samples contains only inliers
+        p = 0.99;
+        inliers_filter = false(n_query, 1);
+        nearest_ind = zeros(n_query, 1);
+        n_inliers = 0;
+        while trial <= n_trials
+            alignment_column = alignments_matrix(:, alignment_indices(trial));
+            n_pairs = alignment_column(end);
+            sample_indices = randperm(n_pairs, sample_size);
+            sample_subject = alignment_column(sample_indices);
+            sample_query = alignment_column(sample_indices + n_pairs_max);
+
+            % 1D homography estimation minimizing the L2 norm of algebraicerror
+            H = homography1D(x1(sample_subject, :), x2(sample_query, :), false);
+            evaluateModel(H);
+
+            if n_inliers > n_inliers_max
+                H_final = H;
+                n_inliers_max = n_inliers;
+                n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_matches) ^ sample_size));
+                if n_inliers >= inliers_count_threshold
+                    break;
+                end
+            end
+            trial = trial + 1;
+        end
+
+        % Refine the set of inliers
+        diff_inlier_count = Inf;
+        evaluateModel(H_final);
+        while diff_inlier_count > 0
+            n_inliers_old = n_inliers;
+            H_final = homography1D(x1(inliers_filter, :), x2(nearest_ind(inliers_filter), :), false);
+            evaluateModel(H_final);
+            diff_inlier_count = abs(n_inliers_old - n_inliers);
+        end
+
+        % Final alignment
+        alignment = [
+            subject_sequence(nearest_ind(inliers_filter)),...
+            query_sequence(inliers_filter)
+        ];
+    end
+    
+else
+    if score_forward > score_reverse
+        alignment = all_alignments{1};
+    elseif score_forward == score_reverse
+        warning('Scores for forward and reverse alignments are equal. Orientation is ambiguous. Forward orientation is assumed.')
+        alignment = all_alignments{1};
+    else
+        alignment = all_alignments{n_alignments + 1};
+    end
 end
-
-% TODO Geometric verification
-
-alignment_length = alignments_matrix(end, 1);
-alignment = [
-    alignments_matrix(1:alignment_length, 1),...
-    alignments_matrix(n_pairs_max_plus1:(n_pairs_max + alignment_length), 1)
-    ];
 
 if verbose
     disp('Sequence alignment:');
