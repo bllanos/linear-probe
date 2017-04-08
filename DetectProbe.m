@@ -174,10 +174,10 @@ detectWithinBoundingBoxParams.edge_refinement_filter_threshold = 0.3;
 detected_point_alignment_outlier_threshold = 5;
 
 % Matching edge endpoints to probe measurements
-subject_gap_cost_detection = -1;
-query_gap_cost_detection = -1;
-direction_threshold = 2;
-alignment_inlier_threshold = 0.5;
+subject_gap_cost_detection = 0;
+query_gap_cost_detection = 0;
+direction_threshold = 1.25;
+alignment_inlier_threshold = 0.75;
 
 % Debugging tools
 detectBoundingBoxesVerbose.display_original_image = false;

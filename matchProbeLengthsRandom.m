@@ -121,15 +121,26 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 % points are selected at random from the optimal alignments. Each triplet
 % is used to compute a 1D homography between the subject and query points.
 % Matches for the remaining query points are computed by finding the
-% closest subject points to the locations of the query points following
-% transformation by the homography. The triplet is given a score equal to
-% the sum of the colour-based matching scores for all matches.
+% closest subject points to the locations of the query points transformed
+% by the homography. The triplet is given a score equal to the number of
+% colour-based matching scores that are at least `inlier_threshold`.
 %
-% The triplet selection and scoring process amounts to the RANSAC
-% algorithm. When the random sampling of triplets is finished, inlier
-% matches are set to those whose colour-based matching scores are greater
-% than or equal to `inlier_threshold`. Query points in outlier matches are
-% then paired with zeros in `subject_match_indices`.
+% The triplet selection and scoring process is the RANSAC algorithm. When
+% the random sampling of triplets is finished, inlier matches are set to
+% those whose colour-based matching scores are greater than or equal to
+% `inlier_threshold`. Query points in outlier matches are then paired with
+% zeros in `subject_match_indices`.
+%
+% ## Notes
+% - Geometric verification will be skipped if either of the input
+%   point sequences, or all of their alignments, are of length less than 3.
+%   (At least 3 points are needed to find a 1D homography.)
+%
+% ## References
+% Section 4.7 (on RANSAC) of Hartley, Richard, and Andrew Zisserman. Multiple
+%   View Geometry In Computer Vision. Cambridge, UK: Cambridge University
+%   Press, 2003. eBook Academic Collection (EBSCOhost). Web. 15 August
+%   2016.
 %
 % See also swSequenceAlignmentAffine, matchProbeLengths
 
@@ -146,15 +157,15 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
         score = color_scores(s, q, 2);
     end
 
-    function evaluateModel(H)
+    function evaluateModel(H, direction)
         x1_mapped = (H * x1.').';
         x1_mapped = x1_mapped(:, 1) ./ x1_mapped(:, 2);
         
         % Find nearest neighbours and corresponding colour scores
         for i_fn = 1:n_query
-            [~, nearest_ind(i)] = min(abs(x2(:, 1) - x1_mapped(i_fn)));
+            [~, nearest_ind(i_fn)] = min(abs(x2(:, 1) - x1_mapped(i_fn)));
             inliers_filter(i_fn) =...
-                (color_scores(nearest_ind(i), i_fn, alignment_column(end-1)) >=...
+                (color_scores(nearest_ind(i_fn), i_fn, direction) >=...
                 inlier_threshold);
         end
         n_inliers = sum(inliers_filter);
@@ -297,10 +308,12 @@ if verify_matching
         all_alignments = all_alignments(1:n_alignments);
         n_all_alignments = n_alignments;
         forward_only = true;
+        reverse_only = false;
     elseif score_reverse >= (direction_threshold * score_forward)
         all_alignments = all_alignments((n_alignments + 1):end);
         n_all_alignments = n_alignments;
         reverse_only = true;
+        forward_only = false;
     else
         forward_only = false;
         reverse_only = false;
@@ -333,9 +346,9 @@ if verify_matching
     
     % Count unique matches
     if forward_only || reverse_only
-        votes = zeros(n_subject, n_query, 2);
-    else
         votes = zeros(n_subject, n_query);
+    else
+        votes = zeros(n_subject, n_query, 2);
     end
     for i = 1:n_all_alignments
         for j = 1:alignments_matrix(end, i)
@@ -379,9 +392,9 @@ if verify_matching
         warning('Alignments have insufficient lengths for geometric verification')
         
         % Just pick the first alignment from the best scoring direction
-        if score_forward >= (direction_threshold * score_reverse)
+        if forward_only
             alignment = all_alignments{1};
-        elseif score_reverse >= (direction_threshold * score_forward)
+        elseif reverse_only
             alignment = all_alignments{1};
         elseif score_forward > score_reverse
             alignment = all_alignments{1};
@@ -415,6 +428,7 @@ if verify_matching
         n_inliers = 0;
         while trial <= n_trials
             alignment_column = alignments_matrix(:, alignment_indices(trial));
+            direction = alignment_column(end-1);
             n_pairs = alignment_column(end);
             sample_indices = randperm(n_pairs, sample_size);
             sample_subject = alignment_column(sample_indices);
@@ -422,10 +436,11 @@ if verify_matching
 
             % 1D homography estimation minimizing the L2 norm of algebraicerror
             H = homography1D(x1(sample_subject, :), x2(sample_query, :), false);
-            evaluateModel(H);
+            evaluateModel(H, direction);
 
             if n_inliers > n_inliers_max
                 H_final = H;
+                direction_final = direction;
                 n_inliers_max = n_inliers;
                 n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_matches) ^ sample_size));
                 if n_inliers >= inliers_count_threshold
@@ -437,18 +452,18 @@ if verify_matching
 
         % Refine the set of inliers
         diff_inlier_count = Inf;
-        evaluateModel(H_final);
-        while diff_inlier_count > 0
+        evaluateModel(H_final, direction_final);
+        while (diff_inlier_count > 0) && (n_inliers >= sample_size)
             n_inliers_old = n_inliers;
             H_final = homography1D(x1(inliers_filter, :), x2(nearest_ind(inliers_filter), :), false);
-            evaluateModel(H_final);
-            diff_inlier_count = abs(n_inliers_old - n_inliers);
+            evaluateModel(H_final, direction_final);
+            diff_inlier_count = n_inliers - n_inliers_old;
         end
 
         % Final alignment
         alignment = [
-            subject_sequence(nearest_ind(inliers_filter)),...
-            query_sequence(inliers_filter)
+            subject_sequence(nearest_ind(inliers_filter)).',...
+            query_sequence(inliers_filter).'
         ];
     end
     
