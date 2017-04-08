@@ -274,7 +274,7 @@ if verbose
             end
         end
     end
-    plotScores(votes, 'matching frequencies');
+    plotScores(votes, 'matching frequencies, raw');
 end
 
 if score_forward >= (direction_threshold * score_reverse)
@@ -285,8 +285,47 @@ elseif score_reverse >= (direction_threshold * score_forward)
     n_all_alignments = n_alignments;
 end
 
+% Deduplicate sequence alignments
+n_pairs_max = min(n_subject, n_query);
+n_pairs_max_plus1 = n_pairs_max+1;
+alignments_matrix = zeros(n_all_alignments, 2 * n_pairs_max + 1);
+for i = 1:n_all_alignments
+    alignment = all_alignments{i};
+    n_pairs_i = size(alignment, 1);
+    alignments_matrix(i, end) = n_pairs_i;
+    alignments_matrix(i, 1:n_pairs_i) = alignment(:, 1);
+    alignments_matrix(i, n_pairs_max_plus1:(n_pairs_max + n_pairs_i)) = alignment(:, 2);
+end
+% Note transpose: Matrices are stored in a column-major format in MATLAB
+alignments_matrix = unique(alignments_matrix, 'rows').';
+% The last row stores the number of pairs in the alignments
+n_all_alignments = size(alignments_matrix, 2);
+
+% Visualize the specificity of point matches after deduplication
+if verbose
+    votes = zeros(n_subject, n_query);
+    for i = 1:n_all_alignments
+        for j = 1:alignments_matrix(end, i)
+            s = alignments_matrix(j, i);
+            q = alignments_matrix(j + n_pairs_max, i);
+            votes(s, q) = votes(s, q) + 1;
+        end
+    end
+    figure;
+    imagesc(votes)
+    colorbar
+    title('Matching frequencies after sequence alignment deduplication')
+    xlabel('Query sequence index')
+    ylabel('Subject sequence index')
+end
+
 % TODO Geometric verification
-alignment = all_alignments{1};
+
+alignment_length = alignments_matrix(end, 1);
+alignment = [
+    alignments_matrix(1:alignment_length, 1),...
+    alignments_matrix(n_pairs_max_plus1:(n_pairs_max + alignment_length), 1)
+    ];
 
 if verbose
     disp('Sequence alignment:');
