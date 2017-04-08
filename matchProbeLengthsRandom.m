@@ -122,19 +122,25 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 % is used to compute a 1D homography between the subject and query points.
 % Matches for the remaining query points are computed by finding the
 % closest subject points to the locations of the query points transformed
-% by the homography. The triplet is given a score equal to the number of
-% colour-based matching scores that are at least `inlier_threshold`.
+% by the homography. The triplet is scored using a combination of the
+% following:
+% - The number of colour-based matching scores for the closest point pairs
+%   that are at least `inlier_threshold`.
+% - The number of closest point pairs that satisfy a mutual consistency
+%   check.
+% - The separation of the closest point pairs satisfying the above two
+%   tests. (This is not a measure of reprojection error, as only the
+%   homography has been estimated, not one set of corresponding points.)
 %
-% The triplet selection and scoring process is the RANSAC algorithm. When
-% the random sampling of triplets is finished, inlier matches are set to
-% those whose colour-based matching scores are greater than or equal to
-% `inlier_threshold`. Query points in outlier matches are then paired with
-% zeros in `subject_match_indices`.
+% The triplet selection and scoring process is the RANSAC algorithm.
 %
 % ## Notes
 % - Geometric verification will be skipped if either of the input
 %   point sequences, or all of their alignments, are of length less than 3.
 %   (At least 3 points are needed to find a 1D homography.)
+% - The algorithm is more successful when the query points span a large
+%   range of the subject points, rather than consisting of consecutive
+%   points, or of tightly-grouped points.
 %
 % ## References
 % Section 4.7 (on RANSAC) of Hartley, Richard, and Andrew Zisserman. Multiple
@@ -177,6 +183,9 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
             end
         end
         n_inliers = sum(inliers_filter);
+        
+        % Score using distances between pairs
+        distance_score = sum(abs(x1_mapped(nearest_ind(inliers_filter)) - x2(inliers_filter, 1)));
     end
 
     function plotScores(scores, str)
@@ -427,13 +436,13 @@ if verify_matching
         n_trials = nchoosek(n_matches, sample_size);
         alignment_indices = randi(n_all_alignments, n_trials, 1);
         n_inliers_max = 0;
-        % Number of inliers is unknown - This is the worst case
-        inliers_count_threshold = max(alignments_matrix(end, :));
         % Require this probability that at least one of `n_trials` samples contains only inliers
         p = 0.99;
         inliers_filter = false(n_query, 1);
         nearest_ind = zeros(n_query, 1);
         n_inliers = 0;
+        distance_score_min = Inf;
+        distance_score = Inf;
         while trial <= n_trials
             alignment_column = alignments_matrix(:, alignment_indices(trial));
             direction = alignment_column(end-1);
@@ -446,14 +455,13 @@ if verify_matching
             H = homography1D(x1(sample_subject, :), x2(sample_query, :), false);
             evaluateModel(H, direction);
 
-            if n_inliers > n_inliers_max
+            if (n_inliers > n_inliers_max) ||...
+                    ((n_inliers == n_inliers_max) && (distance_score < distance_score_min))
                 H_final = H;
                 direction_final = direction;
                 n_inliers_max = n_inliers;
+                distance_score_min = distance_score;
                 n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_matches) ^ sample_size));
-                if n_inliers >= inliers_count_threshold
-                    break;
-                end
             end
             trial = trial + 1;
         end

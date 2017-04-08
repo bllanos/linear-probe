@@ -142,7 +142,7 @@ I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\2016081
 rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
 
 % Ask for probe's bounding region
-request_bounding_region = true;
+request_bounding_region = false;
 
 % Determination of the probe's bounding region
 detectBoundingBoxesParams.noise_threshold = []; % Select automatically using Otsu's method
@@ -202,7 +202,7 @@ display_detected_model_from_image = true;
 
 display_final_clipped_regions_colored = false;
 
-verbose_detected_point_sequence_matching = true;
+verbose_detected_point_sequence_matching = false;
 display_detected_model_matching = true;
 
 %% Load the image containing the probe in an unknown pose
