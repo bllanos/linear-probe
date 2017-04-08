@@ -163,10 +163,18 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
         
         % Find nearest neighbours and corresponding colour scores
         for i_fn = 1:n_query
-            [~, nearest_ind(i_fn)] = min(abs(x2(:, 1) - x1_mapped(i_fn)));
+            [~, nearest_ind(i_fn)] = min(abs(x1_mapped - x2(i_fn, 1)));
             inliers_filter(i_fn) =...
                 (color_scores(nearest_ind(i_fn), i_fn, direction) >=...
                 inlier_threshold);
+        end
+        
+        % Enforce a mutual consistency check
+        for i_fn = 1:n_query
+            if inliers_filter(i_fn)
+                [~, nearest_reverse] = min(abs(x1_mapped(nearest_ind(i_fn)) - x2(:, 1)));
+                inliers_filter(i_fn) = (nearest_reverse == i_fn);
+            end
         end
         n_inliers = sum(inliers_filter);
     end
@@ -434,7 +442,7 @@ if verify_matching
             sample_subject = alignment_column(sample_indices);
             sample_query = alignment_column(sample_indices + n_pairs_max);
 
-            % 1D homography estimation minimizing the L2 norm of algebraicerror
+            % 1D homography estimation minimizing the L2 norm of algebraic error
             H = homography1D(x1(sample_subject, :), x2(sample_query, :), false);
             evaluateModel(H, direction);
 
@@ -455,7 +463,7 @@ if verify_matching
         evaluateModel(H_final, direction_final);
         while (diff_inlier_count > 0) && (n_inliers >= sample_size)
             n_inliers_old = n_inliers;
-            H_final = homography1D(x1(inliers_filter, :), x2(nearest_ind(inliers_filter), :), false);
+            H_final = homography1D(x1(nearest_ind(inliers_filter), :), x2(inliers_filter, :), false);
             evaluateModel(H_final, direction_final);
             diff_inlier_count = n_inliers - n_inliers_old;
         end
