@@ -51,7 +51,7 @@ function [above, below] = reprojectProbe( lengths, widths, P, d, X_tip )
 % University of Alberta, Department of Computing Science
 % File created March 27, 2017
 
-nargoutchk(2, 2);
+nargoutchk(1, 2);
 narginchk(5, 5);
 
 d_image = (P * [d 0].').';
@@ -66,9 +66,11 @@ axis = X_tip + repmat(lengths, 1, 3) .* repmat(d, n, 1);
 
 r = repmat(widths / 2, 1, 3); % Take radii, not diameters
 above = (P * [(axis + r .* u).'; ones(1, n)]).';
-below = (P * [(axis - r .* u).'; ones(1, n)]).';
 above = above(:, 1:2) ./ repmat(above(:, 3), 1, 2);
-below = below(:, 1:2) ./ repmat(below(:, 3), 1, 2);
+if nargout > 1
+    below = (P * [(axis - r .* u).'; ones(1, n)]).';
+    below = below(:, 1:2) ./ repmat(below(:, 3), 1, 2);
+end
 
 end
 
