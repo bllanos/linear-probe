@@ -99,6 +99,12 @@ if verbose
     image_size = image_size(1:2);
 end
 
+% Center the camera at the origin
+P_center = null(P).'; % Camera center
+% Assume P_center(end) ~= 0 (i.e. Finite camera)
+P_center = P_center(1:3) ./ P_center(end);
+P = [P(1:3, 1:3) zeros(3, 1)];
+
 u = planeNormalFromImageLine(P, image_line);
 
 n = size(above, 1);
@@ -160,14 +166,11 @@ l = repmat(lengths, 2, 1);
 [X_tip_image, X_end_image, ~] = parametersFromMidline(image_line);
 
 % Parameterize the probe tip as a point on the ray through `X_tip_image`
-P_inv = pinv(P); % Pseudoinverse
-P_center = null(P).'; % Camera center
-% Assume P_center(end) ~= 0 (i.e. Finite camera)
-P_center = P_center ./ repmat(P_center(end), 1, 4);
+% P_inv = pinv(P); % Pseudoinverse
+% This simplifies to the following, for a camera centered at the origin
+P_inv = [ inv(P(1:3, 1:3)); zeros(1, 3)];
 X_tip_basis_ray = (P_inv * X_tip_image.').';
-X_tip_basis_ray = [((X_tip_basis_ray(1:3) / X_tip_basis_ray(end)) - P_center(1:3)), 0];
 X_end_basis_ray = (P_inv * X_end_image.').';
-X_end_basis_ray = [((X_end_basis_ray(1:3) / X_end_basis_ray(end)) - P_center(1:3)), 0];
 
 % From P * (X_tip + l_i * [d; 0] + r * [u; 0]) ~ x_i
 % So cross(P * (X_tip + l_i * [d; 0] + r * [u; 0]), x_i) = 0
@@ -198,38 +201,29 @@ k = l / max(lengths);
 P1_1 = P(1,1);
 P1_2 = P(1,2);
 P1_3 = P(1,3);
-P1_4 = P(1,4);
 P2_1 = P(2,1);
 P2_2 = P(2,2);
 P2_3 = P(2,3);
-P2_4 = P(2,4);
 P3_1 = P(3,1);
 P3_2 = P(3,2);
 P3_3 = P(3,3);
-P3_4 = P(3,4);
-P_center1 = P_center(1);
-P_center2 = P_center(2);
-P_center3 = P_center(3);
-P_center4 = P_center(4);
 
     function A = rhs(X_tip_basis_ray, X_end_basis_ray)
         Xb1 = X_tip_basis_ray(1);
         Xb2 = X_tip_basis_ray(2);
         Xb3 = X_tip_basis_ray(3);
-        Xb4 = X_tip_basis_ray(4);
         Xe1 = X_end_basis_ray(1);
         Xe2 = X_end_basis_ray(2);
         Xe3 = X_end_basis_ray(3);
-        Xe4 = X_end_basis_ray(4);
         A = [
-            (P2_1.*Xb1.*(k - 1) - x2.*(P3_1.*Xb1.*(k - 1) + P3_2.*Xb2.*(k - 1) + P3_3.*Xb3.*(k - 1) + P3_4.*Xb4.*(k - 1)) + P2_2.*Xb2.*(k - 1) + P2_3.*Xb3.*(k - 1) + P2_4.*Xb4.*(k - 1)),...
-            (x2.*(P3_1.*Xe1.*k + P3_2.*Xe2.*k + P3_3.*Xe3.*k + P3_4.*Xe4.*k) - P2_1.*Xe1.*k - P2_2.*Xe2.*k - P2_3.*Xe3.*k - P2_4.*Xe4.*k);
+            (P2_1.*Xb1.*(k - 1) - x2.*(P3_1.*Xb1.*(k - 1) + P3_2.*Xb2.*(k - 1) + P3_3.*Xb3.*(k - 1)) + P2_2.*Xb2.*(k - 1) + P2_3.*Xb3.*(k - 1)),...
+            (x2.*(P3_1.*Xe1.*k + P3_2.*Xe2.*k + P3_3.*Xe3.*k) - P2_1.*Xe1.*k - P2_2.*Xe2.*k - P2_3.*Xe3.*k);
             
-            (x1.*(P3_1.*Xb1.*(k - 1) + P3_2.*Xb2.*(k - 1) + P3_3.*Xb3.*(k - 1) + P3_4.*Xb4.*(k - 1)) - P1_1.*Xb1.*(k - 1) - P1_2.*Xb2.*(k - 1) - P1_3.*Xb3.*(k - 1) - P1_4.*Xb4.*(k - 1)),...
-            (P1_1.*Xe1.*k - x1.*(P3_1.*Xe1.*k + P3_2.*Xe2.*k + P3_3.*Xe3.*k + P3_4.*Xe4.*k) + P1_2.*Xe2.*k + P1_3.*Xe3.*k + P1_4.*Xe4.*k);
+            (x1.*(P3_1.*Xb1.*(k - 1) + P3_2.*Xb2.*(k - 1) + P3_3.*Xb3.*(k - 1)) - P1_1.*Xb1.*(k - 1) - P1_2.*Xb2.*(k - 1) - P1_3.*Xb3.*(k - 1)),...
+            (P1_1.*Xe1.*k - x1.*(P3_1.*Xe1.*k + P3_2.*Xe2.*k + P3_3.*Xe3.*k) + P1_2.*Xe2.*k + P1_3.*Xe3.*k);
             
-            (x2.*(P1_1.*Xb1.*(k - 1) + P1_2.*Xb2.*(k - 1) + P1_3.*Xb3.*(k - 1) + P1_4.*Xb4.*(k - 1)) - x1.*(P2_1.*Xb1.*(k - 1) + P2_2.*Xb2.*(k - 1) + P2_3.*Xb3.*(k - 1) + P2_4.*Xb4.*(k - 1))),...
-            (x1.*(P2_1.*Xe1.*k + P2_2.*Xe2.*k + P2_3.*Xe3.*k + P2_4.*Xe4.*k) - x2.*(P1_1.*Xe1.*k + P1_2.*Xe2.*k + P1_3.*Xe3.*k + P1_4.*Xe4.*k)),...
+            (x2.*(P1_1.*Xb1.*(k - 1) + P1_2.*Xb2.*(k - 1) + P1_3.*Xb3.*(k - 1)) - x1.*(P2_1.*Xb1.*(k - 1) + P2_2.*Xb2.*(k - 1) + P2_3.*Xb3.*(k - 1))),...
+            (x1.*(P2_1.*Xe1.*k + P2_2.*Xe2.*k + P2_3.*Xe3.*k) - x2.*(P1_1.*Xe1.*k + P1_2.*Xe2.*k + P1_3.*Xe3.*k)),...
             ];
     end
 
@@ -240,9 +234,9 @@ A = rhs(X_tip_basis_ray, X_end_basis_ray);
         u2 = u(2);
         u3 = u(3);
         b = [
-            x2.*(P3_4.*(P_center4.*k - P_center4.*(k - 1)) + P3_1.*(P_center1.*k + r.*u1 - P_center1.*(k - 1)) + P3_2.*(P_center2.*k + r.*u2 - P_center2.*(k - 1)) + P3_3.*(P_center3.*k + r.*u3 - P_center3.*(k - 1))) - P2_4.*(P_center4.*k - P_center4.*(k - 1)) - P2_1.*(P_center1.*k + r.*u1 - P_center1.*(k - 1)) - P2_2.*(P_center2.*k + r.*u2 - P_center2.*(k - 1)) - P2_3.*(P_center3.*k + r.*u3 - P_center3.*(k - 1));
-            P1_4.*(P_center4.*k - P_center4.*(k - 1)) - x1.*(P3_4.*(P_center4.*k - P_center4.*(k - 1)) + P3_1.*(P_center1.*k + r.*u1 - P_center1.*(k - 1)) + P3_2.*(P_center2.*k + r.*u2 - P_center2.*(k - 1)) + P3_3.*(P_center3.*k + r.*u3 - P_center3.*(k - 1))) + P1_1.*(P_center1.*k + r.*u1 - P_center1.*(k - 1)) + P1_2.*(P_center2.*k + r.*u2 - P_center2.*(k - 1)) + P1_3.*(P_center3.*k + r.*u3 - P_center3.*(k - 1));
-            x1.*(P2_4.*(P_center4.*k - P_center4.*(k - 1)) + P2_1.*(P_center1.*k + r.*u1 - P_center1.*(k - 1)) + P2_2.*(P_center2.*k + r.*u2 - P_center2.*(k - 1)) + P2_3.*(P_center3.*k + r.*u3 - P_center3.*(k - 1))) - x2.*(P1_4.*(P_center4.*k - P_center4.*(k - 1)) + P1_1.*(P_center1.*k + r.*u1 - P_center1.*(k - 1)) + P1_2.*(P_center2.*k + r.*u2 - P_center2.*(k - 1)) + P1_3.*(P_center3.*k + r.*u3 - P_center3.*(k - 1)))
+            x2.*(P3_1.*(r.*u1) + P3_2.*(r.*u2) + P3_3.*(r.*u3)) - P2_1.*(r.*u1) - P2_2.*(r.*u2) - P2_3.*(r.*u3);
+            x1.*(P3_1.*(r.*u1) + P3_2.*(r.*u2) + P3_3.*(r.*u3)) + P1_1.*(r.*u1) + P1_2.*(r.*u2) + P1_3.*(r.*u3);
+            x1.*(P2_1.*(r.*u1) + P2_2.*(r.*u2) + P2_3.*(r.*u3)) - x2.*(P1_1.*(r.*u1) + P1_2.*(r.*u2) + P1_3.*(r.*u3))
        ];
     end
 
@@ -251,28 +245,28 @@ b = lhs(u);
 % Minimize L2 norm of (A.p - b)
 p = A \ b;
 
-X_tip = P_center + p(1) * X_tip_basis_ray;
-X_end = P_center + p(2) * X_end_basis_ray;
+X_tip = p(1) * X_tip_basis_ray;
+X_tip = X_tip(1:3);
+X_end = p(2) * X_end_basis_ray;
+X_end = X_end(1:3);
 
 % The probe must be in-front of the camera
-depth_X_tip = depthFromCamera(P, X_tip(1:3));
+depth_X_tip = depthFromCamera(P, X_tip);
 if depth_X_tip < 0
-    X_tip = P_center - p(1) * X_tip_basis_ray;
-    X_end = P_center - p(2) * X_end_basis_ray;
+    X_tip = -X_tip;
+    X_end = -X_end;
 end
 
-d = X_end(1:3) - X_tip(1:3);
+d = X_end - X_tip;
 estimated_length = norm(d);
 scale = max(lengths) / estimated_length;
 d = d ./ repmat(estimated_length, 1, 3); % Normalize
 
 % Rescale so that the probe has the correct length
-if depth_X_tip > 0
-    X_tip = P_center + scale * (p(1) * X_tip_basis_ray);
-else
-    X_tip = P_center - scale * (p(1) * X_tip_basis_ray);
-end
-X_tip = X_tip(1:3);
+X_tip = scale * X_tip;
+
+% Transform back to world coordinates
+X_tip = X_tip + P_center;
 
 if verbose
     fprintf('Linear solution for probe pose:');

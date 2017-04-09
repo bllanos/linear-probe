@@ -1,24 +1,24 @@
-function [fg] = plotProbeReprojection( I, above, below, lengths, widths, P, d, X_tip, str )
+function [fg] = plotProbeReprojection( I, points, lengths, widths, P, d, X_tip, str )
 %PLOTPROBEREPROJECTION Plot detected and reprojected points
 %
 % ## Syntax
 % plotProbeReprojection(...
-%     I, above, below, lengths, widths, P, d, X_tip, title...
+%     I, points, lengths, widths, P, d, X_tip, title...
 % )
 %
 % fg = plotProbeReprojection(...
-%     I, above, below, lengths, widths, P, d, X_tip, title...
+%     I, points, lengths, widths, P, d, X_tip, title...
 % )
 %
 % ## Description
 % plotProbeReprojection(...
-%     I, above, below, lengths, widths, P, d, X_tip, title...
+%     I, points, lengths, widths, P, d, X_tip, title...
 % )
 %   Plot the points on the probe detected in the image and plot the
 %   reprojections of the measured points on the probe.
 %
 % fg = plotProbeReprojection(...
-%     I, above, below, lengths, widths, P, d, X_tip, title...
+%     I, points, lengths, widths, P, d, X_tip, title...
 % )
 %   Additionally return the figure.
 %
@@ -29,15 +29,11 @@ function [fg] = plotProbeReprojection( I, above, below, lengths, widths, P, d, X
 %   accuracy of probe localization. Points will be plotted on top of this
 %   image.
 %
-% above -- Interest points along lower edge of probe
-%   Points located at higher y-coordinates than the probe midline in the
+% points -- Interest points along the edges of the probe
+%   Points detected or annotated along the probe's contour in the
 %   image. An n x 2 array of image coordinates.
 %
-% below -- Interest points along upper edge of probe
-%   Points located at lower y-coordinates than the probe midline in the
-%   image. An n x 2 array of image coordinates. `below(i, :)` is the point
-%   oppposite `above(i, :)` on an edge between two colour bands of the
-%   probe.
+%   An empty array can be passed.
 %
 % lengths -- Probe length measurements
 %   A vector of length `n` containing the measured physical distances of
@@ -75,7 +71,7 @@ function [fg] = plotProbeReprojection( I, above, below, lengths, widths, P, d, X
 % File created March 10, 2017
 
 nargoutchk(0, 1);
-narginchk(9, 9);
+narginchk(8, 8);
 
 fg = figure;
 imshow(I);
@@ -97,8 +93,10 @@ u_image_line = cross(u_image, X_tip_image);
 line_points_plotting = lineToBorderPoints(u_image_line, image_size);
 line(line_points_plotting([1,3]), line_points_plotting([2,4]), 'Color', 'r');
 
-allPoints = [above; below];
-scatter(allPoints(:, 1), allPoints(:, 2), 'g.');
+have_detected_points = ~isempty(points);
+if have_detected_points
+    scatter(points(:, 1), points(:, 2), 'g.');
+end
 
 [above, below] = reprojectProbe( lengths, widths, P, d, X_tip );
 allPoints = [above; below];
@@ -107,7 +105,11 @@ scatter(allPoints(:, 1), allPoints(:, 2), 'r.');
 scatter(X_tip_image(1), X_tip_image(2), 'mo');
 
 hold off
-legend('Axis', 'Normal', 'Detected points', 'Reprojected 3D points', 'Tip');
+if have_detected_points
+    legend('Axis', 'Normal', 'Detected or marked points', 'Reprojected 3D points', 'Tip');
+else
+    legend('Axis', 'Normal', 'Reprojected 3D points', 'Tip');
+end
 title(str)
 
 end

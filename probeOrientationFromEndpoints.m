@@ -43,13 +43,13 @@ function [d, u] = probeOrientationFromEndpoints( P, X_tip, X_end )
 % University of Alberta, Department of Computing Science
 % File created March 27, 2017
 
-nargoutchk(2, 2);
+nargoutchk(1, 2);
 narginchk(3, 3);
 
 X_tip_image = (P * [X_tip 1].').';
 X_end_image = (P * [X_end 1].').';
 d = X_end - X_tip;
-d = d ./ repmat(estimated_length, 1, 3); % Normalize
+d = d ./ repmat(norm(d), 1, 3); % Normalize
 
 image_line = cross(X_end_image, X_tip_image);
 u = planeNormalFromImageLine(P, image_line);

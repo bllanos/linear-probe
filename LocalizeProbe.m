@@ -149,6 +149,9 @@ detection_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results
 % Camera projection matrix
 camera_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\camera_calibration_from_20160609\20170305_bottomCameraMatrix_identityExtrinsics.mat';
 
+% Image containing the probe
+I_filename = [];
+
 % Linear Probe Localization
 % Error convergence threshold for linear probe estimation
 linear_convergence_threshold = 0.01;
@@ -165,10 +168,10 @@ display_axis_points = true; % Requires `I_filename` to be valid
 detection_variables_required = {...
         'probe_detection_matches_filtered'...
     };
-if ~exist('model_filename', 'var')
+if ~exist('model_filename', 'var') || isempty(model_filename)
     detection_variables_required = [detection_variables_required 'model_filename'];
 end
-if ~exist('I_filename', 'var')
+if ~exist('I_filename', 'var') || isempty(I_filename)
     detection_variables_required = [detection_variables_required 'I_filename'];
 end
 load(detection_filename, detection_variables_required{:});
@@ -233,7 +236,7 @@ end
 
 if display_linear_estimation
     plotProbeReprojection(...
-                I, above, below, lengths, widths, P, probe_axis, X_tip,...
+                I, [above; below], lengths, widths, P, probe_axis, X_tip,...
                 'Reprojection of linear approximation of probe location'...
             );
 end
