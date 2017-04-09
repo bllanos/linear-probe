@@ -199,14 +199,7 @@ if nargout > 2
     [ coeff, score, ~, ~, ~, mu ] = pca(points);
     
     % Express the PCA component vectors as lines in the space of the original data
-    dx = coeff(1, :).';
-    dy = coeff(2, :).';
-    c = ones(2, 1);
-    a = c ./ ((dx * mu(2) ./ dy) - mu(1));
-    b = -a .* dx ./ dy;
-    % Normalize
-    scale = sqrt(a .^ 2 + b .^ 2);
-    axes = [a, b, c] ./ repmat(scale, 1, 3);
+    axes = pcaAxes2D( coeff, mu );
     
     transform = [coeff, mu.'; 0 0 1].';
 else
