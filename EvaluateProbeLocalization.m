@@ -50,7 +50,7 @@
 %
 % ### Annotations for probe image (Optional)
 %
-% If this data, the ground truth, is provided, localization error can be
+% If this ground truth data, is provided, localization error can be
 % quantified by calculating image reprojection error.
 %
 % Data is provided in a '.mat' file whose filepath is stored in the
@@ -77,12 +77,46 @@
 % will automatically determine which points are the 'bottom' and 'top'
 % points when assessing reprojection error.
 %
+% ### Stereo triangulation information (Optional)
+%
+% If this ground truth data is provided, localization error can be
+% quantified by calculating 3D geometric error.
+%
+% The following variables are provided in a '.mat' file whose filepath is
+% stored in the parameter 'stereo_data_filename':
+% - P1: (Optional) 3 x 4 camera projection matrix for the first camera.
+%     If not provided, the camera matrix 'P' will be used instead (from the
+%     file referred to by 'camera_filename').
+% - P2: 3 x 4 camera projection matrix for the second camera.
+% - x1: The estimated projections of points on the 3D axis (axis of
+%     cylindrical symmetry) of the probe, in an image produced by the first
+%     camera. An n x 3 array, where the rows represent image points from an
+%     undistorted image. The first column holds the indices in
+%     'probe_axis_locations' corresponding to the marked points, whereas
+%     the second and third columns contain the image x and y-coordinates of
+%     the marked points, respectively. (Equivalently, the first column
+%     holds indices in `probe.lengths` corresponding to the marked points.)
+% - x2: Similar to 'x1', but for points in an image from the second camera.
+%
+% If the probe tapers to a point at both ends, and both ends are visible
+% from the two cameras, then 'x1' and 'x2' can contain two exact points.
+% Unfortunately, if the probe does not taper to a point in two places, the
+% projection of its axis in the images will be uncertain. In this case,
+% marking points, approximately along the probe's axis, which are as far
+% apart as possible in the image, will result in the most accurate results.
+%
+% If 'x1' and 'x2' only contain a single point each, error in the estimated
+% orientation of the probe will not be calculated.
+%
 % ## Output
 %
 % No output will be produced in the absence of ground truth input data.
+% Output will be stored in a '.mat' file (in a location provided by the
+% user through a file browser).
 %
-% ### Probe localization evaluation results
-% A '.mat' file containing the following variables:
+% The '.mat' output file will contain the following variables:
+%
+% ### Probe localization image-based evaluation results
 %
 % - 'visible_points_error': A structure vector comparing the reprojected
 %   and user-marked points. The fields of the structure vector are as
@@ -98,7 +132,7 @@
 %   - reprojected: A four-element row vector containing the reprojected
 %       positions of the interest points on the lower (first two elements)
 %       and upper (last two elements) border of the probe in the image.
-%   - error: A two-element row vector containing The Euclidean
+%   - error: A two-element row vector containing the Euclidean
 %       distances between the reprojected and ground-truth points on the
 %       lower, and upper, borders of the probe in the image, respectively.
 %
@@ -112,6 +146,56 @@
 %
 % - 'error_max_2d': The maximum of the 'error' field values in
 %   'visible_points_error'.
+%
+% ### Probe localization 3D evaluation results
+%
+% #### Position error measurements
+%
+% - 'points_error_3d': A structure vector comparing estimated 3D points
+%   with 3D points obtained by stereo triangulation. The fields of the
+%   structure vector are as follows:
+%   - index: The index of the cross-section of the probe in
+%       'probe_axis_locations'. The elements of the structure vector are
+%       sorted by this field.
+%   - gt: A three-element row vector containing the 3D point triangulated
+%       from user-marked points.
+%   - estimated: A three-element row vector containing the 3D point
+%       calculated from the estimated probe pose.
+%   - error: A scalar containing the Euclidean distance between the
+%       ground-truth and estimated points.
+%
+% - 'error_mean_3d': The average of the 'error' field values in
+%   'points_error_3d'.
+%
+% - 'error_max_3d': The maximum of the 'error' field values in
+%   'points_error_3d'.
+%
+% #### Orientation error measurements
+%
+% Orientation errors are only calculated if at least two points were
+% provided for stereo triangulation (in 'x1' and 'x2' from the file
+% referred to by 'stereo_data_filename').
+%
+% - 'error_orientation_3d': The angle between the estimated and
+%   ground-truth probe orientation vectors, in radians.
+%
+% - 'error_orientation_3d_deg': A version of 'error_orientation_3d' in
+%   degrees.
+%
+% - 'error_orientation_image': The angle between the estimated and
+%   ground-truth probe orientation vectors as imaged by the camera 'P'.
+%
+% - 'error_orientation_image_deg': A version of 'error_orientation_image'
+%   in degrees.
+%
+% - 'error_orientation_depth': The angle between the estimated and
+%   ground-truth probe orientation vectors as imaged by an arbitrary camera
+%   with a principal ray orthogonal to the principal ray of camera 'P'.
+%
+% - 'error_orientation_depth_deg': A version of 'error_orientation_depth'
+%   in degrees.
+%
+% ### Saved parameters
 %
 % Additionally, the output file contains the values of all parameters in
 % the first section of the script below, for reference. (Specifically,
@@ -132,7 +216,8 @@
 % List of parameters to save with results
 parameters_list = {
         'localization_filename',...
-        'visible_points_filename'...
+        'visible_points_filename',...
+        'stereo_data_filename',...
         'point_alignment_outlier_threshold'
     };
 % The following variables are loaded from the file pointed to by
@@ -159,6 +244,10 @@ I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\2016081
 % If none is provided, set it to an empty array (`[]`).
 visible_points_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\ground_truth\probePrePaperOcclusion_1_b_groundTruth.mat';
 
+% Ground truth stereo information
+% If none is provided, set it to an empty array (`[]`).
+stereo_data_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\ground_truth\probePrePaperOcclusion_1_stereo_groundTruth.mat';
+
 % Parameters for interpreting annotated points
 point_alignment_outlier_threshold = 5;
 
@@ -166,6 +255,8 @@ point_alignment_outlier_threshold = 5;
 display_reprojection = true;
 display_model_from_visible_points = true;
 display_reprojection_statistics = true;
+display_3d_points = true;
+display_3d_statistics = true;
 
 %% Load input data
 localization_variables_required = {...
@@ -204,6 +295,20 @@ if single_view_gt_available
     load(visible_points_filename, 'visible_points');
     if ~exist('visible_points', 'var')
         error('No variable called ''visible_points'' loaded from ''%s''.',visible_points_filename)
+    end
+end
+
+stereo_gt_available = exist('stereo_data_filename', 'var') && ~isempty(stereo_data_filename);
+if stereo_gt_available
+    stereo_variables_required = {...
+        'P1', 'P2', 'x1', 'x2'
+    };
+    load(stereo_data_filename, stereo_variables_required{:});
+    if ~exist('P1', 'var')
+        P1 = P;
+    end
+    if ~all(ismember(stereo_variables_required, who))
+        error('One or more of the stereo ground truth variables is not loaded.')
     end
 end
 
@@ -344,13 +449,125 @@ if single_view_gt_available
     end
 end
 
+%% Assess 3D error
+
+if stereo_gt_available
+    
+    % Triangulate 3D points
+    x1 = sortrows(x1);
+    x2 = sortrows(x2);
+    if any(x1(:, 1) ~= x2(:, 1))
+        error('Points marked for triangulation do not match.')
+    end
+    points_3d_indices = x1(:, 1);
+    x1 = x1(:, 2:3);
+    x2 = x2(:, 2:3);
+    X_gt = triangulate(x1, x2, P1.', P2.');
+    
+    X_est = vertcat(probe_axis_locations(points_3d_indices).objectPoint);
+    
+    % Calculate distance error
+    error_3d = X_gt - X_est;
+    error_3d = error_3d.^2;
+    error_3d = sqrt(sum(error_3d, 2));
+    
+    points_error_3d = struct(...
+        'index', num2cell(points_3d_indices),...
+        'gt', num2cell(X_gt, 2),...
+        'estimated', num2cell(X_est, 2),...
+        'error', num2cell(error_3d)...
+    );
+
+    error_mean_3d = mean(error_3d);
+    error_max_3d = max(error_3d);
+    
+    if display_3d_statistics
+        disp('3D distances from triangulated points:') %#ok<UNRCH>
+        points_error_3d_display = struct2table(points_error_3d);
+        disp(points_error_3d_display);
+        fprintf('Mean 3D distance error: %g\n', error_mean_3d);
+        fprintf('Maximum 3D distance error: %g\n', error_max_3d);
+    end
+
+    % Calculate orientation error
+    stereo_orientation_gt_available = size(x1, 1) > 1;
+    if stereo_orientation_gt_available
+        d_gt = pca(X_gt);
+        d_gt = d_gt(:, 1).';
+        d_gt = d_gt ./ norm(d_gt);
+        % Correct orientation
+        if dot(d_gt, diff(X_gt, 1, 1)) < 0
+            d_gt = -d_gt;
+        end
+
+        % Total angular error
+        error_orientation_3d = dot(d_gt, d);
+        error_orientation_3d_deg = acosd(error_orientation_3d);
+        error_orientation_3d = acos(error_orientation_3d);
+
+        % Angular error in the image plane
+        [camera_xaxis, camera_yaxis, camera_zaxis] = cameraAxes( P );
+        d_image = [dot(camera_xaxis, d), dot(camera_yaxis, d)];
+        d_image = d_image ./ norm(d_image);
+        d_gt_image = [dot(camera_xaxis, d_gt), dot(camera_yaxis, d_gt)];
+        d_gt_image = d_gt_image ./ norm(d_gt_image);
+        error_orientation_image = dot(d_gt_image, d_image);
+        error_orientation_image_deg = acosd(error_orientation_image);
+        error_orientation_image = acos(error_orientation_image);
+
+        % Angular error perpendicular to the image plane
+        d_z = dot(camera_zaxis, d);
+        d_mag_image = sqrt(1 - (d_z ^ 2));
+        d_image_rotated = [d_mag_image d_z];
+        d_gt_z = dot(camera_zaxis, d_gt);
+        d_gt_mag_image = sqrt(1 - (d_gt_z ^ 2));
+        d_gt_image_rotated = [d_gt_mag_image d_gt_z];
+        error_orientation_depth = dot(d_gt_image_rotated, d_image_rotated);
+        error_orientation_depth_deg = acosd(error_orientation_depth);
+        error_orientation_depth = acos(error_orientation_depth);
+        
+        if display_3d_statistics
+            disp('Orientation errors:') %#ok<UNRCH>
+            fprintf('Total angle:\n');
+            fprintf('\tRadians: %g\n', error_orientation_3d);
+            fprintf('\tDegrees: %g\n', error_orientation_3d_deg);
+            fprintf('Angle in image plane:\n');
+            fprintf('\tRadians: %g\n', error_orientation_image);
+            fprintf('\tDegrees: %g\n', error_orientation_image_deg);
+            fprintf('Depth angle:\n');
+            fprintf('\tRadians: %g\n', error_orientation_depth);
+            fprintf('\tDegrees: %g\n', error_orientation_depth_deg);
+        end
+    end
+end
+
 
 %% Save results to a file
-if single_view_gt_available
-    save_variables_list = [ parameters_list, {...
-            'visible_points_error',...
-            'error_mean_2d',...
-            'error_max_2d'
-        } ];
+if single_view_gt_available || stereo_gt_available
+    save_variables_list = parameters_list;
+    if single_view_gt_available
+        save_variables_list = [ save_variables_list, {...
+                'visible_points_error',...
+                'error_mean_2d',...
+                'error_max_2d'
+            } ];
+    end
+    if stereo_gt_available
+        save_variables_list = [ save_variables_list, {...
+                'points_error_3d',...
+                'error_mean_3d',...
+                'error_max_3d'
+            } ];
+        if stereo_orientation_gt_available
+            save_variables_list = [ save_variables_list, {...
+                'error_orientation_3d',...
+                'error_orientation_3d_deg',...
+                'error_orientation_image',...
+                'error_orientation_image_deg',...
+                'error_orientation_depth',...
+                'error_orientation_depth_deg'
+                } ];
+        end
+    end
     uisave(save_variables_list,'probeLocalizationEvaluation')
 end
