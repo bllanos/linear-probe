@@ -108,6 +108,17 @@
 % If 'x1' and 'x2' only contain a single point each, error in the estimated
 % orientation of the probe will not be calculated.
 %
+% #### Images for assessing reprojection error (Optional)
+%
+% The 'I1_filename' and 'I2_filename' parameters contain the paths to
+% images showing the probe in the location corresponding to localization
+% result, as seen by the cameras 'P1' and 'P2', respectively. Additional
+% graphical output will be produced for each of these images, provided that
+% the flag 'display_reprojected_stereo_points' is true, and that 'x1' and
+% 'x2' contain at least two image point correspondences.
+%
+% The images must RGB images, in any format that can be loaded by `imread`.
+%
 % ## Output
 %
 % No output will be produced in the absence of ground truth input data.
@@ -247,6 +258,8 @@ visible_points_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and re
 % Ground truth stereo information
 % If none is provided, set it to an empty array (`[]`).
 stereo_data_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\ground_truth\probePrePaperOcclusion_1_stereo_groundTruth.mat';
+I1_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
+I2_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_t_rect.bmp';
 
 % Parameters for interpreting annotated points
 point_alignment_outlier_threshold = 5;
@@ -255,8 +268,8 @@ point_alignment_outlier_threshold = 5;
 display_reprojection = true;
 display_model_from_visible_points = true;
 display_reprojection_statistics = true;
-display_3d_points = true;
 display_3d_statistics = true;
+display_reprojected_stereo_points = true;
 
 %% Load input data
 localization_variables_required = {...
@@ -287,8 +300,6 @@ if ~exist('P', 'var')
 end
 
 I = imread(I_filename);
-image_size = size(I);
-image_size = image_size(1:2);
 
 single_view_gt_available = exist('visible_points_filename', 'var') && ~isempty(visible_points_filename);
 if single_view_gt_available
@@ -309,6 +320,21 @@ if stereo_gt_available
     end
     if ~all(ismember(stereo_variables_required, who))
         error('One or more of the stereo ground truth variables is not loaded.')
+    end
+    
+    n_x = size(x1, 1);
+    stereo_orientation_gt_available = n_x > 1;
+    if stereo_orientation_gt_available && display_reprojected_stereo_points
+        display_reprojected_stereo_points1 =...
+            exist('I1_filename', 'var') && ~isempty(I1_filename);
+        if display_reprojected_stereo_points1
+            I1 = imread(I1_filename);
+        end
+        display_reprojected_stereo_points2 =...
+            exist('I2_filename', 'var') && ~isempty(I2_filename);
+        if display_reprojected_stereo_points2
+            I2 = imread(I2_filename);
+        end
     end
 end
 
@@ -490,7 +516,6 @@ if stereo_gt_available
     end
 
     % Calculate orientation error
-    stereo_orientation_gt_available = size(x1, 1) > 1;
     if stereo_orientation_gt_available
         d_gt = pca(X_gt);
         d_gt = d_gt(:, 1).';
@@ -537,6 +562,36 @@ if stereo_gt_available
             fprintf('Depth angle:\n');
             fprintf('\tRadians: %g\n', error_orientation_depth);
             fprintf('\tDegrees: %g\n', error_orientation_depth_deg);
+        end
+        
+        if display_reprojected_stereo_points1 || display_reprojected_stereo_points2
+            
+            % Least squares solution for the probe tip
+            A = repmat(eye(3), n_x, 1);
+            b = X_est - d_gt .* repmat(probe.lengths(points_3d_indices), 1, 3);
+            b = b.';
+            b = b(:);
+            X_tip_gt = (A \ b).';
+            
+            if display_reprojected_stereo_points1
+                [above_gt, below_gt] = reprojectProbe(...
+                    probe.lengths, probe.widths, P1, d_gt, X_tip_gt...
+                    );
+                plotProbeReprojection(...
+                    I1, [above_gt; below_gt], probe.lengths, probe.widths, P1, d, X_tip,...
+                    'Reprojection of probe localization result vs. stereo data (Camera 1)'...
+                );
+            end
+            
+            if display_reprojected_stereo_points2
+                [above_gt, below_gt] = reprojectProbe(...
+                    probe.lengths, probe.widths, P2, d_gt, X_tip_gt...
+                    );
+                plotProbeReprojection(...
+                    I2, [above_gt; below_gt], probe.lengths, probe.widths, P2, d, X_tip,...
+                    'Reprojection of probe localization result vs. stereo data (Camera 2)'...
+                );
+            end
         end
     end
 end
