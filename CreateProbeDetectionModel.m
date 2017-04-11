@@ -27,6 +27,11 @@
 %   At each junction between two coloured bands, the coloured bands should
 %   have the same widths.
 %
+%   Note: All bands should have strong colours. Those with unsaturated
+%   colours can be given colour labels of zero, such that they will be
+%   ignored. Unsaturated colours cannot be reliably detected, and will also
+%   interfere with the correct detection of the other colours.
+%
 % ## Input
 %
 % ### Probe measurements
@@ -39,15 +44,16 @@
 %     of cylindrical symmetry, and are listed in order starting from the
 %     active end of the probe.
 % - colors: A vector with `length(lengths) - 1` elements specifying colour
-%     indices for the bands of the probe. Colour indices should be
-%     consecutive integers starting at 1. They indicate how the bands of
-%     the probe are grouped based on mutually-distinguishable colours,
-%     allowing bands to have non-unique colours. The specific index
-%     assigned to a given band is unimportant. For instance, the first band
-%     need not have a colour index of 1. The elements of `colors` should
-%     correspond to adjacent pairs of elements in `lengths` (i.e. The
-%     colour indices should be in order starting from the active end of the
-%     probe).
+%     indices for the bands of the probe. Colour indices for colours that
+%     are to be detected should be consecutive integers starting at 1.
+%     Colours given indices of zero will be ignored. Indices indicate how
+%     the bands of the probe are grouped based on mutually-distinguishable
+%     colours, allowing bands to have non-unique colours. The specific
+%     index assigned to a given band is unimportant. For instance, the
+%     first band need not have a colour index of 1. The elements of
+%     `colors` should correspond to adjacent pairs of elements in `lengths`
+%     (i.e. The colour indices should be in order starting from the active
+%     end of the probe).
 % - widths: Width (diameter) of the probe at the edges of bands. Widths
 %     must include the ends of the probe, with values of zero or
 %     approximate tip diameters for ends that taper to points. (Probe tip
@@ -347,12 +353,15 @@ if display_probe_band_masks
 end
 
 % Group bands by colour
-probe_colors = unique(probe.colors);
+colors_filter = (probe.colors ~= 0);
+probe_colors = unique(probe.colors(colors_filter));
 n_colors = length(probe_colors);
 probe_color_masks = false(image_height, image_width, n_colors);
 for i = 1:n_bands
-    probe_color_masks(:, :, probe.colors(i)) =...
-        probe_color_masks(:, :, probe.colors(i)) | probe_band_masks(:, :, i);
+    if colors_filter(i)
+        probe_color_masks(:, :, probe.colors(i)) =...
+            probe_color_masks(:, :, probe.colors(i)) | probe_band_masks(:, :, i);
+    end
 end
 
 if display_probe_color_masks

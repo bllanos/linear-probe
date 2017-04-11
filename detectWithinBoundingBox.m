@@ -269,6 +269,7 @@ end
 
 % Identify which pairs of colours can be adjacent
 probe_color_pairs = [probe.colors(1:(end - 1)), probe.colors(2:end)];
+probe_color_pairs = probe_color_pairs(all(probe_color_pairs ~= 0, 2), :);
 probe_color_pairs = sort(probe_color_pairs, 2);
 probe_color_pairs = unique(probe_color_pairs, 'rows');
 n_color_pairs = size(probe_color_pairs, 1);
