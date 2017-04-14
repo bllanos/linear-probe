@@ -135,17 +135,17 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170112_bambooSkewer_orangeBlue_probeDetectionModel_bottomCamera_rect.mat';
+detection_model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\20170410_redPenDetectionModel.mat';
 % Image of probe in an unknown pose
-I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel.bmp';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\rgbStddev.mat';
 
 % Ask for probe's bounding region
 request_bounding_region = false;
 
 % Determination of the probe's bounding region
-detectBoundingBoxesParams.noise_threshold = []; % Select automatically using Otsu's method
+detectBoundingBoxesParams.noise_threshold = []; % If empty, select automatically using Otsu's method
 erosion_radius_initial = 5;
 detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
 detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
@@ -200,7 +200,7 @@ detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = false;
 
 display_detected_model_from_image = true;
 
-display_final_clipped_regions_colored = false;
+display_final_clipped_regions_colored = true;
 
 verbose_detected_point_sequence_matching = false;
 display_detected_model_matching = true;
@@ -261,6 +261,10 @@ end
     probe_color_distribution_increment, rgb_sigma_polyfit,...
     detectWithinBoundingBoxParams, detectWithinBoundingBoxVerbose...
     );
+
+if isempty(interest_points_detected)
+    error('No interest points detected.')
+end
 
 %% Organize the detected points into per-edge pairs, and filter outliers
 
