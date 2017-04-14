@@ -52,6 +52,8 @@ d = X_end - X_tip;
 d = d ./ repmat(norm(d), 1, 3); % Normalize
 
 image_line = cross(X_end_image, X_tip_image);
-u = planeNormalFromImageLine(P, image_line);
+if nargout > 1
+    u = planeNormalFromImageLine(P, image_line);
+end
 
 end

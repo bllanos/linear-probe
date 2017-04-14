@@ -63,13 +63,13 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 % ## Output Arguments
 %
 % X_tip -- Probe tip
-%   The 3D position of the probe tip, output as a 3 x 1 vector.
+%   The 3D position of the probe tip, output as a 1 x 3 vector.
 %
 % d -- Probe orientation vector
-%   A 3 x 1 unit vector aligned with the axis of the probe in space.
+%   A 1 x 3 unit vector aligned with the axis of the probe in space.
 %
 % u -- Probe normal vector
-%   A 3 x 1 unit vector perpendicular to the plane formed by the axis of
+%   A 1 x 3 unit vector perpendicular to the plane formed by the axis of
 %   the probe in space and the camera centre, pointing towards the bottom
 %   of the image.
 %
@@ -89,7 +89,7 @@ function [X_tip, d, u] = probeTipAndOrientation( above, below, lengths, widths, 
 % University of Alberta, Department of Computing Science
 % File created March 8, 2017
 
-nargoutchk(3, 3);
+nargoutchk(1, 3);
 narginchk(8, 9);
 
 verbose = ~isempty(varargin);
@@ -159,8 +159,10 @@ l = repmat(lengths, 2, 1);
         
         % Find the tangent vector in world coordinates (aligned with the
         % image plane)
-        tangent_3D = camera_xAxis * tangent(1) + camera_yAxis * tangent(2);
-        tangent_3D = tangent_3D(1:3, :);
+        if nargout > 2
+            tangent_3D = camera_xAxis * tangent(1) + camera_yAxis * tangent(2);
+            tangent_3D = tangent_3D(1:3, :);
+        end
     end
 
 [X_tip_image, X_end_image, ~] = parametersFromMidline(image_line);
