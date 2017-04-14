@@ -1,5 +1,5 @@
 function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, threshold, radius, varargin )
-% EXTRACTBINARYREGIONS  Threshold and obtain binary regions after filtering out poorly-distinguished pixels
+% EXTRACTBINARYREGIONS  Threshold and refine binary regions
 %
 % ## Syntax
 % regions = extractBinaryRegions(...
@@ -32,13 +32,12 @@ function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, th
 %   to a region of the i-th colour.
 %
 % threshold -- Threshold identifying poorly-distinguished pixels
-%   The threshold applied to the absolute differences between the images in
+%   The threshold applied to the probabilities in
 %   `backprojected_distributions` to eliminate pixels which are not
-%   strongly selected by one distribution over others.
+%   strongly selected by any distribution.
 %
 %   If empty, Otsu's method will be used to select the threshold
-%   automatically. Otsu's method will produce the desired results only when
-%   there is a significant number of poorly-selected pixels.
+%   automatically.
 %
 %   Refer the discussion of the algorithm below for details.
 %
@@ -76,21 +75,14 @@ function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, th
 % To extract the regions which appear to correspond to a given colour
 % class, as dictated by a probability distribution, it is sufficient to
 % threshold the greyscale image formed by backprojecting the probability
-% distribution. This function does so by choosing the threshold using
-% Otsu's method.
+% distribution. This function does so, optionally choosing the threshold
+% using Otsu's method.
 %
-% However, for this application, there are multiple colour classes, which
-% are assumed to be quite distinct, such that pixels that have similar
-% probabilities with respect to multiple colours actually do not belong to
-% any colour. Consequently, such pixels are filtered out so that they are
-% not taken into account when computing a histogram for Otsu thresholding.
-% They are also excluded from the binary connected components obtained
-% after thresholding. These poorly-distinguished pixels are identified by
-% thresholding the pairwise absolute differences of the individual images
-% in `backprojected_distributions`. The threshold is `threshold`, if
-% `threshold` is not empty; Otherwise, it is chosen using Otsu's method,
-% which may lead to undesirable behaviour in cases where most pixels are
-% well-distinguished.
+% However, for this application, there are multiple colour classes.
+% Therefore, the thresholding is performed on the colour class which gives
+% the given pixel the highest probability. This is a simple approximation
+% to a multi-labelling optimization problem (which could be solved with
+% alpha-expansion, for example).
 %
 % See also bwconncomp, otsuthresh, imbinarize, imerode, ratioDistribution, hueVariableKernelDensityEstimator
 
@@ -120,40 +112,35 @@ else
 end
 
 use_otsu = isempty(threshold);
-if ~use_otsu
-    threshold_ij = threshold;
-end
 
-% For each colour, remove pixels which have the same values in the
-% probability distributions computed for other colours.
-pair_differentiation_masks = repmat(mask, 1, 1, n);
+% Find the most likely colour class for each pixel
+[~, max_ind] = max(backprojected_distributions, [], 3);
+x = 0:(image_width - 1);
+y = 1:image_height;
+[X,Y] = meshgrid(x,y);
+max_ind_linear = Y + X .* image_height + (max_ind - 1) .* (image_width * image_height);
+bw = false(image_height, image_width, n);
+bw(max_ind_linear) = true;
+
+% Threshold probabilities for each colour
 for i = 1:n
-    mask_i = pair_differentiation_masks(:, :, i);
-    for j = (i + 1):n
-        mask_j = pair_differentiation_masks(:, :, j);
-        I_diff = imabsdiff(backprojected_distributions(:, :, i), backprojected_distributions(:, :, j));
-        if use_otsu
-            counts_ij = imhist(I_diff(mask));
-            threshold_ij = otsuthresh(counts_ij);
-        end
-        mask_ij = imbinarize(I_diff, threshold_ij);
-        pair_differentiation_masks(:, :, i) = mask_i & mask_ij;
-        pair_differentiation_masks(:, :, j) = mask_j & mask_ij;
+    backprojected_distributions_i = backprojected_distributions(:, :, i);
+    if use_otsu
+        counts_i = imhist(backprojected_distributions_i(mask));
+        threshold_i = otsuthresh(counts_i);
+        bw(:, :, i) = bw(:, :, i) & imbinarize(backprojected_distributions_i, threshold_i);
+    else
+        bw(:, :, i) = bw(:, :, i) & imbinarize(backprojected_distributions_i, threshold);
     end
+    % Apply the mask
+    bw(:, :, i) = bw(:, :, i) & mask;
 end
 
-% For the pixels that remain, use Otsu's method to obtain binary regions.
+% Obtain binary regions.
 regions = struct('Connectivity', cell(n, 1), 'ImageSize', cell(n, 1),...
     'NumObjects', cell(n, 1), 'PixelIdxList', cell(n, 1));
-if nargout > 1
-    bw = false(image_height, image_width, n);
-end
 for i = 1:n
-    mask_i = pair_differentiation_masks(:, :, i);
-    backprojected_distributions_i = backprojected_distributions(:, :, i);
-    counts_i = imhist(backprojected_distributions_i(mask_i));
-    threshold_i = otsuthresh(counts_i);
-    bw_i = imbinarize(backprojected_distributions_i, threshold_i) & mask_i;
+    bw_i = bw(:, :, i);
     disk = strel('disk', radius);
     bw_i = imerode(bw_i, disk);
     if verbose

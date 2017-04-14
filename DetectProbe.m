@@ -155,7 +155,7 @@ detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
-detectWithinBoundingBoxParams.noise_threshold = 0.2;
+detectWithinBoundingBoxParams.noise_threshold = 0.5; % If empty, select automatically using Otsu's method
 erosion_radius_final = 2;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
@@ -183,15 +183,13 @@ alignment_inlier_threshold = 0.75;
 detectBoundingBoxesVerbose.display_original_image = false;
 detectBoundingBoxesVerbose.display_hue_image = false;
 detectBoundingBoxesVerbose.plot_global_hue_estimator = false;
-detectBoundingBoxesVerbose.plot_ratio_estimators = false;
-detectBoundingBoxesVerbose.display_ratio_distribution_backprojections = false;
+detectBoundingBoxesVerbose.display_distribution_backprojections = false;
 detectBoundingBoxesVerbose.verbose_region_extraction = false;
 detectBoundingBoxesVerbose.verbose_region_filtering = false;
 detectBoundingBoxesVerbose.display_region_expansion = false;
 
 detectWithinBoundingBoxVerbose.plot_bounding_area_hue_estimator = false;
-detectWithinBoundingBoxVerbose.plot_ratio_estimators = false;
-detectWithinBoundingBoxVerbose.display_ratio_distribution_backprojections = false;
+detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
 detectWithinBoundingBoxVerbose.verbose_region_extraction = false;
 detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
 detectWithinBoundingBoxVerbose.display_regions_colored = false;
