@@ -147,6 +147,10 @@ end
 centroids = cell2mat(centroids);
 n_regions_all = size(centroids, 1);
 
+if n_regions_all < 2
+    error('Less than two regions within %g pixels of an appropriate adjacent colour were detected.', radius_adj)
+end
+
 % Find region pixel coordinates
 image_points = cell(n_regions_all, 1);
 offset = 1;

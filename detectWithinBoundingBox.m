@@ -187,6 +187,7 @@ B = I_double(:, :, 3);
     H, R, G, B, mask,...
     rgb_sigma_polyfit, probe_color_distribution_resolution...
 );
+bound_color_distribution = bound_color_distribution ./ max(bound_color_distribution);
 
 n_colors = size(probe_color_distributions, 2);
 
@@ -218,10 +219,7 @@ distributions_backprojected(:, :, n_colors_plus_background) = queryDiscretized1D
 
 if display_distribution_backprojections
     figure
-    imshow(...
-        distributions_backprojected(:, :, n_colors_plus_background) /...
-        max(max(distributions_backprojected(:, :, n_colors_plus_background)))...
-        );
+    imshow(distributions_backprojected(:, :, n_colors_plus_background));
     title('Distribution backprojection for the bounding region')
 end
 

@@ -179,6 +179,7 @@ probe_color_pairs = unique(probe_color_pairs, 'rows');
     H, R, G, B, true(image_height, image_width),...
     rgb_sigma_polyfit, probe_color_distribution_resolution...
 );
+I_color_distribution = I_color_distribution ./ max(I_color_distribution);
 
 if plot_global_hue_estimator
     legend_names = cell(n_colors + 1, 1);
@@ -209,10 +210,7 @@ distributions_backprojected(:, :, n_colors_plus_background) = queryDiscretized1D
 if display_distribution_backprojections
     for i = 1:n_colors
         figure
-        imshow(...
-                distributions_backprojected(:, :, i) /...
-                max(max(distributions_backprojected(:, :, i)))...
-            );
+        imshow(distributions_backprojected(:, :, i));
         title(sprintf('Distribution backprojection for probe colour %d', i))
     end
     figure
