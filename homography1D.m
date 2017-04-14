@@ -13,10 +13,13 @@ function [H] = homography1D( x1, x2, normalize, varargin )
 %
 % x1 -- First set of points
 %   A vector of length n containing the 1D coordinates of points on a line.
+%   If `x1` is an n x 2 array, it is assumed to contain 1D homogenous
+%   coordinates.
 %
 % x2 -- Second set of points
 %   A vector of length n containing the 1D coordinates of points on a
-%   second line.
+%   second line. If `x2` is an n x 2 array, it is assumed to contain 1D
+%   homogenous coordinates.
 %
 % normalize -- Choice of image point normalization
 %   Whether or not to perform normalization of point coordinates prior to
@@ -52,12 +55,12 @@ n = length(x1);
 % Convert to homogenous coordinates
 if size(x1, 1) == 1
     x1 = [x1.' ones(n, 1)];
-else
+elseif size(x1, 2) == 1
     x1 = [x1 ones(n, 1)];
 end
 if size(x2, 1) == 1
     x2 = [x2.' ones(n, 1)];
-else
+elseif size(x2, 2) == 1
     x2 = [x2 ones(n, 1)];
 end
 
@@ -83,7 +86,7 @@ h = V(:, end);
     
 if ~isempty(varargin)
     % Minimize L1 norm of A.h
-    % See 'l1DLT.pdf' provided with the lab instructions
+    % See 'l1DLT.pdf' provided with the CMPUT615 Lab 2 instructions
     eta = abs(A * h);
     eta(eta <= 0) = 1; % Avoid zero or negative weights
     l1Norm_past = Inf;

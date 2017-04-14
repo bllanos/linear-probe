@@ -70,7 +70,7 @@ function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, st
 %   variable kernel density estimator has been evaluated.
 %
 %   To find the approximate value of the estimator at a query value 'x' in
-%   the range [0, 1], use `queryDiscretizedFunction`.
+%   the range [0, 1], use `queryDiscretized1DFunction`.
 %
 % ## Notes
 % - While a variable kernel density estimator is a continuous function,
@@ -92,7 +92,7 @@ function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, st
 %   Analysis and Machine Intelligence, vol. 26, no. 1, pp. 113-118, Jan.
 %   2004.
 %
-% See also rgb2hue, queryDiscretizedFunction
+% See also rgb2hue, queryDiscretized1DFunction
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

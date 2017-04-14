@@ -18,15 +18,15 @@ function [x, y, z] = cameraAxes( P )
 %
 % x -- Image x-axis
 %   The direction in world 3D coordinates corresponding to the image
-%   positive x-axis. A 3 x 1 vector.
+%   positive x-axis. A 3 x 1 unit vector.
 %
 % y -- Image y-axis
 %   The direction in world 3D coordinates corresponding to the image
-%   positive y-axis. A 3 x 1 vector.
+%   positive y-axis. A 3 x 1 unit vector.
 %
 % z -- Principal ray
 %   The direction in world 3D coordinates corresponding to the camera's
-%   principal ray. A 3 x 1 vector.
+%   principal ray. A 3 x 1 unit vector.
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang

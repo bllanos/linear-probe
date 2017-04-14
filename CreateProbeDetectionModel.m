@@ -27,27 +27,33 @@
 %   At each junction between two coloured bands, the coloured bands should
 %   have the same widths.
 %
+%   Note: All bands should have strong colours. Those with unsaturated
+%   colours can be given colour labels of zero, such that they will be
+%   ignored. Unsaturated colours cannot be reliably detected, and will also
+%   interfere with the correct detection of the other colours.
+%
 % ## Input
 %
 % ### Probe measurements
 % A '.mat' file containing a structure called 'probe' with the following
 % fields:
-% - lengths: Distances of edges of bands from the active end of the probe,
-%     including a distance of 0.0 for the active end of the probe, and a
-%     distance for the other end of the probe (i.e. the length of the
-%     entire probe). Distances are measured along the probe's axis of
-%     cylindrical symmetry, and are listed in order starting from the
+% - lengths: A vector of distances of edges of bands from the active end of
+%     the probe, including a distance of 0.0 for the active end of the
+%     probe, and a distance for the other end of the probe (i.e. the length
+%     of the entire probe). Distances are measured along the probe's axis
+%     of cylindrical symmetry, and are listed in order starting from the
 %     active end of the probe.
 % - colors: A vector with `length(lengths) - 1` elements specifying colour
-%     indices for the bands of the probe. Colour indices should be
-%     consecutive integers starting at 1. They indicate how the bands of
-%     the probe are grouped based on mutually-distinguishable colours,
-%     allowing bands to have non-unique colours. The specific index
-%     assigned to a given band is unimportant. For instance, the first band
-%     need not have a colour index of 1. The elements of `colors` should
-%     correspond to adjacent pairs of elements in `lengths` (i.e. The
-%     colour indices should be in order starting from the active end of the
-%     probe).
+%     indices for the bands of the probe. Colour indices for colours that
+%     are to be detected should be consecutive integers starting at 1.
+%     Colours given indices of zero will be ignored. Indices indicate how
+%     the bands of the probe are grouped based on mutually-distinguishable
+%     colours, allowing bands to have non-unique colours. The specific
+%     index assigned to a given band is unimportant. For instance, the
+%     first band need not have a colour index of 1. The elements of
+%     `colors` should correspond to adjacent pairs of elements in `lengths`
+%     (i.e. The colour indices should be in order starting from the active
+%     end of the probe).
 % - widths: Width (diameter) of the probe at the edges of bands. Widths
 %     must include the ends of the probe, with values of zero or
 %     approximate tip diameters for ends that taper to points. (Probe tip
@@ -105,7 +111,7 @@
 %   estimators of image hue values corresponding to the different coloured
 %   bands on the probe, in the same order (starting from the active tip of
 %   the probe). The i-th column of this 2D array stores the estimator for
-%   the i-th probe segment.
+%   the i-th colour class of probe segments.
 % - 'probe_band_color_distribution_increment': A scalar equal to the spacing
 %   between the samples of hue values in the range [0, 1] at which the
 %   variable kernel density estimators have been evaluated to produce
@@ -147,20 +153,21 @@ parameters_list = {
         'point_alignment_outlier_threshold',...
         'subject_gap_cost',...
         'query_gap_cost',...
+        'affine_weight',...
         'probe_color_distribution_resolution'
     };
 
 % Probe measurements
-model_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
+model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenMeasurements.mat';
 % Image of probe
-I_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel.bmp';
 % Annotations for image of probe
-I_annotations_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\annotated\probePrePaperOcclusion_1_b_rect.png';
+I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel_annotated.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\Bernard\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20160811_rgbStddev_bottomCamera.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\rgbStddev.mat';
 
 % Annotation extraction parameters
-annotation_corner_search_width = 4; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
+annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
 
 % Parameters for interpreting annotated points
 point_alignment_outlier_threshold = 5;
@@ -168,6 +175,7 @@ point_alignment_outlier_threshold = 5;
 % Parameters for matching annotated points with the probe measurements
 subject_gap_cost = -0.1;
 query_gap_cost = 0;
+affine_weight = 0;
 
 % Number of points at which to evaluate hue variable kernel density estimators
 probe_color_distribution_resolution = 180;
@@ -181,7 +189,7 @@ verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
 display_probe_color_masks = false;
 display_hue_image = false;
-plot_hue_estimators = false;
+plot_hue_estimators = true;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -266,7 +274,7 @@ end
     
 image_to_measured_matches = matchProbeLengths(...
   probe.lengths, image_lengths, subject_gap_cost, query_gap_cost,...
-  verbose_point_sequence_matching...
+  affine_weight, verbose_point_sequence_matching...
 );
 
 % Validate the matching, and flip the model extracted from the image if necessary
@@ -345,12 +353,15 @@ if display_probe_band_masks
 end
 
 % Group bands by colour
-probe_colors = unique(probe.colors);
+colors_filter = (probe.colors ~= 0);
+probe_colors = unique(probe.colors(colors_filter));
 n_colors = length(probe_colors);
 probe_color_masks = false(image_height, image_width, n_colors);
 for i = 1:n_bands
-    probe_color_masks(:, :, probe.colors(i)) =...
-        probe_color_masks(:, :, probe.colors(i)) | probe_band_masks(:, :, i);
+    if colors_filter(i)
+        probe_color_masks(:, :, probe.colors(i)) =...
+            probe_color_masks(:, :, probe.colors(i)) | probe_band_masks(:, :, i);
+    end
 end
 
 if display_probe_color_masks

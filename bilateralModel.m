@@ -152,6 +152,8 @@ function [ model, lengths, axes, model_px, transform ] = bilateralModel( points,
 %
 %   For convenience, lines have been normalized as described here:
 %   http://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/BEARDSLEY/node2.html
+%   ("Manipulating Points and Lines," by Bob Fisher,
+%    Fri Nov 7 12:08:26 GMT 1997)
 %
 % model_px -- Bilaterally-symmetric representation of points in pixel space
 %   The equivalent of `model`, but the points are in pixel space as opposed
@@ -197,14 +199,7 @@ if nargout > 2
     [ coeff, score, ~, ~, ~, mu ] = pca(points);
     
     % Express the PCA component vectors as lines in the space of the original data
-    dx = coeff(1, :).';
-    dy = coeff(2, :).';
-    c = ones(2, 1);
-    a = c ./ ((dx * mu(2) ./ dy) - mu(1));
-    b = -a .* dx ./ dy;
-    % Normalize
-    scale = sqrt(a .^ 2 + b .^ 2);
-    axes = [a, b, c] ./ repmat(scale, 1, 3);
+    axes = pcaAxes2D( coeff, mu );
     
     transform = [coeff, mu.'; 0 0 1].';
 else

@@ -1,35 +1,40 @@
-function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_lengths, subject_gap_cost, query_gap_cost, varargin )
+function [ subject_match_indices ] = matchProbeLengths(...
+    subject_lengths, query_lengths,...
+    subject_gap_cost, query_gap_cost,...
+    affine_weight, varargin...
+)
 % MATCHPROBELENGTHS  Align sequences of points on two lines using cross ratios and colour adjacency relationships
 %
 % ## Syntax
 % subject_match_indices = matchProbeLengths(...
-%   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost...
-%   [, verbose]...
+%   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
+%   affine_weight [, verbose]...
 % )
 %
 % subject_match_indices = matchProbeLengths(...
 %   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   subject_colors, query_colors, color_weight...
+%   affine_weight, subject_colors, query_colors, color_weight...
 %   [, verbose]...
 % )
 %
 % ## Description
 % subject_match_indices = matchProbeLengths(...
-%   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost...
-%   [, verbose]...
+%   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
+%   affine_weight [, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
 %   points in the query sequence. The matching is based on point cross
-%   ratios.
+%   ratios and/or length ratios.
 %
 % subject_match_indices = matchProbeLengths(...
 %   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   subject_colors, query_colors, color_weight...
+%   affine_weight, subject_colors, query_colors, color_weight...
 %   [, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
 %   points in the query sequence. The matching is based on point cross
-%   ratios and on the colours to the left and right of each point.
+%   ratios and/or length ratios, and on the colours to the left and right
+%   of each point.
 %
 % ## Input Arguments
 %
@@ -56,6 +61,22 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 %   Analogous to `subject_gap_cost`: The score to assign to gaps of any
 %   length in the query sequence.
 %
+% affine_weight -- Weight of length ratio scores
+%   Under affine distortion conditions, points can be aligned using length
+%   ratios, whereas under projective distortion conditions, length ratios
+%   are no longer preserved, and points should be aligned using cross
+%   ratios.
+%
+%   An affine approximation is relatively accurate in many cases, and
+%   length ratios tend to be more discriminating than cross ratios.
+%   Furthermore, length ratios are faster to compute.
+%
+%   This parameter is the weight to apply to the length ratio-based portion
+%   of the alignment scores with respect to the cross ratio-based portion
+%   of the alignment scores. It ranges from `0` to `1`, where `0` enforces
+%   matching based on cross ratios, and `1` enforces matching based on
+%   length ratios.
+%
 % subject_colors -- Colours for the first sequence of collinear points
 %   A matrix of size 'm x 2', where the i-th row describes the colours
 %   surrounding the i-th point in `subject_lengths`.
@@ -74,8 +95,9 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % color_weight -- Weight of colour adjacency scores
 %   The weight to apply to the colour portion of the alignment scores.
 %   `color_weight` ranges from `0` to `1`, where `0` enforces matching
-%   based only on cross ratios, and `1` enforces matching based only on
-%   colour adjacency constraints.
+%   based only on geometric constraints (cross ratios and/or length
+%   ratios), and `1` enforces matching based only on colour adjacency
+%   constraints.
 %
 % verbose -- Debugging flag
 %   If true, graphical output will be generated for debugging purposes.
@@ -92,9 +114,11 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 %
 % ## Algorithm
 % 
-% The two series of points are matched based on their cross ratios, because
-% cross ratios (as opposed to positions or length ratios) are
-% invariant to projective transformations.
+% The two series of points are matched based on a combination of their
+% cross ratios, because cross ratios (as opposed to positions or length
+% ratios) are invariant to projective transformations, and their length
+% ratios, because affine distortion is often a reasonable approximation to
+% the actual transformation.
 % 
 % First, all possible cross ratios (from all possible 4-point subsequences)
 % are generated for the two sets of points. Each cross ratio from the
@@ -103,14 +127,21 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % agreement score is then added to the cross ratio matching scores of the
 % points used to form the two cross ratios.
 %
+% The same procedure is repeated for length ratios, except using all
+% possible 3-point subsequences.
+%
 % For example, if the cross ratios of points `(a, b, c, d)` and `(i, j, k,
 % l)` were compared, the resulting score would be added to the matching
 % scores for the pairings `(a, i)`, `(b, j)`, `(c, k)`, and `(d, l)`.
 %
 % The cross ratio-based matching scores are normalized to the range `[0,1]`
-% using the counts of cross ratios compared to generate each score.
+% using the counts of cross ratios compared to generate each score. The
+% same normalization procedure is applied to length ratio-based matching
+% scores, and the two sets of scores are combined, using the
+% `affine_weight` weighting factor, to form the final geometric matching
+% scores.
 %
-% Second, if colour arguments have been provided, a second table of scores
+% Next, if colour arguments have been provided, a second table of scores
 % is computed to reflect the agreement between the colours to the left and
 % right of the points.
 %
@@ -125,11 +156,11 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 % Consequently, colour-based matching scores are between zero and one.
 %
 % The final matching scores for the points in the subject and query
-% sequences are weighted averages of the cross ratio-based scores and the
+% sequences are weighted averages of the geometry-based scores and the
 % colour-based scores. The weight on the colour-based scores is
 % `color_weight`.
 %
-% Third, the sequences of points are aligned using
+% Finally, the sequences of points are aligned using
 % `swSequenceAlignmentAffine`, in combination with the matching scores
 % determined as described above. A semi-global alignment scheme is used, as
 % `query` is assumed to contain valid points, but possibly be missing
@@ -140,11 +171,11 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
 %
 % The alignment is tested in both the forward and reverse directions, and
 % the final output, `subject_match_indices`, corresponds to the direction
-% producing the highest alignment score. Note that cross ratio and
+% producing the highest alignment score. Note that geometric and
 % colour-based point matching scores must be computed for each of the
 % alignment directions.
 %
-% See also crossRatio, swSequenceAlignmentAffine
+% See also crossRatio, lengthRatio, swSequenceAlignmentAffine, matchProbeLengthsRandom
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang
@@ -159,8 +190,23 @@ function [ subject_match_indices ] = matchProbeLengths( subject_lengths, query_l
         score = scores(s, q, 2);
     end
 
+    function plotScores(scores, str)
+        for index = 1:2
+            figure;
+            imagesc(scores(:, :, index))
+            colorbar
+            if index == 1
+                title(sprintf('Forward %s', str))
+            else
+                title(sprintf('Reverse %s', str))
+            end
+            xlabel('Query sequence index')
+            ylabel('Subject sequence index')
+        end
+    end
+
 nargoutchk(1, 1);
-narginchk(4, 8);
+narginchk(5, 9);
 
 % Parse input arguments
 match_colors = false;
@@ -170,17 +216,16 @@ if ~isempty(varargin)
         verbose = varargin{1};
     elseif length(varargin) >= 3
         match_colors = true;
+        color_weight = varargin{3};
+        match_colors = match_colors && color_weight > 0;
         subject_colors = varargin{1};
         query_colors = varargin{2};
-        color_weight = varargin{3};
         if length(varargin) == 4
             verbose = varargin{4};
         end
     else
         error('Incorrect number of input arguments')
-    end
-else
-    
+    end    
 end
 
 n_subject = length(subject_lengths);
@@ -196,20 +241,25 @@ if n_subject < 4
 elseif n_subject < 5
     warning('Insufficient points given on the subject line to determine forwards/backwards orientation from cross ratios.')
 end
+if n_subject < 3
+    warning('Insufficient points given on the subject line to compute length ratios.')
+end
 if n_query < 4
     warning('Insufficient points given on the query line to compute cross ratios.')
 elseif n_query < 5
     warning('Insufficient points given on the query line to determine forwards/backwards orientation from cross ratios.')
 end
-match_cross_ratios = (n_subject >= 5 && n_query >= 5);
-if ~match_cross_ratios
-    if match_colors && color_weight > 0
-        warning('Insufficient points given to align sequences using cross ratios. Sequences will be aligned using colour information only.')
-    elseif match_colors && color_weight == 0
-        error('Insufficient points given to align sequences using cross ratios. Set `color_weight` to a value greater than zero to align sequences using colour information.')
-    else
-        error('Insufficient points given to align sequences using cross ratios. Consider aligning sequences using colour information.')
-    end
+if n_query < 3
+    warning('Insufficient points given on the query line to compute length ratios.')
+end
+match_cross_ratios = (n_subject >= 5 && n_query >= 5) && (affine_weight < 1);
+match_length_ratios = (n_subject >= 3 && n_query >= 3) && (affine_weight > 0);
+if match_colors
+    match_cross_ratios = match_cross_ratios && (color_weight < 1);
+    match_length_ratios = match_length_ratios && (color_weight < 1);
+end
+if ~match_cross_ratios && ~match_length_ratios && ~match_colors
+    error('Insufficient points given to align sequences using geometric constraints.')
 end
 
 if ~all(subject_lengths == sort(subject_lengths))
@@ -219,101 +269,126 @@ if ~all(query_lengths == sort(query_lengths))
     error('The `query_lengths` input argument should be sorted in ascending order.');
 end
 
-if match_cross_ratios
-    % Compute all possible cross ratios of the subject and query points
-    % Note that 'nchoosek' preserves the order of the items being chosen.
-    subject_combinations = nchoosek(subject_sequence, 4);
-    n_subject_cross_ratios = size(subject_combinations, 1);
-    subject_cross_ratios = zeros(n_subject_cross_ratios, 1);
-    for i = 1:n_subject_cross_ratios
-        points = subject_lengths(subject_combinations(i, :), 1);
-        subject_cross_ratios(i) = crossRatio(points);
-    end
+flag_index = 1;
+for flag = [match_cross_ratios, match_length_ratios]
+    if flag
+        if flag_index == 1
+            subsequence_length = 4;
+            ratioFcn = @crossRatio;
+            str = 'cross ratio matching scores';
+        else
+            subsequence_length = 3;
+            ratioFcn = @lengthRatio;
+            str = 'length ratio matching scores';
+        end
+        
+        % Compute all possible ratios of the subject and query points
+        % Note that 'nchoosek' preserves the order of the items being chosen.
+        subject_combinations = nchoosek(subject_sequence, subsequence_length);
+        n_subject_ratios = size(subject_combinations, 1);
+        subject_ratios = zeros(n_subject_ratios, 1);
+        for i = 1:n_subject_ratios
+            points = subject_lengths(subject_combinations(i, :), 1);
+            subject_ratios(i) = ratioFcn(points);
+        end
 
-    query_combinations = nchoosek(query_sequence, 4);
-    n_query_cross_ratios = size(query_combinations, 1);
-    query_cross_ratios = zeros(n_query_cross_ratios, 1);
-    for i = 1:n_query_cross_ratios
-        points = query_lengths(query_combinations(i, :), 1);
-        query_cross_ratios(i) = crossRatio(points);
-    end
+        query_combinations = nchoosek(query_sequence, subsequence_length);
+        n_query_ratios = size(query_combinations, 1);
+        query_ratios = zeros(n_query_ratios, 1);
+        for i = 1:n_query_ratios
+            points = query_lengths(query_combinations(i, :), 1);
+            query_ratios(i) = ratioFcn(points);
+        end
 
-    % Compute cross ratio scores for the forward and reverse alignments
-    % The first layer contains scores for forward alignment; The second
-    % contains scores for reverse alignment.
-    cross_ratio_scores = zeros(n_subject, n_query, 2);
-    cross_ratio_score_counts = zeros(n_subject, n_query, 2);
-    point_indices_query = [
-        reshape(query_combinations.', [], 1);
-        reshape(fliplr(query_combinations).', [], 1)
-        ];
-    point_indices_direction = [
-        ones(4 * n_query_cross_ratios, 1);
-        2 * ones(4 * n_query_cross_ratios, 1)
-        ];
-    % `duplicates_buffer` prevents clobbering that would otherwise occur when
-    % the same pairing of a subject and a query point corresponds to multiple
-    % cross ratio scores within an iteration of the cross ratio scoring loop
-    % below.
-    cross_ratio_position_indices = repmat((1:4).', 2 * n_query_cross_ratios, 1); % Index of position in cross ratio
-    cross_ratio_score_indices = sub2ind(...
-        size(cross_ratio_scores),...
-        cross_ratio_position_indices,...
-        point_indices_query,...
-        point_indices_direction...
-        );
-    n_duplicates_max = nchoosek(n_query - 1, 3);
-    [unique_indices,unique_indices_map,unique_indices_rows] = unique(cross_ratio_score_indices);
-    n_unique_indices = length(unique_indices);
-    duplicates_buffer = zeros(n_unique_indices, n_duplicates_max);
-    unique_indices_columns = zeros(length(cross_ratio_score_indices), 1);
-    for i = 1:n_unique_indices
-        unique_index_filter = (unique_indices_rows == i);
-        unique_indices_columns(unique_index_filter) = (1:sum(unique_index_filter)).';
-    end
-    duplicates_buffer_indices = sub2ind(...
-        size(duplicates_buffer), unique_indices_rows, unique_indices_columns...
-        );
-    duplicates_buffer(duplicates_buffer_indices) = 1;
-    cross_ratio_score_counts_increment = sum(duplicates_buffer, 2);
-
-    for i = 1:n_subject_cross_ratios
-        point_indices_subject = repmat(subject_combinations(i, :)', n_query_cross_ratios * 2, 1);
-        cross_ratio_subject = repmat(subject_cross_ratios(i), n_query_cross_ratios, 1);
-        cross_ratio_score = abs(cross_ratio_subject - query_cross_ratios) ./...
-            cross_ratio_subject;
-        cross_ratio_score = max(1 - cross_ratio_score, 0);
-        cross_ratio_score_indices = sub2ind(...
-            size(cross_ratio_scores),...
-            point_indices_subject,...
+        % Compute ratio scores for the forward and reverse alignments
+        % The first layer contains scores for forward alignment; The second
+        % contains scores for reverse alignment.
+        ratio_scores = zeros(n_subject, n_query, 2);
+        ratio_score_counts = zeros(n_subject, n_query, 2);
+        point_indices_query = [
+            reshape(query_combinations.', [], 1);
+            reshape(fliplr(query_combinations).', [], 1)
+            ];
+        point_indices_direction = [
+            ones(subsequence_length * n_query_ratios, 1);
+            2 * ones(subsequence_length * n_query_ratios, 1)
+            ];
+        % `duplicates_buffer` prevents clobbering that would otherwise occur when
+        % the same pairing of a subject and a query point corresponds to multiple
+        % ratio scores within an iteration of the cross ratio scoring loop
+        % below.
+        ratio_position_indices = repmat((1:subsequence_length).', 2 * n_query_ratios, 1); % Index of position in cross ratio
+        ratio_score_indices = sub2ind(...
+            size(ratio_scores),...
+            ratio_position_indices,...
             point_indices_query,...
             point_indices_direction...
             );
-        cross_ratio_score = repelem(repmat(cross_ratio_score, 2, 1), 4);
-        duplicates_buffer(duplicates_buffer_indices) = cross_ratio_score;
-        cross_ratio_score_indices = cross_ratio_score_indices(unique_indices_map);
-        cross_ratio_scores(cross_ratio_score_indices) =...
-            cross_ratio_scores(cross_ratio_score_indices) +...
-            sum(duplicates_buffer, 2);
-        cross_ratio_score_counts(cross_ratio_score_indices) =...
-            cross_ratio_score_counts(cross_ratio_score_indices) +...
-            cross_ratio_score_counts_increment;
-    end
+        n_duplicates_max = nchoosek(n_query - 1, subsequence_length - 1);
+        [unique_indices,unique_indices_map,unique_indices_rows] = unique(ratio_score_indices);
+        n_unique_indices = length(unique_indices);
+        duplicates_buffer = zeros(n_unique_indices, n_duplicates_max);
+        unique_indices_columns = zeros(length(ratio_score_indices), 1);
+        for i = 1:n_unique_indices
+            unique_index_filter = (unique_indices_rows == i);
+            unique_indices_columns(unique_index_filter) = (1:sum(unique_index_filter)).';
+        end
+        duplicates_buffer_indices = sub2ind(...
+            size(duplicates_buffer), unique_indices_rows, unique_indices_columns...
+            );
+        duplicates_buffer(duplicates_buffer_indices) = 1;
+        ratio_score_counts_increment = sum(duplicates_buffer, 2);
 
-    % Normalize
-    cross_ratio_scores = cross_ratio_scores ./ cross_ratio_score_counts;
-    cross_ratio_scores(isnan(cross_ratio_scores)) = 0;
+        for i = 1:n_subject_ratios
+            point_indices_subject = repmat(subject_combinations(i, :)', n_query_ratios * 2, 1);
+            ratio_subject = repmat(subject_ratios(i), 2 * n_query_ratios, 1);
+            if flag_index == 1
+                % Cross ratios are invariant to point sequence reversal
+                ratio_score = abs(ratio_subject - repmat(query_ratios, 2, 1)) ./...
+                    ratio_subject;
+            else
+                % Length ratios are inverted when points are reversed
+                ratio_score = abs(ratio_subject - [query_ratios; query_ratios.^(-1)]) ./...
+                    ratio_subject;
+            end
+            ratio_score = max(1 - ratio_score, 0);
+            ratio_score_indices = sub2ind(...
+                size(ratio_scores),...
+                point_indices_subject,...
+                point_indices_query,...
+                point_indices_direction...
+                );
+            ratio_score = repelem(ratio_score, subsequence_length);
+            duplicates_buffer(duplicates_buffer_indices) = ratio_score;
+            ratio_score_indices = ratio_score_indices(unique_indices_map);
+            ratio_scores(ratio_score_indices) =...
+                ratio_scores(ratio_score_indices) +...
+                sum(duplicates_buffer, 2);
+            ratio_score_counts(ratio_score_indices) =...
+                ratio_score_counts(ratio_score_indices) +...
+                ratio_score_counts_increment;
+        end
 
-    if verbose
-        figure;
-        imagesc(cross_ratio_scores(:, :, 1))
-        colorbar
-        title('Forward cross ratio matching scores')
-        figure;
-        imagesc(cross_ratio_scores(:, :, 2))
-        colorbar
-        title('Reverse cross ratio matching scores')
+        % Normalize
+        ratio_scores = ratio_scores ./ ratio_score_counts;
+        ratio_scores(isnan(ratio_scores)) = 0;
+
+        if verbose
+            plotScores(ratio_scores, str);
+        end
+        
+        if flag_index == 1 || (flag_index == 2 && ~match_cross_ratios)
+            combined_ratio_scores = ratio_scores;
+        else
+            combined_ratio_scores = (ratio_scores * affine_weight) +...
+                (combined_ratio_scores * (1 - affine_weight));
+            
+            if verbose
+                plotScores(combined_ratio_scores, 'cross ratio and length ratio combined matching scores');
+            end
+        end
     end
+    flag_index = 2;
 end
 
 if match_colors
@@ -339,35 +414,21 @@ if match_colors
         );
     
     if verbose
-        figure;
-        imagesc(color_scores(:, :, 1))
-        colorbar
-        title('Forward colour matching scores')
-        figure;
-        imagesc(color_scores(:, :, 2))
-        colorbar
-        title('Reverse colour matching scores')
+        plotScores(color_scores, 'colour matching scores');
     end
     
-    if match_cross_ratios
+    if match_cross_ratios || match_length_ratios
         scores = (color_scores * color_weight) +...
-            (cross_ratio_scores * (1 - color_weight));
+            (combined_ratio_scores * (1 - color_weight));
     
         if verbose
-            figure;
-            imagesc(scores(:, :, 1))
-            colorbar
-            title('Forward combined matching scores')
-            figure;
-            imagesc(scores(:, :, 2))
-            colorbar
-            title('Reverse combined matching scores')
+            plotScores(scores, 'combined matching scores');
         end
     else
         scores = color_scores;
     end
 else
-    scores = cross_ratio_scores;
+    scores = combined_ratio_scores;
 end
 
 % Match sequences in the given directions with dynamic programming
