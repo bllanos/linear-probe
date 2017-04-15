@@ -240,7 +240,7 @@ parameters_list = [parameters_list {
     }];
 
 % Probe localization results
-localization_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170409_bambooSkewer_orangeBlue_probeLocalizationResults_topCamera_rect.mat';
+localization_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170414_bambooSkewer_orangeBlue_probeLocalizationResults_nonlinear_bottomCamera_rect.mat';
 
 % Measurements of the probe object
 model_filename = [];
@@ -266,7 +266,7 @@ point_alignment_outlier_threshold = 5;
 
 % Flags to control verbose or graphical output
 display_reprojection = true;
-display_model_from_visible_points = true;
+display_model_from_visible_points = false;
 display_reprojection_statistics = true;
 display_3d_statistics = true;
 display_reprojected_stereo_points = true;

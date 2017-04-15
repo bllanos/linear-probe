@@ -88,7 +88,7 @@ end
 
 % Initial Guess
 X_end = X_tip + d * max(lengths);
-p0 = zeros(6, 1);
+p0 = zeros(1, 6);
 if verbose
     disp('Initial guess:')
     X_tip %#ok<NOPRT>

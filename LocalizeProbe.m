@@ -159,10 +159,13 @@ linear_convergence_threshold = 0.01;
 % its image
 normalize_homography1D = true;
 
+% Enable or disable nonlinear iterative refinement
+enable_nonlinear_estimation = true;
+
 % Debugging tools
-verbose_linear_estimation = true; % Requires `I_filename` to be valid
+verbose_linear_estimation = false; % Requires `I_filename` to be valid
 display_linear_estimation = true; % Requires `I_filename` to be valid
-verbose_nonlinear_estimation = true;
+verbose_nonlinear_estimation = false;
 display_nonlinear_estimation = true; % Requires `I_filename` to be valid
 display_axis_points = true; % Requires `I_filename` to be valid
 
@@ -238,16 +241,18 @@ end
 
 %% Nonlinear estimation of probe location
 
-[ X_tip, probe_axis, u ] = probeTipAndOrientationNonlinear(...
-    above, below, lengths, widths, P, X_tip, d,...
-    verbose_nonlinear_estimation...
-    );
+if enable_nonlinear_estimation
+    [ X_tip, probe_axis ] = probeTipAndOrientationNonlinear(...
+        above, below, lengths, widths, P, X_tip, probe_axis,...
+        verbose_nonlinear_estimation...
+        );
 
-if display_nonlinear_estimation
-    plotProbeReprojection(...
-                I, above, below, lengths, widths, P, d, u, X_tip,...
-                'Reprojection of nonlinearly estimated probe location'...
-            );
+    if display_nonlinear_estimation
+        plotProbeReprojection(...
+                    I, [above; below], lengths, widths, P, probe_axis, X_tip,...
+                    'Reprojection of nonlinearly estimated probe location'...
+                );
+    end
 end
 
 %% Generate data to output
