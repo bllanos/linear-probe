@@ -240,26 +240,26 @@ parameters_list = [parameters_list {
     }];
 
 % Probe localization results
-localization_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170414_bambooSkewer_orangeBlue_probeLocalizationResults_nonlinear_bottomCamera_rect.mat';
+localization_filename = fullfile('..','Data','probeLocalizationResults_probePrePaperOcclusion_1_t_rect.mat');
 
 % Measurements of the probe object
 model_filename = [];
 
 % Camera projection matrix
-camera_filename =  'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\camera_calibration_from_20160609\20170305_bottomCameraMatrix_identityExtrinsics.mat';
+camera_filename =  [];
 
 % Image containing the probe
-I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
+I_filename = [];
 
 % Ground truth points
 % If none is provided, set it to an empty array (`[]`).
-visible_points_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\ground_truth\probePrePaperOcclusion_1_b_groundTruth.mat';
+visible_points_filename = fullfile('..','Data','probePrePaperOcclusion_1_t_groundTruth.mat');
 
 % Ground truth stereo information
 % If none is provided, set it to an empty array (`[]`).
-stereo_data_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\ground_truth\probePrePaperOcclusion_1_stereo_groundTruth.mat';
-I1_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_b_rect.bmp';
-I2_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\undistorted\probePrePaperOcclusion_1_t_rect.bmp';
+stereo_data_filename = fullfile('..','Data','probePrePaperOcclusion_1_stereo_groundTruth.mat');
+I1_filename = fullfile('..','Data','probePrePaperOcclusion_1_b_rect.bmp');
+I2_filename = fullfile('..','Data','probePrePaperOcclusion_1_t_rect.bmp');
 
 % Parameters for interpreting annotated points
 point_alignment_outlier_threshold = 5;

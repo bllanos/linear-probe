@@ -187,7 +187,6 @@ B = I_double(:, :, 3);
     H, R, G, B, mask,...
     rgb_sigma_polyfit, probe_color_distribution_resolution...
 );
-bound_color_distribution = bound_color_distribution ./ max(bound_color_distribution);
 
 n_colors = size(probe_color_distributions, 2);
 

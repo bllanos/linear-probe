@@ -179,7 +179,6 @@ probe_color_pairs = unique(probe_color_pairs, 'rows');
     H, R, G, B, true(image_height, image_width),...
     rgb_sigma_polyfit, probe_color_distribution_resolution...
 );
-I_color_distribution = I_color_distribution ./ max(I_color_distribution);
 
 if plot_global_hue_estimator
     legend_names = cell(n_colors + 1, 1);

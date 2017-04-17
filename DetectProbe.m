@@ -135,11 +135,11 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\20170414_redPenDetectionModel.mat';
+detection_model_filename = fullfile('..','Data','probeDetectionModel.mat');
 % Image of probe in an unknown pose
-I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\cd1_rectified\seq1\cd1_2017-04-10-182549-0035_rect.bmp';
+I_filename = fullfile('..','Data','probePrePaperOcclusion_1_t_rect.bmp');
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\rgbStddev.mat';
+rgb_sigma_filename = fullfile('..','Data','rgbStddev.mat');
 
 % Ask for probe's bounding region
 request_bounding_region = false;
@@ -155,7 +155,7 @@ detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
-detectWithinBoundingBoxParams.noise_threshold = 0.5; % If empty, select automatically using Otsu's method
+detectWithinBoundingBoxParams.noise_threshold = []; % If empty, select automatically using Otsu's method
 erosion_radius_final = 2;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
@@ -198,7 +198,7 @@ detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = false;
 
 display_detected_model_from_image = true;
 
-display_final_clipped_regions_colored = true;
+display_final_clipped_regions_colored = false;
 
 verbose_detected_point_sequence_matching = false;
 display_detected_model_matching = true;
@@ -229,13 +229,6 @@ end
 load(rgb_sigma_filename, 'rgb_sigma_polyfit');
 if ~exist('rgb_sigma_polyfit', 'var')
     error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
-end
-
-%% Rescale colour estimators by their peak values
-
-for i = 1:size(probe_color_distributions, 2)
-    probe_color_distributions(:, i) = probe_color_distributions(:, i) ./ ...
-        max(probe_color_distributions(:, i)); %#ok<SAGROW>
 end
 
 %% Manual bounding region selection (if enabled)

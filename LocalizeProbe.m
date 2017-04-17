@@ -141,13 +141,13 @@ parameters_list = [parameters_list {
     }];
 
 % Measurements of the probe object
-model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\bambooSkewer_orangeBlue.mat';
+model_filename = [];
 
 % Probe detection result
-detection_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170217_bambooSkewer_orangeBlue_probeDetectionResults_bottomCamera_rect.mat';
+detection_filename = fullfile('..','Data','probeDetectionResults_probePrePaperOcclusion_1_t_rect.mat');
 
 % Camera projection matrix
-camera_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\camera_calibration_from_20160609\20170305_bottomCameraMatrix_identityExtrinsics.mat';
+camera_filename = fullfile('..','Data','20170327_topCameraMatrix_relativeExtrinsics_fixed.mat');
 
 % Image containing the probe
 I_filename = [];
@@ -164,9 +164,9 @@ enable_nonlinear_estimation = true;
 
 % Debugging tools
 verbose_linear_estimation = false; % Requires `I_filename` to be valid
-display_linear_estimation = true; % Requires `I_filename` to be valid
+display_linear_estimation = false; % Requires `I_filename` to be valid
 verbose_nonlinear_estimation = false;
-display_nonlinear_estimation = true; % Requires `I_filename` to be valid
+display_nonlinear_estimation = false; % Requires `I_filename` to be valid
 display_axis_points = true; % Requires `I_filename` to be valid
 
 %% Load input data

@@ -61,8 +61,8 @@ function [ fg ] = plotHueVariableKernelDensityEstimator( h_inc, h_distributions,
 % ## Notes
 % - The caller is responsible for adding a plot title. Axis labels are
 %   added by this function.
-% - The colour with which an estimator is plotted is equal to the
-%   expected value of the estimator.
+% - The colour with which an estimator is plotted corresponds to the
+%   maximum value of the estimator.
 %
 % See also hueVariableKernelDensityEstimator, hsv2rgb, plot
 
@@ -100,12 +100,14 @@ hold on
 for i = 1:size(h_distributions, 2)
     h_distribution_i = h_distributions(:, i);
     h_distribution_i_normalized = h_distribution_i / sum(h_distribution_i);
-    color = sum(h_distribution_i_normalized .* h);
+    [~, color_ind] = max(h_distribution_i_normalized);
+    color = h(color_ind);
     color = hsv2rgb([color, 1, 1]);
     plot(...
             h, h_distribution_i,...
             'Color', color,...
-            'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1}...
+            'LineStyle', line_styles{mod(i - 1, length(line_styles)) + 1},...
+            'LineWidth', 2.0...
         )
 end
 hold off
