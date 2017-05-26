@@ -1,22 +1,22 @@
-function [ fg ] = plotHueVariableKernelDensityEstimator( h_inc, h_distributions, varargin )
-% PLOTHUEVARIABLEKERNELDENSITYESTIMATOR  Visualize the output of `hueVariableKernelDensityEstimator`
+function [ fg ] = plotHueDensityEstimator( h_inc, h_distributions, varargin )
+% PLOTHUEDENSITYESTIMATOR  Visualize hue density estimators
 %
 % ## Syntax
-% plotHueVariableKernelDensityEstimator(...
+% plotHueDensityEstimator(...
 %   h_inc, h_distributions [, legend_names, line_styles, fg]...
 % )
-% fg = plotHueVariableKernelDensityEstimator(...
+% fg = plotHueDensityEstimator(...
 %   h_inc, h_distributions [, legend_names, line_styles, fg]...
 % )
 %
 % ## Description
-% plotHueVariableKernelDensityEstimator(...
+% plotHueDensityEstimator(...
 %   h_inc, h_distributions [, legend_names, line_styles, fg]...
 % )
 %   Creates a figure or updates an existing figure with plots of hue
-%   variable kernel density estimators.
+%   density estimators.
 %
-% fg = plotHueVariableKernelDensityEstimator(...
+% fg = plotHueDensityEstimator(...
 %   h_inc, h_distributions [, legend_names, line_styles, fg]...
 % )
 %   Additionally returns the handle of the figure which was created or updated.
@@ -24,11 +24,12 @@ function [ fg ] = plotHueVariableKernelDensityEstimator( h_inc, h_distributions,
 % ## Input Arguments
 %
 % h_inc -- Increment between hue sample values
-%   The `inc` output argument of `hueVariableKernelDensityEstimator`.
+%   The hue spacing corresponding to adjacent values in the hue estimators.
 %
-% h_distributions -- Evaluated variable kernel density estimators
-%   A horizontal concatenation of one or more instances of the `dist` output
-%   argument of `hueVariableKernelDensityEstimator`. In other words,
+% h_distributions -- Evaluated hue density estimators
+%   A horizontal concatenation of one or more instances of the `dist`
+%   output argument of `hueVariableKernelDensityEstimator` or
+%   `hueGaussianDensityEstimator`, for example. In other words,
 %   `h_distributions(:,i)` contains the i-th estimator to plot.
 %
 % legend_names -- Plot legend entries
@@ -64,7 +65,7 @@ function [ fg ] = plotHueVariableKernelDensityEstimator( h_inc, h_distributions,
 % - The colour with which an estimator is plotted corresponds to the
 %   maximum value of the estimator.
 %
-% See also hueVariableKernelDensityEstimator, hsv2rgb, plot
+% See also hueVariableKernelDensityEstimator, hueGaussianDensityEstimator, hsv2rgb, plot
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

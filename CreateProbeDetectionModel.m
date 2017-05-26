@@ -148,7 +148,6 @@ parameters_list = {
         'model_filename',...
         'I_filename',...
         'I_annotations_filename',...
-        'rgb_sigma_filename',...
         'annotation_corner_search_width',...
         'point_alignment_outlier_threshold',...
         'subject_gap_cost',...
@@ -158,13 +157,11 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = fullfile('..','Data','bambooSkewer_orangeBlue.mat');
+model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenMeasurements.mat';
 % Image of probe
-I_filename = fullfile('..','Data','probePrePaperOcclusion_1_b_rect.bmp');
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel.bmp';
 % Annotations for image of probe
-I_annotations_filename = fullfile('..','Data','probePrePaperOcclusion_1_b_rect.png');
-% RGB noise parameters
-rgb_sigma_filename = fullfile('..','Data','rgbStddev.mat');
+I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel_annotated.png';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
@@ -177,7 +174,7 @@ subject_gap_cost = -0.1;
 query_gap_cost = 0;
 affine_weight = 0;
 
-% Number of points at which to evaluate hue variable kernel density estimators
+% Number of points at which to evaluate colour estimators
 probe_color_distribution_resolution = 180;
 
 % Debugging tools
@@ -190,6 +187,7 @@ display_probe_band_masks = false;
 display_probe_color_masks = false;
 display_hue_image = false;
 plot_hue_estimators = true;
+plot_hue_classifier = true;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -389,26 +387,17 @@ if display_hue_image
     title('Hue channel of original image')
 end
 
-% Compute hue variable kernel density estimators from probe colors
-load(rgb_sigma_filename, 'rgb_sigma_polyfit');
-if ~exist('rgb_sigma_polyfit', 'var')
-    error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
-end
+% Compute hue Gaussian density estimators from probe colors
 
 probe_color_distributions = zeros(...
         probe_color_distribution_resolution, n_colors...
     );
-I_double = im2double(I);
-R = I_double(:, :, 1);
-G = I_double(:, :, 2);
-B = I_double(:, :, 3);
 for i = 1:n_colors
     [...
         probe_color_distributions(:, i),...
         probe_color_distribution_increment...
-    ] = hueVariableKernelDensityEstimator(...
-        H, R, G, B, probe_color_masks(:, :, i),...
-        rgb_sigma_polyfit, probe_color_distribution_resolution...
+    ] = hueGaussianDensityEstimator(...
+        H, probe_color_masks(:, :, i), probe_color_distribution_resolution...
     );
 end
 
@@ -417,17 +406,38 @@ if plot_hue_estimators
     for i = 1:n_colors
         legend_names{i} = sprintf('Probe color %d', i);
     end
-    plotHueVariableKernelDensityEstimator(...
+    plotHueDensityEstimator(...
         probe_color_distribution_increment, probe_color_distributions, legend_names...
     );
-    title('Hue variable kernel density estimators for colors on the probe')
+    title('Hue Gaussian density estimators for colors on the probe')
+end
+
+%% Create a hue classifier
+
+if n_colors == 1
+    probe_color_classifier = mlDiscreteClassifier(...
+        probe_color_distributions, 'periodic', 'single'...
+    );
+else
+    probe_color_classifier = mlDiscreteClassifier(...
+        probe_color_distributions, 'periodic'...
+    );
+end
+
+if plot_hue_classifier
+    plotHueClassifier(...
+        probe_color_distribution_increment, probe_color_classifier,...
+        n_colors...
+    );
+    title('Hue classifier for colors on the probe')
 end
 
 %% Save results to a file
 save_variables_list = [ parameters_list, {...
         'probe',...
         'probe_color_distributions',...
-        'probe_color_distribution_increment'...
+        'probe_color_distribution_increment',...
+        'probe_color_classifier'
     } ];
 uisave(save_variables_list,'probeDetectionModel')
 disp('Reminder: The output model is specific to the probe, camera, and camera parameters.')
