@@ -1,23 +1,31 @@
-function [ classifier ] = mlDiscreteClassifier( class_distributions, varargin )
+function [ classifier, likelihood ] = mlDiscreteClassifier( class_distributions, increments, varargin )
 % MLDISCRETECLASSIFIER  Maximum likelihood classification from discrete distributions
 %
 % ## Syntax
-% classifier = mlDiscreteClassifier( class_distributions [, 'single'] )
-% classifier = mlDiscreteClassifier( class_distributions, 'periodic' [, 'single'] )
-% classifier = mlDiscreteClassifier( class_distributions, background_distribution )
+% classifier = mlDiscreteClassifier(...
+%   class_distributions, increments [, 'periodic']...
+% )
+% classifier = mlDiscreteClassifier(...
+%   class_distributions, increments, background_distribution...
+% )
+% [ classifier, likelihood ] = mlDiscreteClassifier(____)
 %
 % ## Description
-% classifier = mlDiscreteClassifier( class_distributions [, 'single'] )
-%   Returns a maximum likelihood classifier assuming a uniform background
-%   distribution.
+% classifier = mlDiscreteClassifier(...
+%   class_distributions, increments [, 'periodic']...
+% )
+%   Returns a maximum likelihood classifier assuming a uniform, optionally
+%   periodic, background distribution.
 %
-% classifier = mlDiscreteClassifier( class_distributions, 'periodic' [, 'single'] )
-%   Returns a maximum likelihood classifier assuming a uniform, periodic
-%   background distribution.
-%
-% classifier = mlDiscreteClassifier( class_distributions, background_distribution )
+% classifier = mlDiscreteClassifier(...
+%   class_distributions, increments, background_distribution...
+% )
 %   Returns a maximum likelihood classifier using the given background
 %   distribution
+%
+% [ classifier, likelihood ] = mlDiscreteClassifier(____)
+%   Additionally returns the likelihood values corresponding to the
+%   classification.
 %
 % ## Input Arguments
 %
@@ -27,16 +35,22 @@ function [ classifier ] = mlDiscreteClassifier( class_distributions, varargin )
 %   conditional probability of a sample value, at the coordinates
 %   represented by its position in the array, given the i-th class.
 %
-%   If the last argument of the function is 'single',
-%   `class_distributions` sill be interpreted as a single class
-%   distribution. (It is difficult to generate a multidimensional array
-%   where the last dimension has size 1. For example, `zeros(10,10,1)`
-%   produces a two-dimensional array.)
+%   If there is one class distribution, as can be inferred from the length
+%   of `increments`, or the size of `background_distribution`,
+%   `class_distributions` is assumed to be entirely occupied by this class
+%   distribution, rather than having a final redundant singleton dimension
+%   indexing class distributions.
 %
-%   Note that 'single' is not passed if `background_distribution` is
-%   passed, because it is possible to infer whether `class_distributions`
-%   represents a single class distribution, by comparing the dimensions of
-%   the two input arguments.
+% increments -- Sampling increments
+%   `increments(i)` is the spacing between samples represented by adjacent
+%   indices along the i-th dimension in `class_distributions`. If there are
+%   multiple class distributions, then `increments` has length
+%   `ndims(class_distributions) - 1`. If there is one class distribution,
+%   then `increments` has length `ndims(class_distributions)`.
+%
+%   The volume of the sample space between samples in the distributions is
+%   needed to construct a uniform background distribution. If
+%   `background_distribution` is passed, `increments` can be empty.
 %
 % background_distribution -- Background density estimator
 %   An array with the same dimensions as `class_distributions(...,i)`
@@ -55,17 +69,25 @@ function [ classifier ] = mlDiscreteClassifier( class_distributions, varargin )
 %
 % classifier -- Maximum likelihood classifier
 %   An array with the same dimensions as `class_distributions(...,i)` where
-%   each value contains the index of the class giving a sample value at the
-%   location corresponding to the subscripts of the value the highest
+%   each value contains the index of the class giving a sample, at the
+%   location corresponding to the subscripts of the value, the highest
 %   conditional probability. Indices of zero correspond to the background.
 %
-%   If the last argument of the function is 'single', `classifier` has the
-%   same dimensions as `class_distributions`.
+%   If there is only one class distribution, `classifier` has the same
+%   dimensions as `class_distributions`.
+%
+% likelihood -- Likelihood values
+%   An array with the same dimensions as `classifier`, where each value
+%   contains the conditional probability of a sample, at the location
+%   corresponding to the subscripts of the value, given by the class to
+%   which the sample has been assigned by `classifier`. In other words,
+%   `likelihood` contains the maximum conditional probability over all
+%   classes used to generate `classifier`.
 %
 % ## Notes
 % - This function will produce a Bayes classifier if the input
-%   distributions are multiplied by the probabilities of their respective
-%   classes.
+%   distributions are pre-multiplied by the probabilities of their
+%   respective classes.
 %
 % See also queryDiscretized1DFunction
 
@@ -75,25 +97,15 @@ function [ classifier ] = mlDiscreteClassifier( class_distributions, varargin )
 % File created May 26, 2017
 
 nargoutchk(1, 1);
-narginchk(1, 3);
+narginchk(2, 3);
 
-background_distribution = [];
 periodic = false;
-single = false;
+background_distribution = [];
 
 if ~isempty(varargin)
     if ischar(varargin{1})
         if strcmp(varargin{1}, 'periodic')
             periodic = true;
-            if length(varargin) > 1
-                if strcmp(varargin{1}, 'single')
-                    single = true;
-                else
-                    error('Unrecognized value of third input argument');
-                end
-            end
-        elseif strcmp(varargin{1}, 'single')
-            single = true;
         else
             error('Unrecognized value of second input argument');
         end
@@ -105,8 +117,13 @@ end
 % Create a uniform background distribution, if necessary
 if isempty(background_distribution)
     class_distributions_size = size(class_distributions);
-    if ~single
+    
+    if isempty(increments)
+        error('`increments` cannot be empty if no background distribution is passed.')
+    elseif length(increments) == (ndims(class_distributions) - 1)
         class_distributions_size = class_distributions_size(1:(end - 1));
+    elseif length(increments) ~= ndims(class_distributions)
+        error('The length of `increments` must be equal to or one less than the number of dimensions in `class_distributions`.')
     end
     
     if periodic
@@ -115,11 +132,13 @@ if isempty(background_distribution)
         n_elements = prod(class_distributions_size);
     end
     
+    uniform_value = 1 / (n_elements * prod(increments));
+    
     if length(class_distributions_size) == 1
         class_distributions_size = [class_distributions_size, 1];
     end
 
-    background_distribution = ones(class_distributions_size) / n_elements;
+    background_distribution = ones(class_distributions_size) * uniform_value;
 end
 
 % Classification
@@ -129,7 +148,7 @@ else
     max_dimension = ndims(background_distribution) + 1;
 end
 all_distributions = cat(max_dimension, background_distribution, class_distributions);
-[~, classifier] = max(all_distributions, [], max_dimension);
+[likelihood, classifier] = max(all_distributions, [], max_dimension);
 classifier = classifier - 1;
 
 end
