@@ -114,18 +114,18 @@ narginchk(6,7);
 if ~isempty(varargin)
     verbose = varargin{1};
     display_original_image = verbose.display_original_image;
-    display_hue_image = verbose.display_hue_image;
-    plot_global_hue_estimator = verbose.plot_global_hue_estimator;
-    display_distribution_backprojections = verbose.display_distribution_backprojections;
-    verbose_region_extraction = verbose.verbose_region_extraction;
+    extractBinaryRegionsVerbose.display_hue_image = verbose.display_hue_image;
+    extractBinaryRegionsVerbose.plot_hue_estimator = verbose.plot_hue_estimator;
+    extractBinaryRegionsVerbose.display_distribution_backprojections = verbose.display_distribution_backprojections;
+    extractBinaryRegionsVerbose.display_binary_images = verbose.display_binary_images;
     verbose_region_filtering = verbose.verbose_region_filtering;
     display_region_expansion = verbose.display_region_expansion;
 else
     display_original_image = false;
-    display_hue_image = false;
-    plot_global_hue_estimator = false;
-    display_distribution_backprojections = false;
-    verbose_region_extraction = false;
+    extractBinaryRegionsVerbose.display_hue_image = false;
+    extractBinaryRegionsVerbose.plot_hue_estimator = false;
+    extractBinaryRegionsVerbose.display_distribution_backprojections = false;
+    extractBinaryRegionsVerbose.display_binary_images = false;
     verbose_region_filtering = false;
     display_region_expansion = false;
 end
@@ -142,94 +142,24 @@ if display_original_image
     title('Base image');
 end
 
+%% Find an initial bounding area for the probe
+
+[ probe_regions_initial, probe_regions_bw_initial] = extractBinaryRegions(...
+    I, probe_color_distributions, probe_color_distribution_resolution,...
+    rgb_sigma_polyfit, params.noise_threshold,...
+    params.erosion_radius,...
+    [],...
+    extractBinaryRegionsVerbose...
+);
 n_colors = size(probe_color_distributions, 2);
-
-%% Compute variables used later
-
-% Obtain hue values
-H = rgb2hue(I);
-
-I_double = im2double(I);
-R = I_double(:, :, 1);
-G = I_double(:, :, 2);
-B = I_double(:, :, 3);
-
-if display_hue_image
-    figure
-    H_color = ones(image_height, image_width, image_n_channels);
-    H_color(:, :, 1) = H;
-    H_color = hsv2rgb(H_color);
-    imshowpair(H, H_color, 'montage');
-    title('Hue channel of original image')
-end
+probe_regions_initial = probe_regions_initial(1:n_colors);
+probe_regions_bw_initial = probe_regions_bw_initial(:, :, 1:n_colors);
 
 % Identify which pairs of colours can be adjacent
 probe_color_pairs = [probe.colors(1:(end - 1)), probe.colors(2:end)];
 probe_color_pairs = probe_color_pairs(all(probe_color_pairs ~= 0, 2), :);
 probe_color_pairs = sort(probe_color_pairs, 2);
 probe_color_pairs = unique(probe_color_pairs, 'rows');
-
-%% Compute the hue variable kernel density estimator for the image
-
-[...
-    I_color_distribution,...
-    I_color_distribution_increment...
-] = hueVariableKernelDensityEstimator(...
-    H, R, G, B, true(image_height, image_width),...
-    rgb_sigma_polyfit, probe_color_distribution_resolution...
-);
-
-if plot_global_hue_estimator
-    legend_names = cell(n_colors + 1, 1);
-    legend_names{1} = 'Image';
-    for i = 1:n_colors
-        legend_names{i + 1} = sprintf('Probe colour %d', i);
-    end
-    plotHueVariableKernelDensityEstimator(...
-        I_color_distribution_increment,...
-        [I_color_distribution, probe_color_distributions], legend_names...
-    );
-    title('Hue variable kernel density estimator for the entire image')
-end
-
-%% Transform the image using histogram backprojection
-
-n_colors_plus_background = n_colors + 1;
-distributions_backprojected = zeros(image_height, image_width, n_colors_plus_background);
-for i = 1:n_colors
-    distributions_backprojected(:, :, i) = queryDiscretized1DFunction(...
-            H, probe_color_distributions(:, i), I_color_distribution_increment...
-        );
-end
-distributions_backprojected(:, :, n_colors_plus_background) = queryDiscretized1DFunction(...
-        H, I_color_distribution, I_color_distribution_increment...
-    );
-
-if display_distribution_backprojections
-    for i = 1:n_colors
-        figure
-        imshow(distributions_backprojected(:, :, i));
-        title(sprintf('Distribution backprojection for probe colour %d', i))
-    end
-    figure
-    imshow(...
-        distributions_backprojected(:, :, n_colors_plus_background) /...
-        max(max(distributions_backprojected(:, :, n_colors_plus_background)))...
-        );
-    title('Distribution backprojection for the background')
-end
-
-%% Find an initial bounding area for the probe
-
-[ probe_regions_initial, probe_regions_bw_initial] = extractBinaryRegions(...
-        distributions_backprojected,...
-        params.noise_threshold,...
-        params.erosion_radius,...
-        [],...
-        verbose_region_extraction...
-    );
-probe_regions_initial = probe_regions_initial(1:n_colors);
-probe_regions_bw_initial = probe_regions_bw_initial(:, :, 1:n_colors);
 
 [
     ~,...

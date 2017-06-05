@@ -182,15 +182,16 @@ alignment_inlier_threshold = 0.75;
 % Debugging tools
 detectBoundingBoxesVerbose.display_original_image = false;
 detectBoundingBoxesVerbose.display_hue_image = false;
-detectBoundingBoxesVerbose.plot_global_hue_estimator = false;
+detectBoundingBoxesVerbose.plot_hue_estimator = false;
 detectBoundingBoxesVerbose.display_distribution_backprojections = false;
-detectBoundingBoxesVerbose.verbose_region_extraction = false;
+detectBoundingBoxesVerbose.display_binary_images = false;
 detectBoundingBoxesVerbose.verbose_region_filtering = false;
 detectBoundingBoxesVerbose.display_region_expansion = false;
 
-detectWithinBoundingBoxVerbose.plot_bounding_area_hue_estimator = false;
+detectWithinBoundingBoxVerbose.display_hue_image = false;
+detectWithinBoundingBoxVerbose.plot_hue_estimator = false;
 detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
-detectWithinBoundingBoxVerbose.verbose_region_extraction = false;
+detectWithinBoundingBoxVerbose.display_binary_images = false;
 detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
 detectWithinBoundingBoxVerbose.display_regions_colored = false;
 detectWithinBoundingBoxVerbose.display_band_edge_extraction = false;

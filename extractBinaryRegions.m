@@ -1,4 +1,7 @@
-function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, threshold, radius, varargin )
+function [ regions, bw ] = extractBinaryRegions(...
+    I, color_distributions, color_distribution_resolution,...
+    rgb_sigma_polyfit, threshold, radius, varargin...
+)
 % EXTRACTBINARYREGIONS  Threshold and refine binary regions
 %
 % ## Syntax
@@ -53,10 +56,11 @@ function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, th
 %
 %   Defaults to `true(image_height,image_width)` if empty or not passed.
 %
-% verbose -- Debugging flag
-%   If true, graphical output will be generated for debugging purposes.
+% verbose -- Debugging flags
+%   If recognized fields of `verbose` are true, corresponding graphical
+%   output will be generated for debugging purposes.
 %
-%   Defaults to false if not passed.
+%   All debugging flags default to false if `verbose` is not passed.
 %
 % ## Output Arguments
 %
@@ -92,11 +96,10 @@ function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, th
 % File created August 15, 2016
 
 nargoutchk(1, 2);
-narginchk(3, 5);
+narginchk(6, 8);
 
-image_height = size(backprojected_distributions, 1);
-image_width = size(backprojected_distributions, 2);
-n = size(backprojected_distributions, 3);
+image_width = size(I, 2);
+image_height = size(I, 1);
 
 mask = [];
 if ~isempty(varargin)
@@ -107,43 +110,117 @@ if isempty(mask)
 end
 if length(varargin) > 1
     verbose = varargin{2};
+    display_hue_image = verbose.display_hue_image;
+    plot_hue_estimator = verbose.plot_hue_estimator;
+    display_distribution_backprojections = verbose.display_distribution_backprojections;
+    display_binary_images = verbose.display_binary_images;
 else
-    verbose = false;
+    display_hue_image = false;
+    plot_hue_estimator = false;
+    display_distribution_backprojections = false;
+    display_binary_images = false;
+end
+
+% Obtain hue values
+H = rgb2hue(I);
+
+I_double = im2double(I);
+R = I_double(:, :, 1);
+G = I_double(:, :, 2);
+B = I_double(:, :, 3);
+
+if display_hue_image
+    figure
+    H_color = ones(image_height, image_width, image_n_channels);
+    H_color(:, :, 1) = H;
+    H_color = hsv2rgb(H_color);
+    imshowpair(H, H_color, 'montage');
+    title('Hue channel of image')
+end
+
+% Compute the hue variable kernel density estimator for the image
+[...
+    I_color_distribution,...
+    I_color_distribution_increment...
+] = hueVariableKernelDensityEstimator(...
+    H, R, G, B, mask,...
+    rgb_sigma_polyfit, color_distribution_resolution...
+);
+
+n_colors = size(color_distributions, 2);
+
+if plot_hue_estimator
+    legend_names = cell(n_colors + 1, 1);
+    legend_names{1} = 'Background';
+    for i = 1:n_colors
+        legend_names{i + 1} = sprintf('Probe colour %d', i);
+    end
+    plotHueVariableKernelDensityEstimator(...
+        I_color_distribution_increment,...
+        [I_color_distribution, color_distributions], legend_names...
+    );
+    title('Hue density estimators')
+end
+
+% Transform the image using histogram backprojection
+n_colors_plus_background = n_colors + 1;
+distributions_backprojected = zeros(image_height, image_width, n_colors_plus_background);
+for i = 1:n_colors
+    distributions_backprojected(:, :, i) = queryDiscretized1DFunction(...
+            H, color_distributions(:, i), I_color_distribution_increment...
+        );
+end
+distributions_backprojected(:, :, n_colors_plus_background) = queryDiscretized1DFunction(...
+        H, I_color_distribution, I_color_distribution_increment...
+    );
+
+if display_distribution_backprojections
+    for i = 1:n_colors
+        figure
+        imshow(distributions_backprojected(:, :, i));
+        title(sprintf('Distribution backprojection for probe colour %d', i))
+    end
+    figure
+    imshow(...
+        distributions_backprojected(:, :, n_colors_plus_background) /...
+        max(max(distributions_backprojected(:, :, n_colors_plus_background)))...
+        );
+    title('Distribution backprojection for the background')
 end
 
 use_otsu = isempty(threshold);
 
 % Find the most likely colour class for each pixel
-[~, max_ind] = max(backprojected_distributions, [], 3);
+[~, max_ind] = max(distributions_backprojected, [], 3);
 x = 0:(image_width - 1);
 y = 1:image_height;
 [X,Y] = meshgrid(x,y);
 max_ind_linear = Y + X .* image_height + (max_ind - 1) .* (image_width * image_height);
-bw = false(image_height, image_width, n);
+bw = false(image_height, image_width, n_colors);
 bw(max_ind_linear) = true;
 
 % Threshold probabilities for each colour
-for i = 1:n
-    backprojected_distributions_i = backprojected_distributions(:, :, i);
+for i = 1:n_colors
+    distributions_backprojected_i = distributions_backprojected(:, :, i);
     if use_otsu
-        counts_i = imhist(backprojected_distributions_i(mask));
+        counts_i = imhist(distributions_backprojected_i(mask));
         threshold_i = otsuthresh(counts_i);
-        bw(:, :, i) = bw(:, :, i) & imbinarize(backprojected_distributions_i, threshold_i);
+        bw(:, :, i) = bw(:, :, i) & imbinarize(distributions_backprojected_i, threshold_i);
     else
-        bw(:, :, i) = bw(:, :, i) & imbinarize(backprojected_distributions_i, threshold);
+        bw(:, :, i) = bw(:, :, i) & imbinarize(distributions_backprojected_i, threshold);
     end
     % Apply the mask
     bw(:, :, i) = bw(:, :, i) & mask;
 end
 
 % Obtain binary regions.
-regions = struct('Connectivity', cell(n, 1), 'ImageSize', cell(n, 1),...
-    'NumObjects', cell(n, 1), 'PixelIdxList', cell(n, 1));
-for i = 1:n
+regions = struct('Connectivity', cell(n_colors, 1), 'ImageSize', cell(n_colors, 1),...
+    'NumObjects', cell(n_colors, 1), 'PixelIdxList', cell(n_colors, 1));
+for i = 1:n_colors
     bw_i = bw(:, :, i);
     disk = strel('disk', radius);
     bw_i = imerode(bw_i, disk);
-    if verbose
+    if display_binary_images
         figure
         imshow(bw_i);
         title(sprintf('Binary image obtained for colour class %d', i))
