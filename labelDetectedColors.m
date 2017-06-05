@@ -27,11 +27,11 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 %   An RGB image containing the probe.
 %
 % probe_color_distributions -- Probe colour estimators
-%   Discretized variable kernel density estimators of image hue values
-%   corresponding to the different coloured bands on the probe, in the same
-%   order (starting from the active tip of the probe). The i-th column of
-%   this 2D array stores the estimator for the i-th colour class of probe
-%   segments. (There are `n_colors` columns in total.)
+%   Discretized density estimators of image hue values corresponding to the
+%   different coloured bands on the probe, in the same order (starting from
+%   the active tip of the probe). The i-th column of this 2D array stores
+%   the estimator for the i-th colour class of probe segments. (There are
+%   `n_colors` columns in total.)
 %
 %   Presently, this argument is only used for producing graphical debugging
 %   output, so an empty array could be passed if graphical debugging output
@@ -39,8 +39,8 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 %
 % probe_color_distribution_increment -- Probe colour estimator sample spacing
 %   A scalar equal to the spacing between the samples of hue values in the
-%   range [0, 1] at which the variable kernel density estimators have been
-%   evaluated to produce 'probe_band_color_distributions'.
+%   range [0, 1] at which the density estimators have been evaluated to
+%   produce 'probe_band_color_distributions'.
 %
 %   Presently, this argument is only used for producing graphical debugging
 %   output, so an empty array could be passed if graphical debugging output

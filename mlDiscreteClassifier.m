@@ -89,7 +89,7 @@ function [ classifier, likelihood ] = mlDiscreteClassifier( class_distributions,
 %   distributions are pre-multiplied by the probabilities of their
 %   respective classes.
 %
-% See also queryDiscretized1DFunction
+% See also queryDiscretized1DFunction, hueVariableKernelDensityEstimator, hueGaussianDensityEstimator
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang

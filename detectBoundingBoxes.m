@@ -40,15 +40,14 @@ function [ mask ] = detectBoundingBoxes(...
 %
 % probe_color_distribution_resolution -- Probe colour estimator sample count
 %   The number of equally-spaced samples in the range of hue values from 0
-%   (inclusive) to 1 (inclusive) at which the variable kernel density
-%   estimators for probe colour bands have been evaluated.
+%   (inclusive) to 1 (inclusive) at which the density estimators for probe
+%   colour bands have been evaluated.
 %
 % probe_color_distributions -- Probe colour estimators
-%   Discretized variable kernel density estimators of image hue values
-%   corresponding to the different coloured bands on the probe, in the same
-%   order (starting from the active tip of the probe). The i-th column of
-%   this 2D array stores the estimator for the i-th colour class of probe
-%   segments.
+%   Discretized density estimators of image hue values corresponding to the
+%   different coloured bands on the probe, in the same order (starting from
+%   the active tip of the probe). The i-th column of this 2D array stores
+%   the estimator for the i-th colour class of probe segments.
 %
 % rgb_sigma_polyfit -- Camera RGB noise model
 %   An array describing the variation in RGB channel standard deviations
@@ -100,7 +99,7 @@ function [ mask ] = detectBoundingBoxes(...
 %   pixels indicate bounding areas for the coloured bands of the probe. In
 %   general, there are multiple, disconnected regions.
 %
-% See also hueVariableKernelDensityEstimator, extractBinaryRegions, detectProbeBinaryRegions
+% See also hueVariableKernelDensityEstimator, hueGaussianDensityEstimator, extractBinaryRegions, detectProbeBinaryRegions
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang

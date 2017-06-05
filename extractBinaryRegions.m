@@ -84,7 +84,7 @@ function [ regions, bw ] = extractBinaryRegions( backprojected_distributions, th
 % to a multi-labelling optimization problem (which could be solved with
 % alpha-expansion, for example).
 %
-% See also bwconncomp, otsuthresh, imbinarize, imerode, ratioDistribution, hueVariableKernelDensityEstimator
+% See also bwconncomp, otsuthresh, imbinarize, imerode, mlDiscreteClassifier
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

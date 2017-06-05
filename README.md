@@ -2,8 +2,10 @@
 **Started Spring 2016**
 **University of Alberta, Department of Computing Science**
 
-## Contributors
+## Code Contributors
 - Bernard Llanos, supervised by Dr. Y.H. Yang
+
+## Other Project Contributors
 - CMPUT615 Project partners (Winter 2017 offering):
   - Kevin Gordon
   - Noah Weninger

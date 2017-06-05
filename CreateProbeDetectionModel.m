@@ -107,21 +107,32 @@
 % A '.mat' file containing the following variables:
 % - 'probe': A copy of the 'probe' variable loaded from the probe
 %   measurements file, for convenience.
-% - 'probe_band_color_distributions': Discretized variable kernel density
+% - 'probe_color_distributions_kernel': Discretized variable kernel density
 %   estimators of image hue values corresponding to the different coloured
 %   bands on the probe, in the same order (starting from the active tip of
 %   the probe). The i-th column of this 2D array stores the estimator for
 %   the i-th colour class of probe segments.
-% - 'probe_band_color_distribution_increment': A scalar equal to the spacing
+% - 'probe_color_classifier_kernel': A classifier for image hue values,
+%   created from 'probe_color_distributions_kernel' using
+%   `mlDiscreteClassifier`. A uniform hue distribution is assumed for the
+%   image background colours.
+% - 'probe_color_distributions_gaussian': The equivalent of
+%   'probe_color_distributions_kernel', using Gaussian density estimators
+%   instead of variable kernel density estimators.
+% - 'probe_color_classifier_gaussian': A classifier for image hue values,
+%   created from 'probe_color_distributions_gaussian' using
+%   `mlDiscreteClassifier`. A uniform hue distribution is assumed for the
+%   image background colours.
+% - 'probe_color_distribution_increment': A scalar equal to the spacing
 %   between the samples of hue values in the range [0, 1] at which the
-%   variable kernel density estimators have been evaluated to produce
-%   'probe_band_color_distributions'. To find the approximate value of the
+%   hue density estimators have been evaluated to produce
+%   'probe_color_distributions_*'. To find the approximate value of the
 %   i-th estimator at a query value 'x' in the range [0, 1], use:
 %
 %   ```
 %     queryDiscretized1DFunction(...
-%       x, probe_band_color_distributions(:, i),...
-%       probe_band_color_distribution_increment...
+%       x, probe_color_distributions_*(:, i),...
+%       probe_color_distribution_increment...
 %     )
 %   ```
 %
