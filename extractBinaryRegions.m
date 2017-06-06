@@ -6,38 +6,57 @@ function [ regions, bw ] = extractBinaryRegions(...
 %
 % ## Syntax
 % regions = extractBinaryRegions(...
-%   backprojected_distributions, threshold, radius [, mask, verbose]...
+%   I, color_distributions, color_distribution_resolution,...
+%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
 % )
 % [ regions, bw ] = extractBinaryRegions(...
-%   backprojected_distributions, threshold, radius [, mask, verbose]...
+%   I, color_distributions, color_distribution_resolution,...
+%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
 % )
 %
 % ## Description
 % regions = extractBinaryRegions(...
-%   backprojected_distributions, threshold, radius [, mask, verbose]...
+%   I, color_distributions, color_distribution_resolution,...
+%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
 % )
-%   Returns binary regions corresponding to each input backprojected
-%   probability distribution.
+%   Returns binary regions corresponding to each colour probability
+%   distribution.
 %
 % [ regions, bw ] = extractBinaryRegions(...
-%   backprojected_distributions, threshold, radius [, mask, verbose]...
+%   I, color_distributions, color_distribution_resolution,...
+%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
 % )
 %   Additionally returns binary images corresponding to the binary regions.
 %
 % ## Input Arguments
 %
-% backprojected_distributions -- Backprojected probability distributions
-%   An image_height x image_width x n array, where
-%   `backprojected_distributions(:,:,i)` is a greyscale image where the
-%   value of a pixel is drawn from the probability distribution of the i-th
-%   colour. In other words, `backprojected_distributions(:,:,i)` is an
-%   image where each pixel's value is the likelihood that the pixel belongs
-%   to a region of the i-th colour.
+% I -- Image
+%   An RGB image in which the colours described by `color_distributions`
+%   are to be detected.
+%
+% color_distributions -- Colour estimators
+%   Discretized density estimators of image hue values corresponding to the
+%   different colour classes. The i-th column of this 2D array stores the
+%   estimator for the i-th colour class of to be detected in the image `I`.
+%
+% color_distribution_resolution -- Colour estimator sample count
+%   The number of equally-spaced samples in the range of hue values from 0
+%   (inclusive) to 1 (inclusive) at which the density estimators for colour
+%   classes have been evaluated.
+%
+% rgb_sigma_polyfit -- Camera RGB noise model
+%   An array describing the variation in RGB channel standard deviations
+%   with RGB values in the image. This information should be computed from
+%   images taken under the same conditions and with the same camera
+%   parameters as the image (`I`), if not computed from this same image.
+%
+%   Refer to the documentation of './EstimateRGBStandardDeviations.m' for
+%   details.
 %
 % threshold -- Threshold identifying poorly-distinguished pixels
-%   The threshold applied to the probabilities in
-%   `backprojected_distributions` to eliminate pixels which are not
-%   strongly selected by any distribution.
+%   The threshold applied to the probabilities assigned to pixels in `I`
+%   from the distributions in `color_distributions` which eliminates pixels
+%   which are not strongly selected by any distribution.
 %
 %   If empty, Otsu's method will be used to select the threshold
 %   automatically.
@@ -54,7 +73,7 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   A logical array of size image_height x image_width which determines the
 %   set of pixels operated on by the function.
 %
-%   Defaults to `true(image_height,image_width)` if empty or not passed.
+%   Defaults to `true(image_height,image_width)` if empty, or not passed.
 %
 % verbose -- Debugging flags
 %   If recognized fields of `verbose` are true, corresponding graphical
@@ -66,8 +85,8 @@ function [ regions, bw ] = extractBinaryRegions(...
 %
 % regions -- Regions obtained by thresholding
 %   A structure vector of length n, where the i-th element contains the
-%   regions corresponding to the i-th colour. Each element is of the form
-%   of the output argument of `bwconncomp`.
+%   regions corresponding to the i-th colour class. Each element is of the
+%   form of the output argument of `bwconncomp`.
 %
 % bw - Binary images
 %   An image_height x image_width x n logical array, where `bw(:,:,i)` is
@@ -82,10 +101,10 @@ function [ regions, bw ] = extractBinaryRegions(...
 % distribution. This function does so, optionally choosing the threshold
 % using Otsu's method.
 %
-% However, for this application, there are multiple colour classes.
-% Therefore, the thresholding is performed on the colour class which gives
-% the given pixel the highest probability. This is a simple approximation
-% to a multi-labelling optimization problem (which could be solved with
+% For this application, there are multiple colour classes. Therefore, the
+% thresholding is performed on the colour class which gives the given pixel
+% the highest probability. This is a simple approximation to a
+% multi-labelling optimization problem (which could be solved with
 % alpha-expansion, for example).
 %
 % See also bwconncomp, otsuthresh, imbinarize, imerode, mlDiscreteClassifier
@@ -131,7 +150,7 @@ B = I_double(:, :, 3);
 
 if display_hue_image
     figure
-    H_color = ones(image_height, image_width, image_n_channels);
+    H_color = ones(image_height, image_width, 3);
     H_color(:, :, 1) = H;
     H_color = hsv2rgb(H_color);
     imshowpair(H, H_color, 'montage');
@@ -155,7 +174,7 @@ if plot_hue_estimator
     for i = 1:n_colors
         legend_names{i + 1} = sprintf('Probe colour %d', i);
     end
-    plotHueVariableKernelDensityEstimator(...
+    plotHueDensityEstimator(...
         I_color_distribution_increment,...
         [I_color_distribution, color_distributions], legend_names...
     );
@@ -196,8 +215,9 @@ x = 0:(image_width - 1);
 y = 1:image_height;
 [X,Y] = meshgrid(x,y);
 max_ind_linear = Y + X .* image_height + (max_ind - 1) .* (image_width * image_height);
-bw = false(image_height, image_width, n_colors);
+bw = false(image_height, image_width, n_colors_plus_background);
 bw(max_ind_linear) = true;
+bw = bw(:, :, 1:(end - 1));
 
 % Threshold probabilities for each colour
 for i = 1:n_colors

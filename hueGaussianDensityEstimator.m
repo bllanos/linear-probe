@@ -78,6 +78,9 @@ deviation = abs(x - mu);
 filter = deviation > 0.5;
 deviation(filter) = 1.0 - deviation(filter);
 dist = normpdf(deviation, 0, s);
+normalization_factor = normcdf([-0.5 0.5], 0, s);
+normalization_factor = diff(normalization_factor, 1, 2);
+dist = dist / normalization_factor;
 inc = 1 / (resolution - 1);
 
 end

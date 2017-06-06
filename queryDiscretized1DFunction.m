@@ -59,7 +59,7 @@ end
 
 x_vector = x(:);
 indices = floor(((x_vector - offset) / inc) + 0.5) + 1;
-if any(indices < 0 | indices > length(f))
+if any(indices < 1 | indices > length(f))
     error('Some of the query values in input `x` are out of the domain sampled to construct input `f`.')
 end
 val = f(indices);

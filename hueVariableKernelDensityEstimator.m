@@ -130,6 +130,8 @@ g = G(mask);
 b = B(mask);
 h = H(mask);
 s = hueSigma(r, g, b, std_rgb);
+normalization_factors = normcdf(-0.5 * ones(length(h), 1), 0, s);
+normalization_factors = 1 - 2 * normalization_factors;
 
 x = linspace(0, 1, resolution);
 dist = zeros(resolution, 1);
@@ -143,6 +145,7 @@ for i = 1:resolution
     filter = deviation > 0.5;
     deviation(filter) = 1.0 - deviation(filter);
     p = normpdf(deviation, 0, s);
+    p = p ./ normalization_factors;
     dist(i) = sum(p);
 end
 dist = dist / length(h);

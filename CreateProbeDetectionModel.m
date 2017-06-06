@@ -169,13 +169,13 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenMeasurements.mat';
+model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Data\bambooSkewer_orangeBlue.mat';
 % Image of probe
-I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel.bmp';
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Data\probeUnderLotus_1_b_rect.bmp';
 % Annotations for image of probe
-I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\redPenModel_annotated.png';
+I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Data\probeUnderLotus_1_b_rect_annotated.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20170410_redPenWithTape\rgbStddev.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Output\1_rgbStddev.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
@@ -195,13 +195,13 @@ probe_color_distribution_resolution = 180;
 display_original_image = false;
 display_annotations_image = false;
 display_extracted_annotations = false;
-display_model_from_image = false;
+display_model_from_image = true;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
 display_probe_color_masks = false;
 display_hue_image = false;
 plot_hue_estimators = true;
-plot_hue_classifier = true;
+plot_hue_classifiers = true;
 
 %% Load images and obtain adjusted centers of user-marked annotations
 
@@ -460,7 +460,7 @@ probe_color_classifier_gaussian = mlDiscreteClassifier(...
     'periodic'...
 );
 
-if plot_hue_classifier
+if plot_hue_classifiers
     plotHueClassifier(...
         probe_color_distribution_increment, probe_color_classifier_kernel,...
         n_colors...

@@ -208,7 +208,7 @@ if display_regions_colored
     probe_regions_bw_final_display = zeros(image_height, image_width, image_n_channels);
     for i = 1:n_colors
         [ ~, peak_hue_index ] = max(probe_color_distributions(:, i));
-        peak_hue = (peak_hue_index - 1) * bound_color_distribution_increment;
+        peak_hue = (peak_hue_index - 1) / (probe_color_distribution_resolution - 1);
         peak_rgb = hsv2rgb([peak_hue, 1, 1]);
         probe_regions_bw_final_filtered_i = probe_regions_bw_filtered(:, :, i);
         probe_regions_bw_final_display = probe_regions_bw_final_display +...
