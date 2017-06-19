@@ -1,37 +1,37 @@
 function [ regions, bw ] = extractBinaryRegions(...
     I, color_distributions, color_distribution_resolution,...
-    rgb_sigma_polyfit, threshold, radius, varargin...
+    rgb_sigma_polyfit, radius, varargin...
 )
 % EXTRACTBINARYREGIONS  Threshold and refine binary regions
 %
 % ## Syntax
 % regions = extractBinaryRegions(...
 %   I, color_distributions, color_distribution_resolution,...
-%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
+%   rgb_sigma_polyfit, radius [, mask, verbose]...
 % )
 % [ regions, bw ] = extractBinaryRegions(...
 %   I, color_distributions, color_distribution_resolution,...
-%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
+%   rgb_sigma_polyfit, radius [, mask, verbose]...
 % )
 %
 % ## Description
 % regions = extractBinaryRegions(...
 %   I, color_distributions, color_distribution_resolution,...
-%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
+%   rgb_sigma_polyfit, radius [, mask, verbose]...
 % )
 %   Returns binary regions corresponding to each colour probability
 %   distribution.
 %
 % [ regions, bw ] = extractBinaryRegions(...
 %   I, color_distributions, color_distribution_resolution,...
-%   rgb_sigma_polyfit, threshold, radius [, mask, verbose]...
+%   rgb_sigma_polyfit, radius [, mask, verbose]...
 % )
 %   Additionally returns binary images corresponding to the binary regions.
 %
 % ## Input Arguments
 %
 % I -- Image
-%   An RGB image in which the colours described by `color_distributions`
+%   An RGB image, in which the colours described by `color_distributions`
 %   are to be detected.
 %
 % color_distributions -- Colour estimators
@@ -52,16 +52,6 @@ function [ regions, bw ] = extractBinaryRegions(...
 %
 %   Refer to the documentation of './EstimateRGBStandardDeviations.m' for
 %   details.
-%
-% threshold -- Threshold identifying poorly-distinguished pixels
-%   The threshold applied to the probabilities assigned to pixels in `I`
-%   from the distributions in `color_distributions` which eliminates pixels
-%   which are not strongly selected by any distribution.
-%
-%   If empty, Otsu's method will be used to select the threshold
-%   automatically.
-%
-%   Refer the discussion of the algorithm below for details.
 %
 % radius -- Radius of disk structuring element
 %   The radius passed in `strel('disk', radius)` when creating a
@@ -93,20 +83,6 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   the binary image consisting of the connected components in
 %   `regions(i)`.
 %
-% ## Algorithm
-% 
-% To extract the regions which appear to correspond to a given colour
-% class, as dictated by a probability distribution, it is sufficient to
-% threshold the greyscale image formed by backprojecting the probability
-% distribution. This function does so, optionally choosing the threshold
-% using Otsu's method.
-%
-% For this application, there are multiple colour classes. Therefore, the
-% thresholding is performed on the colour class which gives the given pixel
-% the highest probability. This is a simple approximation to a
-% multi-labelling optimization problem (which could be solved with
-% alpha-expansion, for example).
-%
 % See also bwconncomp, otsuthresh, imbinarize, imerode, mlDiscreteClassifier
 
 % Bernard Llanos
@@ -131,11 +107,13 @@ if length(varargin) > 1
     verbose = varargin{2};
     display_hue_image = verbose.display_hue_image;
     plot_hue_estimator = verbose.plot_hue_estimator;
+    plot_hue_classifier = verbose.plot_hue_classifier;
     display_distribution_backprojections = verbose.display_distribution_backprojections;
     display_binary_images = verbose.display_binary_images;
 else
     display_hue_image = false;
     plot_hue_estimator = false;
+    plot_hue_classifier = false;
     display_distribution_backprojections = false;
     display_binary_images = false;
 end
@@ -181,56 +159,53 @@ if plot_hue_estimator
     title('Hue density estimators')
 end
 
-% Transform the image using histogram backprojection
-n_colors_plus_background = n_colors + 1;
-distributions_backprojected = zeros(image_height, image_width, n_colors_plus_background);
-for i = 1:n_colors
-    distributions_backprojected(:, :, i) = queryDiscretized1DFunction(...
-            H, color_distributions(:, i), I_color_distribution_increment...
-        );
-end
-distributions_backprojected(:, :, n_colors_plus_background) = queryDiscretized1DFunction(...
-        H, I_color_distribution, I_color_distribution_increment...
-    );
-
 if display_distribution_backprojections
+    [color_classifier, color_classification_likelihood] = mlDiscreteClassifier(...
+        color_distributions, I_color_distribution_increment, I_color_distribution...
+    );
+else
+    color_classifier = mlDiscreteClassifier(...
+        color_distributions, I_color_distribution_increment, I_color_distribution...
+    );
+end
+
+if plot_hue_classifier
+    plotHueClassifier(...
+        I_color_distribution_increment, color_classifier,...
+        n_colors...
+    );
+    title('Hue classifier for colors on the probe vs. the interest area')
+end
+
+% Find the most likely colour class for each pixel
+H_masked = H(mask);
+max_ind_masked = queryDiscretized1DFunction(...
+    H_masked, color_classifier, I_color_distribution_increment...
+);
+max_ind = zeros(image_height, image_width);
+max_ind(mask) = max_ind_masked;
+foreground_mask = (max_ind ~= 0);
+x = 0:(image_width - 1);
+y = 1:image_height;
+[X,Y] = meshgrid(x,y);
+max_ind_linear = Y + X .* image_height + (max_ind - 1) .* (image_width * image_height);
+max_ind_linear_masked = max_ind_linear(foreground_mask);
+bw = false(image_height, image_width, n_colors);
+bw(max_ind_linear_masked) = true;
+
+% Transform the image using histogram backprojection
+if display_distribution_backprojections
+    max_probability_masked = queryDiscretized1DFunction(...
+        H_masked, color_classification_likelihood, I_color_distribution_increment...
+    );
+    max_probability_masked = max_probability_masked(max_ind_masked ~= 0);
+    distributions_backprojected = zeros(image_height, image_width, n_colors);
+    distributions_backprojected(max_ind_linear_masked) = max_probability_masked;
     for i = 1:n_colors
         figure
         imshow(distributions_backprojected(:, :, i));
         title(sprintf('Distribution backprojection for probe colour %d', i))
     end
-    figure
-    imshow(...
-        distributions_backprojected(:, :, n_colors_plus_background) /...
-        max(max(distributions_backprojected(:, :, n_colors_plus_background)))...
-        );
-    title('Distribution backprojection for the background')
-end
-
-use_otsu = isempty(threshold);
-
-% Find the most likely colour class for each pixel
-[~, max_ind] = max(distributions_backprojected, [], 3);
-x = 0:(image_width - 1);
-y = 1:image_height;
-[X,Y] = meshgrid(x,y);
-max_ind_linear = Y + X .* image_height + (max_ind - 1) .* (image_width * image_height);
-bw = false(image_height, image_width, n_colors_plus_background);
-bw(max_ind_linear) = true;
-bw = bw(:, :, 1:(end - 1));
-
-% Threshold probabilities for each colour
-for i = 1:n_colors
-    distributions_backprojected_i = distributions_backprojected(:, :, i);
-    if use_otsu
-        counts_i = imhist(distributions_backprojected_i(mask));
-        threshold_i = otsuthresh(counts_i);
-        bw(:, :, i) = bw(:, :, i) & imbinarize(distributions_backprojected_i, threshold_i);
-    else
-        bw(:, :, i) = bw(:, :, i) & imbinarize(distributions_backprojected_i, threshold);
-    end
-    % Apply the mask
-    bw(:, :, i) = bw(:, :, i) & mask;
 end
 
 % Obtain binary regions.

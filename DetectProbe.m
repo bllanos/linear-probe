@@ -145,7 +145,6 @@ rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results
 request_bounding_region = false;
 
 % Determination of the probe's bounding region
-detectBoundingBoxesParams.noise_threshold = []; % If empty, select automatically using Otsu's method
 erosion_radius_initial = 5;
 detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
 detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
@@ -155,7 +154,6 @@ detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
-detectWithinBoundingBoxParams.noise_threshold = []; % If empty, select automatically using Otsu's method
 erosion_radius_final = 2;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
@@ -183,15 +181,17 @@ alignment_inlier_threshold = 0.75;
 detectBoundingBoxesVerbose.display_original_image = false;
 detectBoundingBoxesVerbose.display_hue_image = false;
 detectBoundingBoxesVerbose.plot_hue_estimator = true;
-detectBoundingBoxesVerbose.display_distribution_backprojections = false;
-detectBoundingBoxesVerbose.display_binary_images = false;
+detectBoundingBoxesVerbose.plot_hue_classifier = true;
+detectBoundingBoxesVerbose.display_distribution_backprojections = true;
+detectBoundingBoxesVerbose.display_binary_images = true;
 detectBoundingBoxesVerbose.verbose_region_filtering = false;
-detectBoundingBoxesVerbose.display_region_expansion = false;
+detectBoundingBoxesVerbose.display_region_expansion = true;
 
 detectWithinBoundingBoxVerbose.display_hue_image = false;
 detectWithinBoundingBoxVerbose.plot_hue_estimator = true;
-detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
-detectWithinBoundingBoxVerbose.display_binary_images = false;
+detectWithinBoundingBoxVerbose.plot_hue_classifier = true;
+detectWithinBoundingBoxVerbose.display_distribution_backprojections = true;
+detectWithinBoundingBoxVerbose.display_binary_images = true;
 detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
 detectWithinBoundingBoxVerbose.display_regions_colored = false;
 detectWithinBoundingBoxVerbose.display_band_edge_extraction = false;

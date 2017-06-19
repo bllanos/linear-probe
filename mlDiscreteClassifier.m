@@ -96,7 +96,7 @@ function [ classifier, likelihood ] = mlDiscreteClassifier( class_distributions,
 % University of Alberta, Department of Computing Science
 % File created May 26, 2017
 
-nargoutchk(1, 1);
+nargoutchk(1, 2);
 narginchk(2, 3);
 
 periodic = false;
