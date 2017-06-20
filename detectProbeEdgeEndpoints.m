@@ -190,71 +190,47 @@ bw_filtered = imbinarize(bw_filtered, threshold);
 bw_new = bw_filtered & bw;
 
 % Find edges and their endpoints along the second PCA axis
+% Select candidate points in `bw_new` that have extreme values along the
+% second PCA axis. "Extreme" is computed over each edge in `bw_filtered`.
 [edge_points_y, edge_points_x] = find(bw_new);
-[~,score] = pca([edge_points_x, edge_points_y]);
+[coeff, score, ~, ~, ~, mu] = pca([edge_points_x, edge_points_y]);
+[ bw_filtered_labelled, n_labels ] = bwlabel(bw_filtered);
 edge_points_linear = sub2ind(image_size, edge_points_y, edge_points_x);
-score_image = zeros(image_height, image_width, 2);
-score_image(edge_points_linear) = score(:, 1);
-score_image(edge_points_linear + image_height * image_width) = score(:, 2);
-edge_points_by_edge = bwconncomp(bw_new);
-edge_endpoints_pca = zeros(edge_points_by_edge.NumObjects * 2, 2);
-edge_endpoints = zeros(edge_points_by_edge.NumObjects * 2, 2);
+edge_endpoints_labels = bw_filtered_labelled(edge_points_linear);
+edge_endpoints_pca = zeros(n_labels * 2, 1);
+edge_endpoints = zeros(n_labels * 2, 2);
 k = 1;
-for i = 1:edge_points_by_edge.NumObjects
-    edge_points_i = edge_points_by_edge.PixelIdxList{i};
-    edge_points_pca_2 = score_image(edge_points_i + image_height * image_width);
-    [~, min_ind] = min(edge_points_pca_2);
-    [~, max_ind] = max(edge_points_pca_2);
-    edge_endpoints_pca(k, :) = [
-            score_image(edge_points_i(min_ind)),...
-            edge_points_pca_2(min_ind)
-        ];
-    edge_endpoints_pca(k + 1, :) = [
-            score_image(edge_points_i(max_ind)),...
-            edge_points_pca_2(max_ind)
-        ];
-    [ edge_endpoints(k, 2), edge_endpoints(k, 1) ] =...
-        ind2sub(image_size, edge_points_i(min_ind));
-    [ edge_endpoints(k + 1, 2), edge_endpoints(k + 1, 1) ] =...
-        ind2sub(image_size, edge_points_i(max_ind));
-    k = k + 2;
+for i = 1:n_labels
+    edge_endpoints_label_i_filter = (edge_endpoints_labels == i);
+    if sum(edge_endpoints_label_i_filter) > 1
+        [ edge_endpoints_pca(k), min_ind ] = min(score(edge_endpoints_label_i_filter, 2));
+        [ edge_endpoints_pca(k + 1), max_ind ] = max(score(edge_endpoints_label_i_filter, 2));
+        edge_points_i = edge_points_linear(edge_endpoints_label_i_filter);
+        [ edge_endpoints(k, 2), edge_endpoints(k, 1) ] =...
+            ind2sub(image_size, edge_points_i(min_ind));
+        [ edge_endpoints(k + 1, 2), edge_endpoints(k + 1, 1) ] =...
+            ind2sub(image_size, edge_points_i(max_ind));
+        k = k + 2;
+    end
 end
+
+% Remove endpoints on the same edges that are not separated by the PCA
+% major axis of the probe
+% Note: `<` and `>` filter out zeros in 'edge_endpoints_pca' corresponding
+% to edges for which the test `sum(edge_endpoints_label_i_filter) > 1
+% failed above.
+edge_endpoints_filter = (edge_endpoints_pca(1:2:end) < 0) &...
+    (edge_endpoints_pca(2:2:end) > 0);
+edge_endpoints_filter = repelem(edge_endpoints_filter, 2);
+edge_endpoints_filtered = edge_endpoints(edge_endpoints_filter, :);
 
 % Remove endpoints on the same edges having a separation on the order of
 % the edge width
-edge_endpoints_separation = diff(edge_endpoints, 1);
+edge_endpoints_separation = diff(edge_endpoints_filtered, 1, 1);
 edge_endpoints_separation = edge_endpoints_separation(1:2:end, :);
 edge_endpoints_separation = dot(edge_endpoints_separation, edge_endpoints_separation, 2);
 edge_endpoints_filter = edge_endpoints_separation > (edge_width  ^ 2);
 edge_endpoints_filter = repelem(edge_endpoints_filter, 2);
-edge_endpoints_filtered = edge_endpoints(edge_endpoints_filter, :);
-edge_endpoints_pca_filtered = edge_endpoints_pca(edge_endpoints_filter, :);
-
-% Remove endpoints on the same edges that are not separated by the PCA
-% major axis of the probe
-edge_endpoints_filter = false(size(edge_endpoints_filtered, 1), 1);
-edge_endpoints_filter(1:2:end) = edge_endpoints_pca_filtered(1:2:end, 2) < 0;
-edge_endpoints_filter(2:2:end) = edge_endpoints_pca_filtered(2:2:end, 2) > 0;
-edge_endpoints_filtered = edge_endpoints_filtered(edge_endpoints_filter, :);
-edge_endpoints_pca_filtered = edge_endpoints_pca_filtered(edge_endpoints_filter, :);
-
-% Attempt to join broken edges
-%
-% Find edge points in the same binary regions in the filtered image
-[ bw_filtered_labelled, n_labels ] = bwlabel(bw_filtered);
-edge_endpoints_labels = bw_filtered_labelled(...
-        sub2ind(image_size, edge_endpoints_filtered(:, 2), edge_endpoints_filtered(:, 1))...
-    );
-% Select only the minimum and maximum points along the PCA minor axis for
-% each binary region
-edge_endpoints_filter = false(size(edge_endpoints_filtered, 1), 1);
-for i = 1:n_labels
-    edge_endpoints_label_i_filter = find(edge_endpoints_labels == i);
-    [ ~, min_ind ] = min(edge_endpoints_pca_filtered(edge_endpoints_label_i_filter, 2));
-    [ ~, max_ind ] = max(edge_endpoints_pca_filtered(edge_endpoints_label_i_filter, 2));
-    edge_endpoints_filter(edge_endpoints_label_i_filter(min_ind)) = true;
-    edge_endpoints_filter(edge_endpoints_label_i_filter(max_ind)) = true;
-end
 edge_endpoints_filtered = edge_endpoints_filtered(edge_endpoints_filter, :);
 
 if verbose
@@ -262,9 +238,14 @@ if verbose
     bw_comparison = cat(3, bw_double, bw_new, zeros(image_height, image_width));
     imshow(bw_comparison);
     hold on
-    scatter(edge_endpoints(:, 1), edge_endpoints(:, 2), 'b')
-    scatter(edge_endpoints_filtered(:, 1), edge_endpoints_filtered(:, 2), 'g')
+    pca_axes = pcaAxes2D( coeff, mu );
+    line_points = lineToBorderPoints(pca_axes, image_size);
+    line(line_points(1, [1,3])', line_points(1, [2,4])', 'Color', 'c');
+    line(line_points(2, [1,3])', line_points(2, [2,4])', 'Color', 'm');
+    scatter(edge_endpoints(:, 1), edge_endpoints(:, 2), 'b', 'filled')
+    scatter(edge_endpoints_filtered(:, 1), edge_endpoints_filtered(:, 2), 'g', 'filled')
     hold off
+    legend('First PCA axis', 'Second PCA axis', 'Original', 'Filtered')
     title(sprintf(['Original edge image (red) intersected with thresholded filtered edge image (yellow)\n',...
         'Edge endpoints (blue circles) and filtered edge endpoints (green circles) are shown.']))
 end

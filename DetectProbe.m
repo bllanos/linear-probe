@@ -200,20 +200,20 @@ detectBoundingBoxesVerbose.display_original_image = false;
 detectBoundingBoxesVerbose.display_hue_image = false;
 detectBoundingBoxesVerbose.plot_hue_estimator = true;
 detectBoundingBoxesVerbose.plot_hue_classifier = true;
-detectBoundingBoxesVerbose.display_distribution_backprojections = true;
-detectBoundingBoxesVerbose.display_binary_images = true;
+detectBoundingBoxesVerbose.display_distribution_backprojections = false;
+detectBoundingBoxesVerbose.display_binary_images = false;
 detectBoundingBoxesVerbose.verbose_region_filtering = false;
 detectBoundingBoxesVerbose.display_region_expansion = true;
 
 detectWithinBoundingBoxVerbose.display_hue_image = false;
 detectWithinBoundingBoxVerbose.plot_hue_estimator = true;
 detectWithinBoundingBoxVerbose.plot_hue_classifier = true;
-detectWithinBoundingBoxVerbose.display_distribution_backprojections = true;
-detectWithinBoundingBoxVerbose.display_binary_images = true;
+detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
+detectWithinBoundingBoxVerbose.display_binary_images = false;
 detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
 detectWithinBoundingBoxVerbose.display_regions_colored = false;
-detectWithinBoundingBoxVerbose.display_band_edge_extraction = false;
-detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = false;
+detectWithinBoundingBoxVerbose.display_band_edge_extraction = true;
+detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = true;
 
 display_detected_model_from_image = true;
 
