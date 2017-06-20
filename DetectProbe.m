@@ -34,6 +34,9 @@
 % The image should have been corrected for lens distortion.
 %
 % ### Colour noise parameters
+% Required if at least one of the parameters 'uniform_background_initial',
+% or 'uniform_background_final' is true.
+%
 % A '.mat' file containing a 'rgb_sigma_polyfit' variable, as output by the
 % script '.\EstimateRGBStandardDeviations.m'. 'rgb_sigma_polyfit' describes
 % the variation in RGB channel standard deviations with RGB values in the
@@ -41,6 +44,12 @@
 % under the same conditions and with the same camera parameters as the
 % image in which the probe is to be detected, if not computed from this
 % same image.
+%
+% 'rgb_sigma_polyfit' is used to compute a colour distribution for the
+% image background. If 'uniform_background_initial' is true, a uniform
+% distribution is used instead, during the first pass. Likewise, if
+% 'uniform_background_final' is true, a uniform distribution is used
+% instead, during the second pass.
 %
 % ## Output
 %
@@ -125,7 +134,9 @@ parameters_list = {
         'I_filename',...
         'rgb_sigma_filename',...
         'request_bounding_region',...
+        'uniform_background_initial',...
         'detectBoundingBoxesParams',...
+        'uniform_background_final',...
         'detectWithinBoundingBoxParams',...
         'detected_point_alignment_outlier_threshold',...
         'subject_gap_cost_detection',...
@@ -145,6 +156,7 @@ rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results
 request_bounding_region = false;
 
 % Determination of the probe's bounding region
+uniform_background_initial = true;
 erosion_radius_initial = 5;
 detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
 detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
@@ -154,6 +166,7 @@ detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
+uniform_background_final = true;
 erosion_radius_final = 2;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
@@ -199,7 +212,7 @@ detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = false;
 
 display_detected_model_from_image = true;
 
-display_final_clipped_regions_colored = false;
+display_final_clipped_regions_colored = true;
 
 verbose_detected_point_sequence_matching = false;
 display_detected_model_matching = true;
@@ -225,9 +238,11 @@ if ~all(ismember(model_variables_required, who))
     error('One or more of the probe detection model variables is not loaded.')
 end
 
-load(rgb_sigma_filename, 'rgb_sigma_polyfit');
-if ~exist('rgb_sigma_polyfit', 'var')
-    error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
+if uniform_background_initial || uniform_background_final
+    load(rgb_sigma_filename, 'rgb_sigma_polyfit');
+    if ~exist('rgb_sigma_polyfit', 'var')
+        error('No variable called ''rgb_sigma_polyfit'' is loaded (which would contain the camera RGB noise model).')
+    end
 end
 
 %% Manual bounding region selection (if enabled)
@@ -240,20 +255,30 @@ if request_bounding_region
         error('Bounding region selection aborted. Either try again, or set `request_bounding_region` to false.');
     end
 else
+    if uniform_background_initial
+        rgb_sigma_polyfit_initial = [];
+    else
+        rgb_sigma_polyfit_initial = rgb_sigma_polyfit;
+    end
     probe_mask_initial = detectBoundingBoxes(...
         I, probe,...
-        probe_color_distributions_kernel, rgb_sigma_polyfit,...
+        probe_color_distributions_kernel, rgb_sigma_polyfit_initial,...
         detectBoundingBoxesParams, detectBoundingBoxesVerbose...
     );
 end
 
 %% Detect interest points and refined probe colour regions within the bounding box
 
+if uniform_background_final
+    rgb_sigma_polyfit_final = [];
+else
+    rgb_sigma_polyfit_final = rgb_sigma_polyfit;
+end
 [...
     interest_points_detected, probe_regions_bw_final_filtered...
 ] = detectWithinBoundingBox(...
     I, probe, probe_mask_initial,...
-    probe_color_distributions_kernel, rgb_sigma_polyfit,...
+    probe_color_distributions_kernel, rgb_sigma_polyfit_final,...
     detectWithinBoundingBoxParams, detectWithinBoundingBoxVerbose...
     );
 

@@ -42,14 +42,9 @@ function [ mask ] = detectBoundingBoxes(...
 %   the estimator for the i-th colour class of probe segments.
 %
 % rgb_sigma_polyfit -- Camera RGB noise model
-%   An array describing the variation in RGB channel standard deviations
-%   with RGB values in the image. This information should be computed from
-%   images taken under the same conditions and with the same camera
-%   parameters as the image (`I`) in which the probe is to be detected, if
-%   not computed from this same image.
-%
-%   Refer to the documentation of './EstimateRGBStandardDeviations.m' for
-%   details.
+%   A parameter passed directly to 'extractBinaryRegions()'. As described
+%   in the documentation of 'extractBinaryRegions()', an empty array can be
+%   passed instead, to assume a uniform background colour distribution.
 %
 % params -- Fixed parameters
 %   Parameters that should be stable across a variety of input images and
