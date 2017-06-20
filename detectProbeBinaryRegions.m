@@ -109,6 +109,8 @@ n = size(bw, 3);
 regions_filtered = struct('Connectivity', cell(n, 1), 'ImageSize', cell(n, 1),...
     'NumObjects', cell(n, 1), 'PixelIdxList', cell(n, 1));
 
+bw_filtered_perim = false(image_height, image_width, n);
+
 % Filter regions to those within `radius_adj` of regions for a possible
 % adjacent colour
 for i = 1:n
@@ -125,15 +127,20 @@ for i = 1:n
         imshow(bw(:, :, i) & bw_distance);
         title(sprintf('Binary image %d AND-ed with thresholded distances to regions for adjacent colours', i))
     end
-    bw_filtered_i = false(image_height, image_width);
+    bw_filtered_perim_i = false(image_height, image_width);
     regions_i = regions(i);
     region_pixel_lists_i = regions_i.PixelIdxList;
+    distance_filter = false(regions_i.NumObjects, 1);
     for j = 1:regions_i.NumObjects
         if any(bw_distance(region_pixel_lists_i{j}))
-            bw_filtered_i(region_pixel_lists_i{j}) = true;
+            distance_filter(j) = true;
+            bw_filtered_perim_i(region_pixel_lists_i{j}) = true;
         end
     end
-    regions_filtered(i) = bwconncomp(bw_filtered_i);
+    regions_i.PixelIdxList = region_pixel_lists_i(distance_filter);
+    regions_i.NumObjects = length(regions_i.PixelIdxList);
+    bw_filtered_perim(:, :, i) = bwperim(bw_filtered_perim_i);
+    regions_filtered(i) = regions_i;
 end
 
 % Filter regions to those close to the estimated axis of the probe
@@ -156,8 +163,11 @@ image_points = cell(n_regions_all, 1);
 offset = 1;
 for i = 1:n
     px_indices = regions_filtered(i).PixelIdxList;
+    bw_filtered_perim_i = bw_filtered_perim(:, :, i);
     for j = 1:regions_filtered(i).NumObjects
-        [row, col] = ind2sub([image_height, image_width], px_indices{j});
+        % Only use points on the perimeter
+        perim_filter = bw_filtered_perim_i(px_indices{j});
+        [row, col] = ind2sub([image_height, image_width], px_indices{j}(perim_filter));
         image_points{offset} = [col, row];
         offset = offset + 1;
     end

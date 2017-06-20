@@ -158,7 +158,7 @@ request_bounding_region = false;
 
 % Load variable kernel density estimators (true), or Gaussian density
 % estimators (false) for the probe colours
-use_kernel_estimators = false;
+use_kernel_estimators = true;
 
 % Determination of the probe's bounding region
 uniform_background_initial = false;
