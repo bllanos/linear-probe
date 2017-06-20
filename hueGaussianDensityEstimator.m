@@ -1,19 +1,13 @@
-function [ dist, inc ] = hueGaussianDensityEstimator( H, mask, resolution )
+function [ dist ] = hueGaussianDensityEstimator( H, mask, resolution )
 % HUEGAUSSIANDENSITYESTIMATOR  Gaussian density estimator for hue values
 %
 % ## Syntax
 % dist = hueGaussianDensityEstimator( H, mask, resolution )
-% [ dist, inc ] = hueGaussianDensityEstimator( H, mask, resolution )
 %
 % ## Description
 % dist = hueGaussianDensityEstimator( H, mask, resolution )
 %   Returns an evaluation of the Gaussian density estimator for hue values
 %   at the given resolution.
-%
-% [ dist, inc ] = hueGaussianDensityEstimator( H, mask, resolution )
-%   Returns an evaluation of the Gaussian density estimator for hue values
-%   at the given resolution, and returns the spacing at which the estimator
-%   was sampled.
 %
 % ## Input Arguments
 %
@@ -38,10 +32,6 @@ function [ dist, inc ] = hueGaussianDensityEstimator( H, mask, resolution )
 %   density estimator for the hue values in `H` evaluated at samples in the
 %   interval [0, 1] as determined by `resolution`.
 %
-% inc -- Increment between samples
-%   The spacing between the samples in the range [0, 1] at which the
-%   Gaussian density estimator has been evaluated.
-%
 %   To find the approximate value of the estimator at a query value 'x' in
 %   the range [0, 1], use `queryDiscretized1DFunction`.
 %
@@ -63,7 +53,7 @@ function [ dist, inc ] = hueGaussianDensityEstimator( H, mask, resolution )
 % University of Alberta, Department of Computing Science
 % File created May 26, 2017
 
-nargoutchk(2, 2);
+nargoutchk(1, 1);
 narginchk(3, 3);
 
 h = H(mask);
@@ -81,7 +71,6 @@ dist = normpdf(deviation, 0, s);
 normalization_factor = normcdf([-0.5 0.5], 0, s);
 normalization_factor = diff(normalization_factor, 1, 2);
 dist = dist / normalization_factor;
-inc = 1 / (resolution - 1);
 
 end
 

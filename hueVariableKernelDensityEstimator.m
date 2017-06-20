@@ -1,11 +1,8 @@
-function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, std_rgb, resolution )
+function [ dist ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, std_rgb, resolution )
 % HUEVARIABLEKERNELDENSITYESTIMATOR  Variable kernel density estimator for hue values from RGB values
 %
 % ## Syntax
 % dist = hueVariableKernelDensityEstimator(...
-%   H, R, G, B, mask, std_rgb, resolution...
-% )
-% [ dist, inc ] = hueVariableKernelDensityEstimator(...
 %   H, R, G, B, mask, std_rgb, resolution...
 % )
 %
@@ -15,13 +12,6 @@ function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, st
 % )
 %   Returns an evaluation of the variable kernel density estimator for hue
 %   values at the given resolution.
-%
-% [ dist, inc ] = hueVariableKernelDensityEstimator(...
-%   H, R, G, B, mask, std_rgb, resolution...
-% )
-%   Returns an evaluation of the variable kernel density estimator for hue
-%   values at the given resolution, and the spacing at which the estimator
-%   was sampled.
 %
 % ## Input Arguments
 %
@@ -64,10 +54,6 @@ function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, st
 %
 %   The RGB channels of the image and their associated standard deviation
 %   functions are used to modulate the scale parameter of the estimator.
-%
-% inc -- Increment between samples
-%   The spacing between the samples in the range [0, 1] at which the
-%   variable kernel density estimator has been evaluated.
 %
 %   To find the approximate value of the estimator at a query value 'x' in
 %   the range [0, 1], use `queryDiscretized1DFunction`.
@@ -122,7 +108,7 @@ function [ dist, inc ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, st
         s(s == 0) = 0.5;
     end
 
-nargoutchk(2, 2);
+nargoutchk(1, 1);
 narginchk(7, 7);
 
 r = R(mask);
@@ -135,7 +121,6 @@ normalization_factors = 1 - 2 * normalization_factors;
 
 x = linspace(0, 1, resolution);
 dist = zeros(resolution, 1);
-inc = 1 / (resolution - 1);
 for i = 1:resolution
     % Theo Gevers and Harro Stokman use the following:
     %   `deviation = mod(x(i) - h, 0.5);`

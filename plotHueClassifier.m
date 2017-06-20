@@ -1,30 +1,27 @@
-function [ fg ] = plotHueClassifier( h_inc, h_classifiers, n_classes, varargin )
+function [ fg ] = plotHueClassifier( h_classifiers, n_classes, varargin )
 % PLOTHUECLASSIFIER  Visualize hue classifiers
 %
 % ## Syntax
 % plotHueClassifier(...
-%   h_inc, h_classifiers, n_classes [, legend_names, line_specs, fg]...
+%   h_classifiers, n_classes [, legend_names, line_specs, fg]...
 % )
 % fg = plotHueClassifier(...
-%   h_inc, h_classifiers, n_classes [, legend_names, line_specs, fg]...
+%   h_classifiers, n_classes [, legend_names, line_specs, fg]...
 % )
 %
 % ## Description
 % plotHueClassifier(...
-%   h_inc, h_classifiers, n_classes [, legend_names, line_specs, fg]...
+%   h_classifiers, n_classes [, legend_names, line_specs, fg]...
 % )
 %   Creates a figure or updates an existing figure with plots of hue
 %   classifiers, against a background of hue values.
 %
 % fg = plotHueClassifier(...
-%   h_inc, h_classifiers, n_classes [, legend_names, line_specs, fg]...
+%   h_classifiers, n_classes [, legend_names, line_specs, fg]...
 % )
 %   Additionally returns the handle of the figure which was created or updated.
 %
 % ## Input Arguments
-%
-% h_inc -- Increment between hue sample values
-%   The hue spacing corresponding to adjacent values in the hue estimators.
 %
 % h_classifiers -- Evaluated hue density estimators
 %   A horizontal concatenation of one or more instances of the `classifier`
@@ -77,7 +74,7 @@ function [ fg ] = plotHueClassifier( h_inc, h_classifiers, n_classes, varargin )
 % File created May 26, 2017
 
 nargoutchk(0, 1);
-narginchk(3, 6);
+narginchk(2, 5);
 
 if ~isempty(varargin)
     legend_names = varargin{1};
@@ -99,6 +96,7 @@ else
     fg = figure;
 end
 
+h_inc = hueSamplingParams( h_classifiers(:, 1) );
 h = (0:h_inc:1).';
 
 % Create a background rainbow

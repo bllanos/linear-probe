@@ -1,30 +1,27 @@
-function [ fg ] = plotHueDensityEstimator( h_inc, h_distributions, varargin )
+function [ fg ] = plotHueDensityEstimator( h_distributions, varargin )
 % PLOTHUEDENSITYESTIMATOR  Visualize hue density estimators
 %
 % ## Syntax
 % plotHueDensityEstimator(...
-%   h_inc, h_distributions [, legend_names, line_styles, fg]...
+%   h_distributions [, legend_names, line_styles, fg]...
 % )
 % fg = plotHueDensityEstimator(...
-%   h_inc, h_distributions [, legend_names, line_styles, fg]...
+%   h_distributions [, legend_names, line_styles, fg]...
 % )
 %
 % ## Description
 % plotHueDensityEstimator(...
-%   h_inc, h_distributions [, legend_names, line_styles, fg]...
+%   h_distributions [, legend_names, line_styles, fg]...
 % )
 %   Creates a figure or updates an existing figure with plots of hue
 %   density estimators.
 %
 % fg = plotHueDensityEstimator(...
-%   h_inc, h_distributions [, legend_names, line_styles, fg]...
+%   h_distributions [, legend_names, line_styles, fg]...
 % )
 %   Additionally returns the handle of the figure which was created or updated.
 %
 % ## Input Arguments
-%
-% h_inc -- Increment between hue sample values
-%   The hue spacing corresponding to adjacent values in the hue estimators.
 %
 % h_distributions -- Evaluated hue density estimators
 %   A horizontal concatenation of one or more instances of the `dist`
@@ -73,7 +70,7 @@ function [ fg ] = plotHueDensityEstimator( h_inc, h_distributions, varargin )
 % File created August 24, 2016
 
 nargoutchk(0, 1);
-narginchk(2, 5);
+narginchk(1, 4);
 
 if ~isempty(varargin)
     legend_names = varargin{1};
@@ -95,6 +92,7 @@ else
     fg = figure;
 end
 
+h_inc = hueSamplingParams( h_distributions(:, 1) );
 h = (0:h_inc:1).';
 
 hold on
