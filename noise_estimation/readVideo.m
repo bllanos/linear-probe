@@ -1,29 +1,93 @@
-function [ frames ] = readVideo( filename, n )
-%READVIDEO Read a video file
+function [ frames ] = readVideo( filename, varargin )
+% READVIDEO  Read a sequence of video frames
 %
-% Input
-% filename - The path to the video file
-% n - The number of frames to read. (If empty, all frames are read.)
+% ## Syntax
+% frames = readVideo(filename)
+% frames = readVideo(filename, start)
+% frames = readVideo(filename, start, n)
 %
-% Output
-% frames - A 4D array, where the last dimension is the index of a frame
-%          in the sequence of frames from the video
+% ## Description
+% frames = readVideo(filename)
+%   Reads frames from the given video file and returns them as a 4D array.
+% frames = readVideo(filename, start)
+%   Reads frames from the given video file, starting from the given offset,
+%   and returns them as a 4D array.
+% frames = readVideo(filename, start, n)
+%   Reads the given number of frames from the given video file, starting
+%   from the given offset, and returns them as a 4D array.
 %
-% CMPUT 615 Lab 1: Motion Estimation and Tracking
-% Bernard Llanos, ID: 1505236
-% January 24, 2017
+% ## Input Arguments
+%
+% filename -- Input video
+%   A character vector containing the path of the video file.
+%
+% start -- First frame
+%   The time in seconds of the first frame to read. Defaults to the start
+%   of the video if zero, or if not passed.
+%
+% n -- Number of frames
+%   The maximum number of frames to read. Defaults to the number of frames
+%   in the rest of the video after `start` if zero, or if not passed.
+%
+% ## Output Arguments
+%
+% frames -- Image sequence
+%   A 4D array, where the last dimension is the index of a frame in the
+%   sequence of frames from the video, and the third dimension indices the
+%   colour channels of each image.
+%
+% ## Notes
+%
+% ## References
+% - Code created during Winter 2017 for CMPUT 615 Lab 1 on Motion
+%   Estimation and Tracking
+%
+% See also VideoReader
+
+% Bernard Llanos
+% Supervised by Dr. Y.H. Yang
+% University of Alberta, Department of Computing Science
+% File created January 8, 2018
+
+nargoutchk(1,1)
+narginchk(1,3)
 
 v = VideoReader(filename);
 
-k = 1;
+if nargin > 1
+    if varargin{1} > 0 && varargin{1} < v.Duration
+        v.CurrentTime = varargin{1};
+    elseif varargin{1} >= v.Duration
+        error('Cannot start reading past the end of the video.')
+    elseif varargin{1} < 0
+        error('Cannot start reading before the start of the video.')
+    end
+end
+stop = v.Duration;
+if nargin > 2
+    if varargin{2} > 0
+        n = varargin{2};
+        stop = v.CurrentTime + (n / v.FrameRate);
+        if stop > v.Duration
+            stop = v.Duration;
+        end
+    elseif varargin{2} < 0
+        error('Cannot read a negative number of frames.')
+    end
+end
+n = ceil((stop - v.CurrentTime) * v.FrameRate);
+
 frame1 = readFrame(v);
 frames = zeros(size(frame1,1), size(frame1,2), size(frame1,3), n);
 frames(:,:,:,1) = frame1;
-while hasFrame(v) && (isempty(n) || k <= n)
+k = 2;
+while hasFrame(v) && k <= n
     frames(:,:,:,k) = readFrame(v);
     k = k + 1;
 end
-frames = frames(:,:,:,1:(k-1));
+if k <= n
+    frames = frames(:, :, :, 1:(k - 1));
+end
 
 end
 
