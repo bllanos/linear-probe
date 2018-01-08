@@ -54,6 +54,14 @@ narginchk(1,3)
 
 v = VideoReader(filename);
 
+stop = v.Duration;
+frame_rate = v.FrameRate;
+if frame_rate <= 0
+    v = VideoReader(filename); % The object must be recreated when querying 'NumberOfFrames'
+    frame_rate = v.NumberOfFrames / stop; %#ok<VIDREAD>
+    v = VideoReader(filename); % The object must be recreated when querying 'NumberOfFrames'
+end
+
 if nargin > 1
     if varargin{1} > 0 && varargin{1} < v.Duration
         v.CurrentTime = varargin{1};
@@ -63,11 +71,11 @@ if nargin > 1
         error('Cannot start reading before the start of the video.')
     end
 end
-stop = v.Duration;
+
 if nargin > 2
     if varargin{2} > 0
         n = varargin{2};
-        stop = v.CurrentTime + (n / v.FrameRate);
+        stop = v.CurrentTime + (n / frame_rate);
         if stop > v.Duration
             stop = v.Duration;
         end
@@ -75,14 +83,14 @@ if nargin > 2
         error('Cannot read a negative number of frames.')
     end
 end
-n = ceil((stop - v.CurrentTime) * v.FrameRate);
+n = ceil((stop - v.CurrentTime) * frame_rate);
 
-frame1 = readFrame(v);
+frame1 = im2double(readFrame(v));
 frames = zeros(size(frame1,1), size(frame1,2), size(frame1,3), n);
 frames(:,:,:,1) = frame1;
 k = 2;
 while hasFrame(v) && k <= n
-    frames(:,:,:,k) = readFrame(v);
+    frames(:,:,:,k) = im2double(readFrame(v));
     k = k + 1;
 end
 if k <= n
