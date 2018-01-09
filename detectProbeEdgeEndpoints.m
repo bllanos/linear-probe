@@ -53,13 +53,13 @@ function [ endpoints ] = detectProbeEdgeEndpoints( bw, edge_width, sigma_theta, 
 % The input image, `bw`, is assumed to contain binary regions which are
 % fairly noisy approximations to the edges between the bands of the probe.
 % Specifically, regions may spill outwards along the exterior of the probe
-% and may be broken due to strong highlights and reflections, but are
-% assumed to at least contain the true points where the edges meet the
-% outer borders of the probe. (This function cannot compensate for edges
-% that have been detected shorter than they actually are. In general, there
-% is no way to correct for this without using information about the
-% physical widths of the junctions between bands, which can only be used
-% after the detected edges have been matched to probe band junctions.)
+% and may be broken, due to strong highlights and reflections, but are
+% assumed to contain the true points where the edges meet the outer borders
+% of the probe. (This function cannot compensate for edges that have been
+% detected shorter than they actually are. In general, there is no way to
+% correct for this without using information about the physical widths of
+% the junctions between bands, which can only be used after the detected
+% edges have been matched to probe band junctions.)
 %
 % The process used to estimate where band edges intersect the probe's
 % borders is as follows:
@@ -124,11 +124,11 @@ function [ endpoints ] = detectProbeEdgeEndpoints( bw, edge_width, sigma_theta, 
         % Angles are expressed in radians, in the range -pi/2 to pi/2 from
         % the positive x-axis.
         
-        % Define the size of the filter so that the weight at its outer
-        % edge is at most `p`.
-        p = 0.025 / normpdf(0, 0, s_theta);
-        radial_limit = norminv([p p], 0, s_distance);
-        radial_limit = ceil(abs(radial_limit(1)));
+        % Define the size of the filter so that it covers 1 - 2p of the
+        % area under the Gaussian function of distance
+        p = 0.05;
+        radial_limit = norminv([p (1-p)], 0, s_distance);
+        radial_limit = 2 * ceil(abs(radial_limit(2)));
         H = zeros(radial_limit, radial_limit);
         center = floor((size(H) + 1) / 2);
         for i_inner = 1:radial_limit
@@ -189,7 +189,7 @@ end
 bw_filtered = imbinarize(bw_filtered, threshold);
 bw_new = bw_filtered & bw;
 
-% Find edges and their endpoints along the second PCA axis
+% Find edges and their endpoints along the second PCA axis.
 % Select candidate points in `bw_new` that have extreme values along the
 % second PCA axis. "Extreme" is computed over each edge in `bw_filtered`.
 [edge_points_y, edge_points_x] = find(bw_new);
