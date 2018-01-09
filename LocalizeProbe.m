@@ -21,6 +21,10 @@
 % output by '.\DetectProbe.m'. Refer to the documentation of
 % '.\DetectProbe.m' for details.
 %
+% The probe can be located in 3D space if there are at least three matches
+% in 'probe_detection_matches_filtered'. Otherwise, an error will be
+% thrown.
+%
 % ### Probe measurements
 %
 % The 'model_filename' parameter is the path to a '.mat' file containing a
