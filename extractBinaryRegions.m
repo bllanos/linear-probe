@@ -52,7 +52,7 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   images taken under the same conditions and with the same camera
 %   parameters as the image (`I`), if not computed from this same image.
 %
-%   Refer to the documentation of './EstimateRGBStandardDeviations.m' for
+%   Refer to the documentation of 'noise_estimation/EstimateRGBStandardDeviations*.m' for
 %   details.
 %
 %   `rgb_sigma_polyfit` is used to compute a probability distribution for
