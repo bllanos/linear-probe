@@ -26,7 +26,7 @@ function [ matches_filtered, matches ] = detectProbe(...
 %   An RGB image containing the probe.
 %
 % probe -- Probe measurements
-%   Refer to the documentation of './CreateProbeDetectionModel.m' for
+%   Refer to the documentation of 'CreateProbeDetectionModel.m' for
 %   details.
 %
 % probe_color_distributions -- Probe colour estimators
@@ -80,9 +80,9 @@ function [ matches_filtered, matches ] = detectProbe(...
 %     - alignment_inlier_threshold: The `inlier_threshold` parameter.
 %
 % verbose -- Debugging flags
-%   If recognized fields of `verbose` are true, corresponding graphical
-%   output will be generated for debugging purposes. Note that there are
-%   two fields which are structures of debugging flags:
+%   If recognized fields of `verbose` are true, corresponding graphical or
+%   console output will be generated for debugging purposes. Note that
+%   there are two fields which are structures of debugging flags:
 %   `detectBoundingBoxesVerbose`, and `detectWithinBoundingBoxVerbose`,
 %   which become the `verbose` arguments of 'detectBoundingBoxes()' and
 %   'detectWithinBoundingBox()', respectively. Both of these fields are

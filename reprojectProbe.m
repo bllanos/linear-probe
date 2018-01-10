@@ -20,7 +20,7 @@ function [above, below] = reprojectProbe( lengths, widths, P, d, X_tip )
 %   `lengths`.
 %
 % P -- Camera projection matrix
-%   The camera matrix (intrinsic and extrinsic parameters).
+%   The camera matrix (intrinsic and extrinsic parameters). A 3 x 4 matrix.
 %
 % d -- Estimated probe axis
 %   A unit row 3-vector containing the estimated direction of the probe in
