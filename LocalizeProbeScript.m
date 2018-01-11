@@ -77,6 +77,17 @@
 % those listed in `parameters_list`, which should be updated if the set of
 % parameters is changed.)
 %
+% ### Annotated image containing the probe
+%
+% The image referred to by the 'I_filename' variable will be annotated with
+% the reprojection of the probe, and saved to a user-specified location.
+% This behaviour can be disabled by setting `save_probe_reprojection_image`
+% to `false` below.
+%
+% The annotations on the image are those described in the documentation of
+% the `I_out` output argument of 'plotProbeReprojection()' (refer to
+% 'plotProbeReprojection.m').
+%
 % ## References
 % - R. Hartley and A. Zisserman. Multiple View Geometry in Computer Vision,
 %   2nd Edition. Cambridge, UK: Cambridge University Press, 2003.
@@ -131,6 +142,8 @@ verbose.verbose_nonlinear_estimation = false;
 verbose.display_nonlinear_estimation = false; % Requires `I_filename` to be valid
 verbose.display_axis_points = true; % Requires `I_filename` to be valid
 
+save_probe_reprojection_image = true;
+
 %% Load input data
 detection_variables_required = {...
         'probe_detection_matches_filtered'...
@@ -178,3 +191,20 @@ save_variables_list = [ parameters_list, {...
         'probe_band_locations'...
     } ];
 uisave(save_variables_list,'probeLocalizationResults')
+
+if save_probe_reprojection_image
+    above = vertcat(matches_filtered(:).pointAbovePCAMajorAxis);
+    below = vertcat(matches_filtered(:).pointBelowPCAMajorAxis);
+    detectedPoints = [ above; below ];
+    lengths = vertcat(matches_filtered(:).matchedLength);
+    widths = vertcat(matches_filtered(:).matchedWidth);
+    I_out = plotProbeReprojection(...
+        I, detectedPoints, lengths, widths, P, probe_axis, axis_locations(1).objectPoint...
+    );
+    I_out_filename = uigetfile(...
+        {'*.jpg;*.tif;*.png;*.gif','All Image Files';'*.*','All Files' },...
+        'Save annotated image as',...
+        'probeLocalizationResult.jpg'...
+    );
+    imwrite(I_out_filename);
+end
