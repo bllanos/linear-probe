@@ -103,8 +103,7 @@
 parameters_list = {
         'detection_filename',...
         'camera_filename',...
-        'linear_convergence_threshold',...
-        'normalize_homography1D'...
+        'params'...
     };
 % The following variables are loaded from the file pointed to by
 % 'detection_filename', unless they are defined below:
@@ -117,10 +116,10 @@ parameters_list = [parameters_list {
 model_filename = [];
 
 % Probe detection result
-detection_filename = fullfile('..','Data','probeDetectionResults_probePrePaperOcclusion_1_t_rect.mat');
+detection_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/testImages/results/detection_noOcclusion2.mat';
 
 % Camera projection matrix
-camera_filename = fullfile('..','Data','20170327_topCameraMatrix_relativeExtrinsics_fixed.mat');
+camera_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/cameraCalibration/cameraParams_bouguetFormat.mat';
 
 % Image containing the probe
 I_filename = [];
@@ -137,9 +136,9 @@ enable_nonlinear_estimation = true;
 
 % Debugging tools
 verbose.verbose_linear_estimation = false; % Requires `I_filename` to be valid
-verbose.display_linear_estimation = false; % Requires `I_filename` to be valid
+verbose.display_linear_estimation = true; % Requires `I_filename` to be valid
 verbose.verbose_nonlinear_estimation = false;
-verbose.display_nonlinear_estimation = false; % Requires `I_filename` to be valid
+verbose.display_nonlinear_estimation = true; % Requires `I_filename` to be valid
 verbose.display_axis_points = true; % Requires `I_filename` to be valid
 
 save_probe_reprojection_image = true;
@@ -193,18 +192,18 @@ save_variables_list = [ parameters_list, {...
 uisave(save_variables_list,'probeLocalizationResults')
 
 if save_probe_reprojection_image
-    above = vertcat(matches_filtered(:).pointAbovePCAMajorAxis);
-    below = vertcat(matches_filtered(:).pointBelowPCAMajorAxis);
+    above = vertcat(probe_detection_matches_filtered(:).pointAbovePCAMajorAxis);
+    below = vertcat(probe_detection_matches_filtered(:).pointBelowPCAMajorAxis);
     detectedPoints = [ above; below ];
-    lengths = vertcat(matches_filtered(:).matchedLength);
-    widths = vertcat(matches_filtered(:).matchedWidth);
+    lengths = vertcat(probe_detection_matches_filtered(:).matchedLength);
+    widths = vertcat(probe_detection_matches_filtered(:).matchedWidth);
     I_out = plotProbeReprojection(...
-        I, detectedPoints, lengths, widths, P, probe_axis, axis_locations(1).objectPoint...
+        I, detectedPoints, lengths, widths, P, probe_axis, probe_axis_locations(1).objectPoint...
     );
-    I_out_filename = uigetfile(...
+    [I_out_filename, I_out_pathname] = uiputfile(...
         {'*.jpg;*.tif;*.png;*.gif','All Image Files';'*.*','All Files' },...
         'Save annotated image as',...
         'probeLocalizationResult.jpg'...
     );
-    imwrite(I_out_filename);
+    imwrite(I_out, fullfile(I_out_pathname, I_out_filename));
 end

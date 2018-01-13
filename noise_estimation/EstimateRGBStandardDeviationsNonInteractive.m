@@ -51,14 +51,14 @@
 %% Input data and parameters
 
 % Process a batch of images, or a video
-video_mode = false;
+video_mode = true;
 
 if video_mode
     % Input video file
-    video_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180108_noiseEstimation/2018-01-08-151219.webm';
+    video_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/noiseEstimation/noise.webm';
     
     % Starting offset in the video
-    start_time = 1;
+    start_time = 0;
     
     % Maximum number of frames to read (set to zero to read all frames)
     n_frames = 0;
@@ -72,10 +72,10 @@ else
 end
 
 % Directory in which to save the output file
-out_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180108_noiseEstimation';
+out_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/noiseEstimation';
 
 % Name of the output file
-out_filename = 'rgbstddev_nonInteractive_image.mat';
+out_filename = 'rgbstddev_nonInteractive_video.mat';
 
 % Number of pixels to plot when visualizing the results
 plot_count = 1000;

@@ -18,6 +18,11 @@ Vision-based localization of a thin probe:
 - Determination of the probe's 3D position from a single camera's view
 - Quantitative evaluation of probe localization
 
+## Environment
+- MATLAB R2016b and later were used for development, but earlier releases
+  will likely work.
+- Requires the Image Processing Toolbox, and the Computer Vision Systems Toolbox.
+
 ## Usage Instructions
 - Files starting with capital letters are MATLAB scripts, which can be used
   as described in their documentation comments.
@@ -36,22 +41,28 @@ Vision-based localization of a thin probe:
 3. Calibrate a camera to determine its intrinsic and extrinsic parameters, and
    capture images of the probe with the camera.
 
-4. Select one or more images to calibrate the camera's RGB noise, and use them
-   as input for the script 'EstimateRGBStandardDeviations.m'.
+4. Select one or more images, or capture a video, to calibrate the camera's
+   RGB noise. Either use images or a video of a stationary scene as input
+   for the script 'noise_estimation/EstimateRGBStandardDeviationsNonInteractive.m',
+   or use arbitrary images as input for the script
+   'noise_estimation/EstimateRGBStandardDeviationsInteractive.m'
 
-5. Correct all images for lens distortion.
-
-6. Select an image, showing the entire probe, as the template for probe detection.
+5. Select an image, showing the entire probe, as the template for probe detection.
    Annotate the points where the coloured bands meet the probe contour in the image.
    Also mark the tip and the other end (which may or may not taper to a point).
    Refer to 'CreateProbeDetectionModel.m' for details.
 
-7. Run 'CreateProbeDetectionModel.m' and save its output for use by the detector.
+6. Run 'CreateProbeDetectionModel.m' and save its output for use by the detector.
+
+## Single-Image Workflow
+
+7. Correct all images for lens distortion.
 
 8. Choose an image in which to detect the probe.
 
-9. Run 'DetectProbe.m' with the image as one of the inputs. If detection is
-   unsuccessful, provide a bounding box by setting `request_bounding_region` to `true`.
+9. Run 'DetectProbeScript.m' with the image as one of the inputs.
+   If detection is unsuccessful, provide a bounding box by setting
+   `request_bounding_region` to `true` and re-running the script.
 
-10. Run 'LocalizeProbe.m' on the output of 'DetectProbe.m' to find the 3D pose
-    of the probe.
+10. Run 'LocalizeProbeScript.m' on the output of 'DetectProbeScript.m' to
+    find the 3D pose of the probe.

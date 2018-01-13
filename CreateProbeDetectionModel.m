@@ -168,13 +168,13 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Data\bambooSkewer_orangeBlue.mat';
+model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/model/bluePenWithTape.mat';
 % Image of probe
-I_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Data\probeUnderLotus_1_b_rect.bmp';
+I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/model/bluePenModel_rect.jpg';
 % Annotations for image of probe
-I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Data\probeUnderLotus_1_b_rect_annotated.png';
+I_annotations_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/model/bluePenModel_rect_annotated.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\Data and results\20160811_bambooSkewerProbe\20170403_CMPUT615_Demo_data\Output\1_rgbStddev.mat';
+rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/noiseEstimation/rgbstddev_nonInteractive_video.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
@@ -197,7 +197,7 @@ display_extracted_annotations = false;
 display_model_from_image = true;
 verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
-display_probe_color_masks = false;
+display_probe_color_masks = true;
 display_hue_image = false;
 plot_hue_estimators = true;
 plot_hue_classifiers = true;
