@@ -1,12 +1,15 @@
-function [ H ] = rgb2hue( I )
-% RGB2HUE  Determine hue values from RGB values
+function [ H, S ] = rgb2hs( I )
+% RGB2HS  Determine hue and saturation values from RGB values
 %
 % ## Syntax
-% H = rgb2hue( I )
+% H = rgb2hs( I )
+% [H, S] = rgb2hs( I )
 %
 % ## Description
-% H = rgb2hue( I )
+% H = rgb2hs( I )
 %   Returns the hue channel of the image.
+% [H, S] = rgb2hs( I )
+%   Additionally returns the saturation channel of the image.
 %
 % ## Input Arguments
 %
@@ -18,6 +21,10 @@ function [ H ] = rgb2hue( I )
 % H -- Hue image
 %   An m x n array representing the hue channel of `I`. Values are in the
 %   range [0, 1].
+%
+% S -- Saturation image
+%   An m x n array representing the saturation channel of `I`. Values are
+%   in the range [0, 1].
 %
 % ## Notes
 % - This is just a wrapper for the built-in `rgb2hsv` function. Originally,
@@ -39,6 +46,9 @@ function [ H ] = rgb2hue( I )
 % University of Alberta, Department of Computing Science
 % File created August 9, 2016
 
+nargoutchk(1, 2);
+narginchk(1, 1);
+
 % R = double(I(:, :, 1));
 % G = double(I(:, :, 2));
 % B = double(I(:, :, 3));
@@ -48,7 +58,11 @@ function [ H ] = rgb2hue( I )
 % H(H_neg_filter) = 360 + H_neg;
 % Output is in degrees, but can be normalized to the range [0, 1] by dividing by 360.
 
-H = rgb2hsv(I);
-H = H(:, :, 1);
+HS = rgb2hsv(I);
+H = HS(:, :, 1);
+if nargout > 1
+    S = HS(:, :, 2);
+end
+
 end
 

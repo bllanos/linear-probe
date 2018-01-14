@@ -164,6 +164,7 @@ parameters_list = {
         'subject_gap_cost',...
         'query_gap_cost',...
         'affine_weight',...
+        'saturation_threshold',...
         'probe_color_distribution_resolution'
     };
 
@@ -187,6 +188,10 @@ subject_gap_cost = -0.1;
 query_gap_cost = 0;
 affine_weight = 0;
 
+% Saturation threshold. Pixels below this saturation will be excluded from
+% colour estimator creation.
+saturation_threshold = 0.25;
+
 % Number of points at which to evaluate colour estimators
 probe_color_distribution_resolution = 180;
 
@@ -199,6 +204,7 @@ verbose_point_sequence_matching = false;
 display_probe_band_masks = false;
 display_probe_color_masks = true;
 display_hue_image = false;
+display_saturation_image = true;
 plot_hue_estimators = true;
 plot_hue_classifiers = true;
 
@@ -363,6 +369,10 @@ if display_probe_band_masks
     end
 end
 
+% Obtain hue and saturation values
+[H, S] = rgb2hs(I);
+S_mask = (S >= saturation_threshold);
+
 % Group bands by colour
 colors_filter = (probe.colors ~= 0);
 probe_colors = unique(probe.colors(colors_filter));
@@ -381,15 +391,16 @@ end
 if display_probe_color_masks
     for i = 1:n_colors %#ok<UNRCH>
         figure
-        imshow(probe_color_masks(:, :, i));
-        title(sprintf('Mask for probe colour %d', i))
+        imshowpair(probe_color_masks(:, :, i), probe_color_masks(:, :, i) & S_mask, 'montage');
+        title(sprintf('Mask for probe colour %d (left), intersected with saturation threshold (right)', i))
     end
 end
 
-%% Create photometric invariant representations of the probe colours
+for i = 1:n_colors
+    probe_color_masks(:, :, i) = probe_color_masks(:, :, i) & S_mask;
+end
 
-% Obtain hue values
-H = rgb2hue(I);
+%% Create photometric invariant representations of the probe colours
     
 if display_hue_image
     figure %#ok<UNRCH>
@@ -398,6 +409,16 @@ if display_hue_image
     H_color = hsv2rgb(H_color);
     imshowpair(H, H_color, 'montage');
     title('Hue channel of original image')
+end
+
+if display_saturation_image
+    figure %#ok<UNRCH>
+    imshowpair(S, S_mask, 'montage');
+    title(sprintf([
+        'Saturation channel of original image (left)',...
+        ', thresholded (>= %g) (right)'
+        ], saturation_threshold...
+    ));
 end
 
 % Compute hue density estimators from probe colors
