@@ -7,9 +7,9 @@
 %   section below, then run.
 %
 % ## Probe Detection Assumptions and Limitations
-% - The image contains fairly saturated colours throughout, to assist with
-%   hue-based colour discrimination. At minimum, unsaturated areas are far
-%   from the probe.
+% - The image contains either saturated colours which are different from
+%   the colours of the probe, or fairly unsaturated colours, to assist with
+%   colour discrimination using hues and thresholds on colour saturation.
 % - The image only contains a single instance of the probe.
 % - The probe may be occluded in one or more places. However, it can be
 %   located in 3D space if at least 3 edges between pairs of coloured bands
@@ -108,9 +108,9 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/model/probeDetectionModel.mat';
+detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180114_bluePenWithTape_saturationThreshold/probeDetectionModel_sat0.25.mat';
 % Image of probe in an unknown pose
-I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/testImages/rectified/scissors_rect.jpg';
+I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/testImages/rectified/smallOcclusion_rect.jpg';
 % RGB noise parameters
 rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/noiseEstimation/rgbstddev_nonInteractive_video.mat';
 
@@ -135,7 +135,7 @@ detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 % Determination of refined probe colour regions
 uniform_background_final = false;
 erosion_radius_final = 2;
-detectWithinBoundingBoxParams.saturation_threshold = 0.25;
+detectWithinBoundingBoxParams.saturation_threshold = 0.15;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
 detectWithinBoundingBoxParams.axis_distance_outlier_threshold = 3;
@@ -177,7 +177,7 @@ detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
 detectWithinBoundingBoxVerbose.display_binary_images = false;
 detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
 detectWithinBoundingBoxVerbose.display_regions_colored = false;
-detectWithinBoundingBoxVerbose.display_band_edge_extraction = true;
+detectWithinBoundingBoxVerbose.display_band_edge_extraction = false;
 detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = true;
 
 verbose.display_detected_model_from_image = true;

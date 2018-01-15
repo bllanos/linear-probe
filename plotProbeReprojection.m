@@ -131,7 +131,7 @@ if use_figure
     hold off
     
     if have_detected_points
-        legend('Axis', 'Normal', 'Detected or marked points', 'Reprojected 3D points', 'Tip');
+        legend('Axis', 'Normal', 'Detected points', 'Reprojected 3D points', 'Tip');
     else
         legend('Axis', 'Normal', 'Reprojected 3D points', 'Tip');
     end

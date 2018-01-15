@@ -116,7 +116,7 @@ parameters_list = [parameters_list {
 model_filename = [];
 
 % Probe detection result
-detection_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/testImages/results/detection_noOcclusion2.mat';
+detection_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180114_bluePenWithTape_saturationThreshold/detection_smallOcclusion.mat';
 
 % Camera projection matrix
 camera_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/cameraCalibration/cameraParams_bouguetFormat.mat';
@@ -136,7 +136,7 @@ enable_nonlinear_estimation = true;
 
 % Debugging tools
 verbose.verbose_linear_estimation = false; % Requires `I_filename` to be valid
-verbose.display_linear_estimation = true; % Requires `I_filename` to be valid
+verbose.display_linear_estimation = false; % Requires `I_filename` to be valid
 verbose.verbose_nonlinear_estimation = false;
 verbose.display_nonlinear_estimation = true; % Requires `I_filename` to be valid
 verbose.display_axis_points = true; % Requires `I_filename` to be valid
@@ -205,5 +205,7 @@ if save_probe_reprojection_image
         'Save annotated image as',...
         'probeLocalizationResult.jpg'...
     );
-    imwrite(I_out, fullfile(I_out_pathname, I_out_filename));
+    if I_out_pathname && I_out_filename
+        imwrite(I_out, fullfile(I_out_pathname, I_out_filename));
+    end
 end
