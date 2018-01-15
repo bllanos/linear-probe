@@ -49,6 +49,9 @@ function [ mask ] = detectBoundingBoxes(...
 % params -- Fixed parameters
 %   Parameters that should be stable across a variety of input images and
 %   probe models. `params` is a structure containing the following fields:
+%   - saturation_threshold: A minimum threshold on colour saturation
+%       values, passed as the `saturation_threshold` parameter of
+%       'extractBinaryRegions()'
 %   - erosion_radius: Radius for morphological erosion of the binary images
 %       describing the probe colour regions. The `radius` parameter of
 %       'extractBinaryRegions()'
@@ -99,6 +102,7 @@ if ~isempty(varargin)
     verbose = varargin{1};
     display_original_image = verbose.display_original_image;
     extractBinaryRegionsVerbose.display_hue_image = verbose.display_hue_image;
+    extractBinaryRegionsVerbose.display_saturation_image = verbose.display_saturation_image;
     extractBinaryRegionsVerbose.plot_hue_estimator = verbose.plot_hue_estimator;
     extractBinaryRegionsVerbose.plot_hue_classifier = verbose.plot_hue_classifier;
     extractBinaryRegionsVerbose.display_distribution_backprojections = verbose.display_distribution_backprojections;
@@ -108,6 +112,7 @@ if ~isempty(varargin)
 else
     display_original_image = false;
     extractBinaryRegionsVerbose.display_hue_image = false;
+    extractBinaryRegionsVerbose.display_saturation_image = false;
     extractBinaryRegionsVerbose.plot_hue_estimator = false;
     extractBinaryRegionsVerbose.plot_hue_classifier = false;
     extractBinaryRegionsVerbose.display_distribution_backprojections = false;
@@ -132,6 +137,7 @@ end
 
 [ probe_regions_initial, probe_regions_bw_initial] = extractBinaryRegions(...
     I, probe_color_distributions,...
+    params.saturation_threshold,...
     rgb_sigma_polyfit,...
     params.erosion_radius,...
     [],...

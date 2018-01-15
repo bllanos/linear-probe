@@ -1,23 +1,23 @@
 function [ regions, bw ] = extractBinaryRegions(...
-    I, color_distributions,...
+    I, color_distributions, saturation_threshold,...
     rgb_sigma_polyfit, radius, varargin...
 )
 % EXTRACTBINARYREGIONS  Threshold and refine binary regions
 %
 % ## Syntax
 % regions = extractBinaryRegions(...
-%   I, color_distributions,...
+%   I, color_distributions, saturation_threshold,...
 %   rgb_sigma_polyfit, radius [, mask, verbose]...
 % )
 % regions = extractBinaryRegions(...
-%   I, color_distributions,...
+%   I, color_distributions, saturation_threshold,...
 %   [], radius [, mask, verbose]...
 % )
 % [ regions, bw ] = extractBinaryRegions(____)
 %
 % ## Description
 % regions = extractBinaryRegions(...
-%   I, color_distributions,...
+%   I, color_distributions, saturation_threshold,...
 %   rgb_sigma_polyfit, radius [, mask, verbose]...
 % )
 %   Returns binary regions corresponding to each colour probability
@@ -25,7 +25,7 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   distribution
 %
 % regions = extractBinaryRegions(...
-%   I, color_distributions,...
+%   I, color_distributions, saturation_threshold,...
 %   [], radius [, mask, verbose]...
 % )
 %   Returns binary regions corresponding to each colour probability
@@ -45,6 +45,15 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   Discretized density estimators of image hue values corresponding to the
 %   different colour classes. The i-th column of this 2D array stores the
 %   estimator for the i-th colour class of to be detected in the image `I`.
+%
+% saturation_threshold -- Threshold on saturation values
+%   Pixels with saturation values (from the Hue, Saturation, Value colour
+%   space) below this threshold are excluded, not only from binary regions
+%   for each colour distribution, but also when creating a probability
+%   distribution for the background.
+%
+%   A threshold on saturation is useful when classifying colour based on
+%   hue, because uncertainty in hue increases as saturation decreases.
 %
 % rgb_sigma_polyfit -- Camera RGB noise model
 %   An array describing the variation in RGB channel standard deviations
@@ -93,7 +102,7 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   the binary image consisting of the connected components in
 %   `regions(i)`.
 %
-% See also bwconncomp, imerode, mlDiscreteClassifier
+% See also rgb2hs, bwconncomp, imerode, mlDiscreteClassifier
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang
@@ -101,7 +110,7 @@ function [ regions, bw ] = extractBinaryRegions(...
 % File created August 15, 2016
 
 nargoutchk(1, 2);
-narginchk(5, 6);
+narginchk(6, 7);
 
 image_width = size(I, 2);
 image_height = size(I, 1);
@@ -116,20 +125,23 @@ end
 if length(varargin) > 1
     verbose = varargin{2};
     display_hue_image = verbose.display_hue_image;
+    display_saturation_image = verbose.display_saturation_image;
     plot_hue_estimator = verbose.plot_hue_estimator;
     plot_hue_classifier = verbose.plot_hue_classifier;
     display_distribution_backprojections = verbose.display_distribution_backprojections;
     display_binary_images = verbose.display_binary_images;
 else
     display_hue_image = false;
+    display_saturation_image = false;
     plot_hue_estimator = false;
     plot_hue_classifier = false;
     display_distribution_backprojections = false;
     display_binary_images = false;
 end
 
-% Obtain hue values
-H = rgb2hue(I);
+% Obtain hue and saturation values
+[H, S] = rgb2hs(I);
+S_mask = (S >= saturation_threshold);
 
 if display_hue_image
     figure
@@ -139,6 +151,20 @@ if display_hue_image
     imshowpair(H, H_color, 'montage');
     title('Hue channel of image')
 end
+
+if display_saturation_image
+    figure
+    S_color = cat(3, S, S_mask, ones(image_height, image_width));
+    mask_color = cat(3, mask, S_mask, ones(image_height, image_width));
+    imshowpair(S_color, mask_color, 'montage');
+    title(sprintf([
+        'Thresholding (>= %g) of Saturation channel of original image (left)',...
+        ', effect of threshold on ROI (right)'
+        ], saturation_threshold...
+    ));
+end
+
+mask = mask & S_mask;
 
 uniform_background = isempty(rgb_sigma_polyfit);
 

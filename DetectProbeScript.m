@@ -124,6 +124,7 @@ use_kernel_estimators = true;
 % Determination of the probe's bounding region
 uniform_background_initial = false;
 erosion_radius_initial = 5;
+detectBoundingBoxesParams.saturation_threshold = 0.4;
 detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
 detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
 detectBoundingBoxesParams.axis_distance_outlier_threshold = 3;
@@ -134,6 +135,7 @@ detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 % Determination of refined probe colour regions
 uniform_background_final = false;
 erosion_radius_final = 2;
+detectWithinBoundingBoxParams.saturation_threshold = 0.25;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
 detectWithinBoundingBoxParams.axis_distance_outlier_threshold = 3;
@@ -159,6 +161,7 @@ matching.alignment_inlier_threshold = 0.75;
 % Debugging tools
 detectBoundingBoxesVerbose.display_original_image = false;
 detectBoundingBoxesVerbose.display_hue_image = true;
+detectBoundingBoxesVerbose.display_saturation_image = true;
 detectBoundingBoxesVerbose.plot_hue_estimator = true;
 detectBoundingBoxesVerbose.plot_hue_classifier = true;
 detectBoundingBoxesVerbose.display_distribution_backprojections = false;
@@ -167,6 +170,7 @@ detectBoundingBoxesVerbose.verbose_region_filtering = false;
 detectBoundingBoxesVerbose.display_region_expansion = true;
 
 detectWithinBoundingBoxVerbose.display_hue_image = false;
+detectWithinBoundingBoxVerbose.display_saturation_image = true;
 detectWithinBoundingBoxVerbose.plot_hue_estimator = true;
 detectWithinBoundingBoxVerbose.plot_hue_classifier = true;
 detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;

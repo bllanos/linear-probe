@@ -78,7 +78,7 @@ function [ dist ] = hueVariableKernelDensityEstimator( H, R, G, B, mask, std_rgb
 %   Analysis and Machine Intelligence, vol. 26, no. 1, pp. 113-118, Jan.
 %   2004.
 %
-% See also rgb2hue, queryDiscretized1DFunction
+% See also rgb2hs, queryDiscretized1DFunction
 
 % Bernard Llanos
 % Spring 2016 research assistantship supervised by Dr. Y.H. Yang

@@ -194,6 +194,7 @@ end
 if isempty(detectBoundingBoxesVerbose)
     detectBoundingBoxesVerbose.display_original_image = false;
     detectBoundingBoxesVerbose.display_hue_image = false;
+    detectBoundingBoxesVerbose.display_saturation_image = false;
     detectBoundingBoxesVerbose.plot_hue_estimator = false;
     detectBoundingBoxesVerbose.plot_hue_classifier = false;
     detectBoundingBoxesVerbose.display_distribution_backprojections = false;
@@ -204,6 +205,7 @@ end
 
 if isempty(detectWithinBoundingBoxVerbose)
     detectWithinBoundingBoxVerbose.display_hue_image = false;
+    detectWithinBoundingBoxVerbose.display_saturation_image = false;
     detectWithinBoundingBoxVerbose.plot_hue_estimator = false;
     detectWithinBoundingBoxVerbose.plot_hue_classifier = false;
     detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
