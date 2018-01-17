@@ -104,7 +104,7 @@ parameters_list = {
         'I_filename',...
         'rgb_sigma_filename',...
         'use_kernel_estimators',...
-        'params'...
+        'detectionParams'...
     };
 
 % Probe detection model
@@ -114,77 +114,8 @@ I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_blue
 % RGB noise parameters
 rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/noiseEstimation/rgbstddev_nonInteractive_video.mat';
 
-% Ask for probe's bounding region
-request_bounding_region = false;
-
-% Load variable kernel density estimators (true), or Gaussian density
-% estimators (false) for the probe colours
-use_kernel_estimators = true;
-
-% Determination of the probe's bounding region
-uniform_background_initial = false;
-erosion_radius_initial = 5;
-detectBoundingBoxesParams.saturation_threshold = 0.4;
-detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
-detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
-detectBoundingBoxesParams.axis_distance_outlier_threshold = 3;
-detectBoundingBoxesParams.dilation_radius = 4 * erosion_radius_initial;
-detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
-detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
-
-% Determination of refined probe colour regions
-uniform_background_final = false;
-erosion_radius_final = 2;
-detectWithinBoundingBoxParams.saturation_threshold = 0.15;
-detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
-detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
-detectWithinBoundingBoxParams.axis_distance_outlier_threshold = 3;
-
-% Location of probe edge points
-band_edge_distance_threshold = 2 * erosion_radius_final + 1;
-detectWithinBoundingBoxParams.band_edge_distance_threshold = band_edge_distance_threshold;
-
-% Location of probe edge endpoints
-detectWithinBoundingBoxParams.edge_refinement_edge_width = band_edge_distance_threshold;
-detectWithinBoundingBoxParams.edge_refinement_angle_std = pi / 12;
-detectWithinBoundingBoxParams.edge_refinement_filter_threshold = 0.3;
-
-% Matching edge endpoints to general probe structure
-detected_point_alignment_outlier_threshold = 5;
-
-% Matching edge endpoints to probe measurements
-matching.subject_gap_cost_detection = 0;
-matching.query_gap_cost_detection = 0;
-matching.direction_threshold = 1.25;
-matching.alignment_inlier_threshold = 0.75;
-
-% Debugging tools
-detectBoundingBoxesVerbose.display_original_image = false;
-detectBoundingBoxesVerbose.display_hue_image = true;
-detectBoundingBoxesVerbose.display_saturation_image = true;
-detectBoundingBoxesVerbose.plot_hue_estimator = true;
-detectBoundingBoxesVerbose.plot_hue_classifier = true;
-detectBoundingBoxesVerbose.display_distribution_backprojections = false;
-detectBoundingBoxesVerbose.display_binary_images = false;
-detectBoundingBoxesVerbose.verbose_region_filtering = false;
-detectBoundingBoxesVerbose.display_region_expansion = true;
-
-detectWithinBoundingBoxVerbose.display_hue_image = false;
-detectWithinBoundingBoxVerbose.display_saturation_image = true;
-detectWithinBoundingBoxVerbose.plot_hue_estimator = true;
-detectWithinBoundingBoxVerbose.plot_hue_classifier = true;
-detectWithinBoundingBoxVerbose.display_distribution_backprojections = false;
-detectWithinBoundingBoxVerbose.display_binary_images = false;
-detectWithinBoundingBoxVerbose.verbose_region_filtering = false;
-detectWithinBoundingBoxVerbose.display_regions_colored = false;
-detectWithinBoundingBoxVerbose.display_band_edge_extraction = false;
-detectWithinBoundingBoxVerbose.verbose_edge_endpoint_extraction = true;
-
-verbose.display_detected_model_from_image = true;
-verbose.display_final_clipped_regions_colored = true;
-verbose.verbose_detected_point_sequence_matching = false;
-verbose.display_detected_model_matching = true;
-verbose.warnings = true;
+% Parameters which do not usually need to be changed
+run('SetFixedParameters.m')
 
 %% Load the image containing the probe in an unknown pose
 I = imread(I_filename);
@@ -215,23 +146,10 @@ else
     rgb_sigma_polyfit = [];
 end
 
-%% Pack parameters
-
-params.request_bounding_region = request_bounding_region;
-params.uniform_background_initial = uniform_background_initial;
-params.detectBoundingBoxesParams = detectBoundingBoxesParams;
-params.uniform_background_final = uniform_background_final;
-params.detectWithinBoundingBoxParams = detectWithinBoundingBoxParams;
-params.detected_point_alignment_outlier_threshold = detected_point_alignment_outlier_threshold;
-params.matching = matching;
-
-verbose.detectBoundingBoxesVerbose = detectBoundingBoxesVerbose;
-verbose.detectWithinBoundingBoxVerbose = detectWithinBoundingBoxVerbose;
-
 %% Detection
 
 [ probe_detection_matches_filtered, probe_detection_matches ] = detectProbe(...
-       I, probe, probe_color_distributions, rgb_sigma_polyfit, params, verbose...
+       I, probe, probe_color_distributions, rgb_sigma_polyfit, detectionParams, verbose...
 );
 
 %% Save results to a file

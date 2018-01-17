@@ -103,7 +103,7 @@
 parameters_list = {
         'detection_filename',...
         'camera_filename',...
-        'params'...
+        'localizationParams'...
     };
 % The following variables are loaded from the file pointed to by
 % 'detection_filename', unless they are defined below:
@@ -124,24 +124,11 @@ camera_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112
 % Image containing the probe
 I_filename = [];
 
-% Linear Probe Localization
-% Error convergence threshold for linear probe estimation
-linear_convergence_threshold = 0.01;
-% Normalize lengths when estimating a 1D homography between the probe and
-% its image
-normalize_homography1D = true;
-
-% Enable or disable nonlinear iterative refinement
-enable_nonlinear_estimation = true;
-
-% Debugging tools
-verbose.verbose_linear_estimation = false; % Requires `I_filename` to be valid
-verbose.display_linear_estimation = false; % Requires `I_filename` to be valid
-verbose.verbose_nonlinear_estimation = false;
-verbose.display_nonlinear_estimation = true; % Requires `I_filename` to be valid
-verbose.display_axis_points = true; % Requires `I_filename` to be valid
-
+% Whether or not to prompt to save the output annotated image
 save_probe_reprojection_image = true;
+
+% Parameters which do not usually need to be changed
+run('SetFixedParameters.m')
 
 %% Load input data
 detection_variables_required = {...
@@ -170,16 +157,10 @@ end
 
 I = imread(I_filename);
 
-%% Pack parameters
-
-params.linear_convergence_threshold = linear_convergence_threshold;
-params.normalize_homography1D = normalize_homography1D;
-params.enable_nonlinear_estimation = enable_nonlinear_estimation;
-
 %% Location Estimation
 
 [ probe_axis_locations, probe_axis, probe_band_locations ] = localizeProbe(...
-    probe, probe_detection_matches_filtered, P, params, verbose, I...
+    probe, probe_detection_matches_filtered, P, localizationParams, verbose, I...
 );
 
 %% Save results to a file
@@ -203,9 +184,9 @@ if save_probe_reprojection_image
     [I_out_filename, I_out_pathname] = uiputfile(...
         {'*.jpg;*.tif;*.png;*.gif','All Image Files';'*.*','All Files' },...
         'Save annotated image as',...
-        'probeLocalizationResult.jpg'...
+        'probeLocalizationResult.png'...
     );
-    if I_out_pathname && I_out_filename
+    if ischar(I_out_pathname) && ischar(I_out_filename)
         imwrite(I_out, fullfile(I_out_pathname, I_out_filename));
     end
 end
