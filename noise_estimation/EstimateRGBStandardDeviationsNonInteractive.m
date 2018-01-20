@@ -67,7 +67,6 @@ else
     in_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180108_noiseEstimation';
     
     % Input image filename wildcard
-    % Filenames must not contain spaces
     wildcard = '*.jpg';
 end
 

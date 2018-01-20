@@ -36,7 +36,7 @@
 %
 % ### Colour noise parameters
 % Required if at least one of the parameters 'uniform_background_initial',
-% or 'uniform_background_final' is true.
+% or 'uniform_background_final' is false.
 %
 % A '.mat' file containing a 'rgb_sigma_polyfit' variable, as output by the
 % script '.\EstimateRGBStandardDeviations.m'. 'rgb_sigma_polyfit' describes

@@ -20,8 +20,6 @@ function [ frames ] = readImageGroup(in_directory, wildcard)
 %   the input directory will be read. All image files must have the same
 %   pixel dimensions.
 %
-%   Filenames must not contain spaces.
-%
 % ## Output Arguments
 %
 % frames -- Image sequence
@@ -49,8 +47,7 @@ nargoutchk(1,1)
 narginchk(2,2)
 
 % Find all filenames
-% `strsplit` will not work if the filenames contain spaces.
-names = strsplit(ls(fullfile(in_directory, wildcard)));
+names = strtrim(strsplit(ls(fullfile(in_directory, wildcard)), {'\f','\n','\r','\t','\v'}));
 n = length(names) - 1; % There is always a terminating newline
 
 % Load the images
