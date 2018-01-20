@@ -128,7 +128,7 @@ detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults
 % RGB noise parameters
 rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/noiseEstimation/rgbstddev_nonInteractive_video.mat';
 % Camera calibration
-camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/cameraCalibration/cameraParams_bouguetFormat.mat';
+camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/cameraCalibration/cameraParams.mat';
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
@@ -155,7 +155,7 @@ if isempty(input_video_wildcard)
     n_videos = 1;
 else
     % Find all filenames
-    video_filenames = strtrim(strsplit(ls(fullfile(in_directory, wildcard)), {'\f','\n','\r','\t','\v'}));
+    video_filenames = strtrim(strsplit(ls(input_video_wildcard), {'\f','\n','\r','\t','\v'}));
     n_videos = length(video_filenames) - 1; % There is always a terminating newline
 end
 

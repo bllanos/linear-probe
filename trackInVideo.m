@@ -146,7 +146,7 @@ else
 end
 
 if use_live_video
-    I = snapshot(cam);
+    I = snapshot(inputVideo);
 else
     I = step(inputVideo);
 end
@@ -172,7 +172,7 @@ while runLoop
     end
     if runLoop
         if use_live_video
-            I = snapshot(cam);
+            I = snapshot(inputVideo);
         else
             I = step(inputVideo);
         end
@@ -188,5 +188,8 @@ end
 if ~options.silent
     release(player);
 end
+
+localizations = [];
+detections = [];
 
 end
