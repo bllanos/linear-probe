@@ -85,6 +85,10 @@ function [ localizations, detections ] = trackInVideo(...
 %   A structure with the following field:
 %   - silent: If `true`, a video player will not be opened to show the
 %     video frames annotated with probe detection and localization results.
+%   - frame_rate: The output video framerate.
+%   - record_only: If `true`, just copy the video to the output file
+%     without processing. In this case, `localizations` and `detections`
+%     will be empty.
 %
 % ## Output Arguments
 %
@@ -138,6 +142,7 @@ function [ localizations, detections ] = trackInVideo(...
 nargoutchk(1,2)
 narginchk(9,9)
 
+% Connect to video source
 use_live_video = isempty(in_filename);
 if use_live_video
     inputVideo = webcam();
@@ -145,25 +150,37 @@ else
     inputVideo = vision.VideoFileReader(in_filename);
 end
 
+% Initialize video player
 if use_live_video
     I = snapshot(inputVideo);
 else
     I = step(inputVideo);
 end
 image_size = size(I);
-
 if ~options.silent
     player = vision.VideoPlayer('Position', [100 100 [image_size(2), image_size(1)]+30]);
 elseif use_live_video
     error('There is no way to gracefully stop live video capture without opening a video player.')
 end
 
+% Initialize video output
+video_output_enabled = ~isempty(out_filename);
+if video_output_enabled
+    outputVideo = vision.VideoFileWriter(out_filename,'FrameRate',options.frame_rate);
+end
+
+% Process video
 runLoop = true;
 while runLoop
     if ~options.silent
         step(player, I);
     end
     
+    if video_output_enabled
+        step(outputVideo, I);
+    end
+    
+    % Check whether to end processing
     if ~use_live_video
         runLoop = ~isDone(inputVideo);
     end
@@ -188,8 +205,13 @@ end
 if ~options.silent
     release(player);
 end
+if video_output_enabled
+    release(outputVideo);
+end
 
-localizations = [];
-detections = [];
+if options.record_only
+    localizations = [];
+    detections = [];
+end
 
 end

@@ -132,7 +132,7 @@ camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/2
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = [];
+input_video_wildcard = '/home/llanos/Downloads/live*';
 
 % Output directory for annotated videos
 % Leave empty (`[]`) for no output video
@@ -143,7 +143,11 @@ output_video_directory = [];
 output_data_directory = [];
 
 % Video processing options
+% Refer to the documentation of the `options` parameter of 'trackInVideo()'
+% in 'trackInVideo.m'.
 options.silent = false;
+options.frame_rate = 20;
+options.record_only = true;
 
 % Parameters which do not usually need to be changed
 run('SetFixedParameters.m')
@@ -201,10 +205,10 @@ save_variables_list = [ parameters_list, {...
 
 for i = 1:n_videos
     % Output filename for the video
-    if (~isempty(output_data_directory) || ~isempty(output_data_directory))...
+    if (~isempty(output_video_directory) || ~isempty(output_data_directory))...
             && isempty(video_filenames{i})
         cdate = replace(datestr(now, 31), {'-',' ',':'},'_');
-    elseif ~isempty(output_data_directory) || ~isempty(output_data_directory)
+    elseif ~isempty(output_video_directory) || ~isempty(output_data_directory)
         [filepath, name, ext] = fileparts(video_filenames{i});
     end
     if isempty(output_video_directory)
