@@ -22,19 +22,19 @@ request_bounding_region = false;
 use_kernel_estimators = true;
 
 % Determination of the probe's bounding region
-uniform_background_initial = false;
-erosion_radius_initial = 5;
-detectBoundingBoxesParams.saturation_threshold = 0.4;
+uniform_background_initial = true;
+erosion_radius_initial = 2;
+detectBoundingBoxesParams.saturation_threshold = 0.3;
 detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
-detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 10;
+detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 4;
 detectBoundingBoxesParams.axis_distance_outlier_threshold = 3;
 detectBoundingBoxesParams.dilation_radius = 4 * erosion_radius_initial;
 detectBoundingBoxesParams.region_expansion_factor_length = 1.1;
 detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
-uniform_background_final = false;
-erosion_radius_final = 2;
+uniform_background_final = true;
+erosion_radius_final = 1;
 detectWithinBoundingBoxParams.saturation_threshold = 0.15;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;

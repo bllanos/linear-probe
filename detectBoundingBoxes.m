@@ -65,7 +65,8 @@ function [ mask ] = detectBoundingBoxes(...
 %       'detectProbeBinaryRegions()'.
 %   - dilation_radius: Radius for dilating the candidate probe colour
 %       regions to include some of the background. This parameter is used
-%       as part of bounding region construction.
+%       as part of bounding region construction. Dilation is skipped if
+%       `dilation_radius` is zero.
 %   - region_expansion_factor_length: Factor by which to expand oriented
 %       boxes fitted to the dilated candidate probe colour regions, along
 %       their major axis directions.
@@ -172,8 +173,10 @@ if display_region_expansion
     imshow(probe_regions_bw_initial_all);
     title('Initial probe colour regions prior to expansion')
 end
-disk = strel('disk', params.dilation_radius);
-probe_regions_bw_initial_all = imdilate(probe_regions_bw_initial_all, disk);
+if params.dilation_radius > 0
+    disk = strel('disk', params.dilation_radius);
+    probe_regions_bw_initial_all = imdilate(probe_regions_bw_initial_all, disk);
+end
 % Find oriented bounding boxes
 initial_region_bounds = regionprops(probe_regions_bw_initial_all, {...
     'Centroid', 'Orientation', 'MajorAxisLength', 'MinorAxisLength'...

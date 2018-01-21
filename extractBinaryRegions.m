@@ -78,6 +78,8 @@ function [ regions, bw ] = extractBinaryRegions(...
 %   of connected components. Erosion is effective for removing noise, which
 %   otherwise results in a large number of small connected components.
 %
+%   Erosion is skipped if `radius` is zero.
+%
 % mask -- Region of interest
 %   A logical array of size image_height x image_width which determines the
 %   set of pixels operated on by the function.
@@ -269,8 +271,10 @@ regions = struct('Connectivity', cell(n_colors, 1), 'ImageSize', cell(n_colors, 
     'NumObjects', cell(n_colors, 1), 'PixelIdxList', cell(n_colors, 1));
 for i = 1:n_colors
     bw_i = bw(:, :, i);
-    disk = strel('disk', radius);
-    bw_i = imerode(bw_i, disk);
+    if radius > 0
+        disk = strel('disk', radius);
+        bw_i = imerode(bw_i, disk);
+    end
     if display_binary_images
         figure
         imshow(bw_i);
