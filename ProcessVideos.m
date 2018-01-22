@@ -55,8 +55,43 @@
 %
 % ## Output
 %
+% One output file of each of the following types will be generated for each
+% input video source. Output files will be saved in the directories
+% referred to by the 'output_*_directory' variables below. If an output
+% directory variable is empty, no output data files of the corresponding
+% type will be produced.
+%
+% ### Input videos
+%
+% Copies of the input videos, or videos captured from cameras, will be
+% saved in the directory referred to by 'output_raw_video_directory'
+% below. These videos are not corrected for lens distortion.
+%
+% ### Annotated videos
+%
+% The input videos will be annotated with the reprojection of the probe,
+% and saved in the directory referred to by
+% 'output_annotated_video_directory' below. These videos are corrected for
+% lens distortion.
+%
+% The annotations on the videos are those described in the documentation of
+% 'trackInVideo()' (refer to 'trackInVideo.m').
+%
+% ### Point clouds
+%
+% A CSV file will be generated containing frame numbers, the corresponding
+% 3D locations of the probe tip, and the corresponding 3D unit direction
+% vectors from the probe tip to its other end. The CSV file will be saved
+% in the directory referred to by 'output_point_cloud_directory' below.
+%
+% The output point cloud is also described in the documentation of the
+% `out_filenames.out_csv` input argument of 'trackInVideo()' (refer to
+% 'trackInVideo.m').
+%
 % ### Probe detection and localization results
-% '.mat' files containing the following variables:
+%
+% A '.mat' file containing the following variables will be saved in the
+% directory referred to by 'output_data_directory' below:
 %
 % - 'model_filename': The path to the file containing user-provided
 %   measurements of the probe in the structure 'probe'. The 'probe'
@@ -74,23 +109,10 @@
 % - 'detections': The `detections` output argument of 'trackInVideo()'.
 %   Refer to the documentation of 'trackInVideo.m' for details.
 %
-% Additionally, the output files contain the values of all parameters in
-% the first section of the script below, for reference. (Specifically,
-% those listed in `parameters_list`, which should be updated if the set of
-% parameters is changed.)
-%
-% One output file will be produced per input video, and saved in the
-% directory referred to by 'output_data_directory' below. If
-% 'output_data_directory' is empty, no output data files will be produced.
-%
-% ### Annotated videos
-%
-% The input videos will be annotated with the reprojection of the probe,
-% and saved in the directory referred to by 'output_video_directory' below.
-% If 'output_video_directory' is empty, no output videos will be produced.
-%
-% The annotations on the videos are those described in the documentation of
-% 'trackInVideo()' (refer to 'trackInVideo.m').
+% Additionally, the file contains the values of all parameters in the first
+% section of the script below, for reference. (Specifically, those listed
+% in `parameters_list`, which should be updated if the set of parameters is
+% changed.)
 %
 % ## References
 % - M.-C. Chuang, J.-N. Hwang, K. Williams and R. Towler. "Tracking Live
@@ -134,12 +156,20 @@ camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/2
 % Leave empty (`[]`) to read live video
 input_video_wildcard = '/home/llanos/Downloads/live*';
 
-% Output directory for annotated videos
-% Leave empty (`[]`) for no output video
-output_video_directory = [];
+% Output directory for raw videos
+% Leave empty (`[]`) for no output raw video
+output_raw_video_directory = [];
 
-% Output directory for numerical results
-% Leave empty (`[]`) for no output data files
+% Output directory for annotated videos
+% Leave empty (`[]`) for no output annotated video
+output_annotated_video_directory = [];
+
+% Output directory for CSV format point cloud
+% Leave empty (`[]`) for no output point cloud
+output_point_cloud_directory = [];
+
+% Output directory for comprehensive numerical results
+% Leave empty (`[]`) for no output data file
 output_data_directory = [];
 
 % Video processing options
@@ -148,6 +178,7 @@ output_data_directory = [];
 options.silent = false;
 options.frame_rate = 20;
 options.record_only = true;
+options.show_errors = true;
 
 % Parameters which do not usually need to be changed
 run('SetFixedParameters.m')
@@ -202,40 +233,78 @@ save_variables_list = [ parameters_list, {...
         'localizations',...
         'detections'
     } ];
+any_output_files = ~all([
+        isempty(output_raw_video_directory);
+        isempty(output_annotated_video_directory);
+        isempty(output_point_cloud_directory);
+        isempty(output_data_directory)
+    ]);
 
 for i = 1:n_videos
-    % Output filename for the video
-    if (~isempty(output_video_directory) || ~isempty(output_data_directory))...
-            && isempty(video_filenames{i})
+    % Generate output filenames
+    if any_output_files && isempty(video_filenames{i})
         cdate = replace(datestr(now, 31), {'-',' ',':'},'_');
-    elseif ~isempty(output_video_directory) || ~isempty(output_data_directory)
+    elseif any_output_files
         [filepath, name, ext] = fileparts(video_filenames{i});
     end
-    if isempty(output_video_directory)
-        save_video_filename = [];
+    if isempty(output_raw_video_directory)
+        raw_video_filename = [];
     else
         if isempty(video_filenames{i})
-            save_video_filename = ['live_' cdate '.avi'];
+            raw_video_filename = ['live_' cdate '.avi'];
         else
-            save_video_filename = [name '_output' ext];
+            raw_video_filename = [name '_copy' ext];
         end
-        save_video_filename = fullfile(output_video_directory, save_video_filename);
+        raw_video_filename = fullfile(output_raw_video_directory, raw_video_filename);
     end
-    
-    % Video processing
-    [ localizations, detections ] = trackInVideo(...
-        video_filenames{i}, save_video_filename,...
-        probe, probe_color_distributions, rgb_sigma_polyfit,...
-        cameraParams, detectionParams, localizationParams, options...
-    );
-    
-    % Save data to a file
+    if isempty(output_annotated_video_directory)
+        annotated_video_filename = [];
+    else
+        if isempty(video_filenames{i})
+            annotated_video_filename = ['live_' cdate '_annotated.avi'];
+        else
+            annotated_video_filename = [name '_annotated' ext];
+        end
+        annotated_video_filename = fullfile(output_annotated_video_directory, annotated_video_filename);
+    end
+    if isempty(output_point_cloud_directory)
+        point_cloud_filename = [];
+    else
+        if isempty(video_filenames{i})
+            point_cloud_filename = ['live_' cdate '_pointCloud.csv'];
+        else
+            point_cloud_filename = [name '_pointCloud.csv'];
+        end
+        point_cloud_filename = fullfile(output_point_cloud_directory, point_cloud_filename);
+    end
     if ~isempty(output_data_directory)
         if isempty(video_filenames{i})
-            save_data_filename = ['live_' cdate '.mat'];
+            save_data_filename = ['live_' cdate '_fullResults.mat'];
         else
-            save_data_filename = [name '_output.mat'];
+            save_data_filename = [name '_fullResults.mat'];
         end
-        save(save_variables_list, fullfile(output_data_directory, save_data_filename));
+        save_data_filename = fullfile(output_data_directory, save_data_filename);
+    end
+    
+    out_filenames = struct(...
+        'raw_video', raw_video_filename,...
+        'out_video', annotated_video_filename,...
+        'out_csv', point_cloud_filename...
+    );
+    
+    % Video processing    
+    if ~isempty(output_data_directory)
+        [ localizations, detections ] = trackInVideo(...
+            video_filenames{i}, out_filenames,...
+            probe, probe_color_distributions, rgb_sigma_polyfit,...
+            cameraParams, detectionParams, localizationParams, options...
+        );
+        save(save_variables_list, save_data_filename);
+    else
+        trackInVideo(...
+            video_filenames{i}, out_filenames,...
+            probe, probe_color_distributions, rgb_sigma_polyfit,...
+            cameraParams, detectionParams, localizationParams, options...
+        );
     end
 end
