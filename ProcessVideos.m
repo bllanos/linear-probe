@@ -170,7 +170,7 @@ output_point_cloud_directory = '/home/llanos/Downloads/output';
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
-output_data_directory = '/home/llanos/Downloads/output';
+output_data_directory = [];
 
 % Video processing options
 % Refer to the documentation of the `options` parameter of 'trackInVideo()'

@@ -69,3 +69,7 @@ Vision-based localization of a thin probe:
 
 10. Run 'LocalizeProbeScript.m' on the output of 'DetectProbeScript.m' to
     find the 3D pose of the probe.
+
+## Live or Pre-Recorded Video Workflow
+
+7. Use the script 'ProcessVideos.m'

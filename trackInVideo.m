@@ -226,13 +226,12 @@ if ~options.record_only
         localizations = struct(...
             'frame', {}, 'axis_locations', {}, 'probe_axis', {}, 'band_locations', {}...
         );
-    
-        return_detections = (nargout > 1);
-        if return_detections
-            detections = struct(...
-                'frame', {}, 'matches_filtered', {}, 'matches', {}...
-            );
-        end
+    end
+    return_detections = (nargout > 1);
+    if return_detections
+        detections = struct(...
+            'frame', {}, 'matches_filtered', {}, 'matches', {}...
+        );
     end
 
     P = [cameraParams.IntrinsicMatrix.' zeros(3, 1)];
