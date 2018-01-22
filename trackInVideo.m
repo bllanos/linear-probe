@@ -260,8 +260,8 @@ while runLoop
             n_points = size(above, 1);
             if n_points > 0
                 undistortedPoints = undistortPoints([ above; below ], cameraParams);
-                above = num2cell(undistortedPoints(1:n_points, :));
-                below = num2cell(undistortedPoints((n_points + 1):end, :));
+                above = num2cell(undistortedPoints(1:n_points, :), 2);
+                below = num2cell(undistortedPoints((n_points + 1):end, :), 2);
                 [matches_filtered(:).pointAbovePCAMajorAxis] = above{:};
                 [matches_filtered(:).pointBelowPCAMajorAxis] = below{:};
             
@@ -284,7 +284,7 @@ while runLoop
                     localizations(end).frame = frame_index;
                 end
                 
-                tip = probe_axis_locations(1).objectPoint;
+                tip = axis_locations(1).objectPoint;
                 
                 if csv_output_enabled
                     fprintf(...

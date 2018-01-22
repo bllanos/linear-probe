@@ -158,26 +158,26 @@ input_video_wildcard = '/home/llanos/Downloads/live*';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
-output_raw_video_directory = [];
+output_raw_video_directory = '/home/llanos/Downloads/output';
 
 % Output directory for annotated videos
 % Leave empty (`[]`) for no output annotated video
-output_annotated_video_directory = [];
+output_annotated_video_directory = '/home/llanos/Downloads/output';
 
 % Output directory for CSV format point cloud
 % Leave empty (`[]`) for no output point cloud
-output_point_cloud_directory = [];
+output_point_cloud_directory = '/home/llanos/Downloads/output';
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
-output_data_directory = [];
+output_data_directory = '/home/llanos/Downloads/output';
 
 % Video processing options
 % Refer to the documentation of the `options` parameter of 'trackInVideo()'
 % in 'trackInVideo.m'.
 options.silent = false;
 options.frame_rate = 20;
-options.record_only = true;
+options.record_only = false;
 options.show_errors = true;
 
 % Parameters which do not usually need to be changed
@@ -299,7 +299,7 @@ for i = 1:n_videos
             probe, probe_color_distributions, rgb_sigma_polyfit,...
             cameraParams, detectionParams, localizationParams, options...
         );
-        save(save_variables_list, save_data_filename);
+        save(save_data_filename, save_variables_list{:});
     else
         trackInVideo(...
             video_filenames{i}, out_filenames,...

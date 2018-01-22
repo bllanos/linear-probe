@@ -23,7 +23,7 @@ use_kernel_estimators = true;
 
 % Determination of the probe's bounding region
 uniform_background_initial = true;
-erosion_radius_initial = 2;
+erosion_radius_initial = 5;
 detectBoundingBoxesParams.saturation_threshold = 0.3;
 detectBoundingBoxesParams.erosion_radius = erosion_radius_initial;
 detectBoundingBoxesParams.radius_adj = 2 * erosion_radius_initial + 4;
@@ -34,7 +34,7 @@ detectBoundingBoxesParams.region_expansion_factor_width = 1.5;
 
 % Determination of refined probe colour regions
 uniform_background_final = true;
-erosion_radius_final = 1;
+erosion_radius_final = 2;
 detectWithinBoundingBoxParams.saturation_threshold = 0.15;
 detectWithinBoundingBoxParams.erosion_radius = erosion_radius_final;
 detectWithinBoundingBoxParams.radius_adj = 2 * erosion_radius_final + 4;
