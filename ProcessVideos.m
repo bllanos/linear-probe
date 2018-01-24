@@ -153,7 +153,7 @@ camera_params_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResul
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = [];
+input_video_wildcard = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\test_video\*.avi';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
@@ -190,8 +190,8 @@ if isempty(input_video_wildcard)
     n_videos = 1;
 else
     % Find all filenames
-    video_filenames = strtrim(strsplit(ls(input_video_wildcard), {'\f','\n','\r','\t','\v'}));
-    n_videos = length(video_filenames) - 1; % There is always a terminating newline
+    video_filenames = listFiles(input_video_wildcard);
+    n_videos = length(video_filenames);
 end
 
 %% Load calibration data

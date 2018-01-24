@@ -27,10 +27,6 @@ function [ frames ] = readImageGroup(in_directory, wildcard)
 %   sequence of images (in the order listed by `ls()`), and the third
 %   dimension indices the colour channels of each image.
 %
-% ## Notes
-% - This function will not work on Windows, as `ls()` has platform-specific
-%   behaviour.
-%
 % ## References
 % - Code created in August 2017 for loading RAW images.
 % - Code created during Fall 2017 for the CMPUT 551 Mini project on colour
@@ -47,8 +43,8 @@ nargoutchk(1,1)
 narginchk(2,2)
 
 % Find all filenames
-names = strtrim(strsplit(ls(fullfile(in_directory, wildcard)), {'\f','\n','\r','\t','\v'}));
-n = length(names) - 1; % There is always a terminating newline
+names = listFiles(fullfile(in_directory, wildcard));
+n = length(names); % There is always a terminating newline
 
 % Load the images
 I_1 = im2double(imread(names{1}));
