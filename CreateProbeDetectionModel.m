@@ -169,13 +169,13 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/bluePenGreenTape.mat';
+model_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\redGreenSkewer.mat';
 % Image of probe
-I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/bluePenGreenTape.jpg';
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\redGreenSkewer_flea3.bmp';
 % Annotations for image of probe
-I_annotations_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/bluePenGreenTape_annotations.png';
+I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\redGreenSkewer_flea3_annotations.png';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/rgbstddev_nonInteractive_video.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\rgbstddev_nonInteractive_video.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features

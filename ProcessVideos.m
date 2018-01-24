@@ -44,12 +44,11 @@
 %
 % ### Videos containing the probe
 %
-% This script can process either live video from a webcam, or one or more
-% saved videos. Refer to the MATLAB documentation for the
-% 'vision.VideoFileReader' system object concerning compatible video file
-% formats. The videos should have been captured under the same camera
-% parameters and, ideally, the same lighting conditions, as used during
-% probe detection model creation.
+% This script can process either live video, or one or more saved videos.
+% Refer to the MATLAB documentation for the 'vision.VideoFileReader' system
+% object concerning compatible video file formats. The videos should have
+% been captured under the same camera parameters and, ideally, the same
+% lighting conditions, as used during probe detection model creation.
 %
 % Video frames will be corrected for lens distortion during processing.
 %
@@ -146,11 +145,11 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/bluePenGreenTape_detectionModel.mat';
+detection_model_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\redGreenSkewer_detectionModel.mat';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/rgbstddev_nonInteractive_video.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\rgbstddev_nonInteractive_video.mat';
 % Camera calibration
-camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/cameraCalibration/cameraParams.mat';
+camera_params_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\camera\cameraParams.mat';
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
@@ -158,15 +157,15 @@ input_video_wildcard = [];
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
-output_raw_video_directory = '/home/llanos/Downloads/output';
+output_raw_video_directory = []; %'C:\Users\llanos\Downloads';
 
 % Output directory for annotated videos
 % Leave empty (`[]`) for no output annotated video
-output_annotated_video_directory = '/home/llanos/Downloads/output';
+output_annotated_video_directory = []; %'C:\Users\llanos\Downloads';
 
 % Output directory for CSV format point cloud
 % Leave empty (`[]`) for no output point cloud
-output_point_cloud_directory = '/home/llanos/Downloads/output';
+output_point_cloud_directory = []; %'C:\Users\llanos\Downloads';
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
@@ -175,6 +174,7 @@ output_data_directory = [];
 % Video processing options
 % Refer to the documentation of the `options` parameter of 'trackInVideo()'
 % in 'trackInVideo.m'.
+options.video_mode = 'F7_RGB_2448x2048_Mode0'; % Determines which camera and video mode to use
 options.silent = false;
 options.frame_rate = 20;
 options.record_only = false;

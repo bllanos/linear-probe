@@ -55,7 +55,7 @@ video_mode = true;
 
 if video_mode
     % Input video file
-    video_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/noise.webm';
+    video_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\noise.avi';
     
     % Starting offset in the video
     start_time = 0;
@@ -71,7 +71,7 @@ else
 end
 
 % Directory in which to save the output file
-out_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model';
+out_directory = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model';
 
 % Name of the output file
 out_filename = 'rgbstddev_nonInteractive_video.mat';

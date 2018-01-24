@@ -47,7 +47,10 @@ function [ localizations, detections ] = trackInVideo(...
 % in_filename -- Input video
 %   A character vector containing the name and path of the input video
 %   file. If empty (`[]`), the function will attempt to read live video
-%   from a webcam, using the MATLAB Support Package for USB Webcams.
+%   from either a webcam, using the MATLAB Support Package for USB Webcams,
+%   or a Point Grey camera, using the Image Acquisition Toolbox Support
+%   Package for Point Grey Hardware. The choice of camera is determined by
+%   the `options.video_mode` parameter (see below).
 %
 % out_filenames -- Output filepaths
 %   A structure with the following fields. Each field is a character vector
@@ -112,6 +115,11 @@ function [ localizations, detections ] = trackInVideo(...
 %
 % options -- Processing options
 %   A structure with the following fields:
+%   - video_mode: When video input is loaded from files, this field is
+%     ignored. In the case of live video input, if this field is 'webcam',
+%     the function will attempt to connect to a USB webcam. Otherwise, it
+%     will use the value of this field as the `format` parameter of
+%     'videoinput()', and will attempt to connect to a Point Grey camera.
 %   - silent: If `true`, a video player will not be opened to show the
 %     video frames annotated with probe detection and localization results.
 %   - frame_rate: The output videos' framerates.
@@ -168,7 +176,7 @@ function [ localizations, detections ] = trackInVideo(...
 % - MATLAB Example: Face Detection and Tracking Using Live Video
 %   Acquisition
 %
-% See also detectProbe, localizeProbe, VideoReader, undistortPoints, plotProbeReprojection
+% See also detectProbe, localizeProbe, VideoReader, undistortPoints, plotProbeReprojection, webcam, videoinput
 
 % Bernard Llanos
 % Supervised by Dr. Y.H. Yang
@@ -181,12 +189,21 @@ narginchk(9,9)
 % Connect to video source
 use_live_video = isempty(in_filename);
 if use_live_video
-    inputVideo = webcam();
+    use_webcam = strcmp(options.video_mode, 'webcam');
+    if use_webcam
+        inputVideo = webcam();
+    else
+        inputVideo = videoinput('pointgrey', 1, options.video_mode);
+    end
 else
     inputVideo = vision.VideoFileReader(in_filename);
 end
 if use_live_video
-    I = snapshot(inputVideo);
+    if use_webcam
+        I = snapshot(inputVideo);
+    else
+        I = getsnapshot(inputVideo);
+    end
 else
     I = step(inputVideo);
 end
@@ -196,8 +213,20 @@ console_output_interval = 3;
 
 % Initialize video player
 image_size = size(I);
+image_size = image_size(1:2);
+[max_image_size, max_image_size_ind] = max(image_size);
+player_max = 600;
+if max_image_size > player_max
+    player_scale = player_max / image_size(max_image_size_ind);
+else
+    player_scale = 1;
+end
+player_size = ceil(image_size * player_scale);
 if ~options.silent
-    player = vision.VideoPlayer('Position', [100 100 [image_size(2), image_size(1)]+30]);
+    player = vision.VideoPlayer(...
+        'Position',...
+        [100 100 (fliplr(player_size) +30)]...
+    );
 elseif use_live_video
     error('There is no way to gracefully stop live video capture without opening a video player.')
 end
@@ -245,6 +274,8 @@ while runLoop
         % Undistort image
         if annotated_video_output_enabled
             I_out = undistortImage(I, cameraParams);
+        else
+            I_out = I;
         end
             
         try
@@ -326,7 +357,7 @@ while runLoop
     end
     
     if ~options.silent
-        step(player, I_out);
+        step(player, imresize(I_out, player_scale));
     end
     
     if raw_video_output_enabled
@@ -342,7 +373,11 @@ while runLoop
     end
     if runLoop
         if use_live_video
-            I = snapshot(inputVideo);
+            if use_webcam
+                I = snapshot(inputVideo);
+            else
+                I = getsnapshot(inputVideo);
+            end
         else
             I = step(inputVideo);
         end
@@ -362,7 +397,11 @@ end
 
 % Cleanup
 if use_live_video
-    clear inputVideo;
+    if use_webcam
+        clear inputVideo;
+    else
+        delete(inputVideo);
+    end
 else
     release(inputVideo);
 end

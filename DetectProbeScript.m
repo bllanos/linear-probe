@@ -108,11 +108,11 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/bluePenGreenTape_detectionModel.mat';
+detection_model_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\redGreenSkewer_detectionModel.mat';
 % Image of probe in an unknown pose
-I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/far.jpg';
+I_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\redGreenSkewer_flea3.bmp';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180121_bluePenGreenTape/model/rgbstddev_nonInteractive_video.mat';
+rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\model\rgbstddev_nonInteractive_video.mat';
 
 % Parameters which do not usually need to be changed
 run('SetFixedParameters.m')
