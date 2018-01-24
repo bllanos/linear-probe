@@ -153,7 +153,7 @@ camera_params_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResul
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\test_video\*.avi';
+input_video_wildcard = [];'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180123_redGreenSkewer_flea3\test_video\*.avi';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video

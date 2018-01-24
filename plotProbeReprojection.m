@@ -138,8 +138,8 @@ if use_figure
     title(varargin{1})
 else
     
-    line_width = min(2, 0.025 * max(image_size));
-    marker_size = min(5, 0.05 * max(image_size));
+    line_width = ceil(max(2, 0.002 * max(image_size)));
+    marker_size = ceil(max(5, 0.01 * max(image_size)));
     
     I_out = insertShape(...
         I, 'line', line_points_plotting_d,...

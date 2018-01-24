@@ -238,6 +238,7 @@ if raw_video_output_enabled
 end
 if ~options.record_only
     annotated_video_output_enabled = ~isempty(out_filenames.out_video);
+    annotate_video = annotated_video_output_enabled || ~options.silent; 
     if annotated_video_output_enabled
         outputAnnotatedVideo = vision.VideoFileWriter(out_filenames.out_video,'FrameRate',options.frame_rate);
     end
@@ -264,15 +265,15 @@ if ~options.record_only
     end
 
     P = [cameraParams.IntrinsicMatrix.' zeros(3, 1)];
-    if annotated_video_output_enabled
-        marker_size = min(5, 0.05 * max(image_size));
+    if annotate_video
+        marker_size = ceil(max(5, 0.01 * max(image_size)));
     end
 end
 tic;
 while runLoop
     if ~options.record_only
         % Undistort image
-        if annotated_video_output_enabled
+        if annotate_video
             I_out = undistortImage(I, cameraParams);
         else
             I_out = I;
@@ -324,7 +325,7 @@ while runLoop
                     );
                 end
                 
-                if annotated_video_output_enabled
+                if annotate_video
                     lengths = vertcat(matches_filtered(:).matchedLength);
                     widths = vertcat(matches_filtered(:).matchedWidth);
                     I_out = plotProbeReprojection(...
@@ -332,7 +333,7 @@ while runLoop
                     );
                 end
                 
-            elseif n_points > 0 && annotated_video_output_enabled
+            elseif n_points > 0 && annotate_video
                 points_clipped = undistortedPoints(...
                     undistortedPoints(:, 1) > 0 & undistortedPoints(:, 2) > 0 &...
                     undistortedPoints(:, 1) <= image_size(2) & undistortedPoints(:, 2) < image_size(1),...
