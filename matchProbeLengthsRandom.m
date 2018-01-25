@@ -183,9 +183,6 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
             end
         end
         n_inliers = sum(inliers_filter);
-        
-        % Score using distances between pairs
-        distance_score = sum(abs(x1_mapped(nearest_ind(inliers_filter)) - x2(inliers_filter, 1)));
     end
 
     function plotScores(scores, str)
@@ -441,8 +438,6 @@ if verify_matching
         inliers_filter = false(n_query, 1);
         nearest_ind = zeros(n_query, 1);
         n_inliers = 0;
-        distance_score_min = Inf;
-        distance_score = Inf;
         while trial <= n_trials
             alignment_column = alignments_matrix(:, alignment_indices(trial));
             direction = alignment_column(end-1);
@@ -455,32 +450,58 @@ if verify_matching
             H = homography1D(x1(sample_subject, :), x2(sample_query, :), false);
             evaluateModel(H, direction);
 
-            if (n_inliers > n_inliers_max) ||...
-                    ((n_inliers == n_inliers_max) && (distance_score < distance_score_min))
+            if n_inliers > n_inliers_max
                 H_final = H;
                 direction_final = direction;
                 n_inliers_max = n_inliers;
-                distance_score_min = distance_score;
                 n_trials = min(n_trials, log(1 - p) / log(1 - (n_inliers_max / n_matches) ^ sample_size));
+            elseif n_inliers == n_inliers_max
+                H_final(:, :, end + 1) = H;
+                direction_final(end + 1) = direction;
             end
             trial = trial + 1;
         end
-
-        % Refine the set of inliers
-        diff_inlier_count = Inf;
-        evaluateModel(H_final, direction_final);
-        while (diff_inlier_count > 0) && (n_inliers >= sample_size)
-            n_inliers_old = n_inliers;
-            H_final = homography1D(x1(nearest_ind(inliers_filter), :), x2(inliers_filter, :), false);
-            evaluateModel(H_final, direction_final);
-            diff_inlier_count = n_inliers - n_inliers_old;
+        
+        n_hypotheses = length(direction_final);
+        n_inliers_per_hypothesis = repmat(n_inliers, n_hypotheses, 1);
+        inliers_filter_per_hypothesis = false(n_query, n_hypotheses);
+        nearest_ind_per_hypothesis = zeros(n_query, n_hypotheses);
+        for hyp = 1:n_hypotheses
+            % Refine the set of inliers
+            n_inliers = n_inliers_per_hypothesis(hyp);
+            diff_inlier_count = Inf;
+            evaluateModel(H_final(:, :, hyp), direction_final(hyp));
+            while (diff_inlier_count > 0) && (n_inliers >= sample_size)
+                n_inliers_old = n_inliers;
+                H_final(:, :, hyp) = homography1D(x1(nearest_ind(inliers_filter), :), x2(inliers_filter, :), false);
+                evaluateModel(H_final(:, :, hyp), direction_final(hyp));
+                diff_inlier_count = n_inliers - n_inliers_old;
+            end
+            n_inliers_per_hypothesis(hyp) = n_inliers;
+            inliers_filter_per_hypothesis(:, hyp) = inliers_filter;
+            nearest_ind_per_hypothesis(:, hyp) = nearest_ind;
         end
 
-        % Final alignment
-        alignment = [
-            subject_sequence(nearest_ind(inliers_filter)).',...
-            query_sequence(inliers_filter).'
-        ];
+        % Final alignments
+        n_inliers = max(n_inliers_per_hypothesis);
+        hypothesis_filter = (n_inliers_per_hypothesis == n_inliers);
+        inliers_filter_per_hypothesis = inliers_filter_per_hypothesis(:, hypothesis_filter);
+        nearest_ind_per_hypothesis = nearest_ind_per_hypothesis(:, hypothesis_filter);
+        n_hypotheses = size(nearest_ind_per_hypothesis, 2);
+        alignment = zeros(n_hypotheses, n_inliers * 2);
+        for hyp = 1:n_hypotheses
+            inliers_filter = inliers_filter_per_hypothesis(:, hyp);
+            nearest_ind = nearest_ind_per_hypothesis(:, hyp);
+            alignment(hyp, :) = [
+                subject_sequence(nearest_ind(inliers_filter)),...
+                query_sequence(inliers_filter)
+            ];
+        end
+        
+        % Deduplicate alignments
+        alignment = unique(alignment, 'rows');
+        n_hypotheses = size(alignment, 1);
+        alignment = reshape(permute(alignment, [2 1]), n_inliers, 2, n_hypotheses);
     end
     
 else
@@ -495,15 +516,18 @@ else
 end
 
 if verbose
-    disp('Sequence alignment:');
+    disp('Sequence alignment(s):');
     disp(alignment);
 end
 
-subject_match_indices = zeros(n_query, 1);
-for i = 1:n_query
-    match_in_subject = alignment(alignment(:, 2) == i, 1);
-    if match_in_subject
-        subject_match_indices(i) = match_in_subject;
+n_hypotheses = size(alignment, 3);
+subject_match_indices = zeros(n_query, n_hypotheses);
+for hyp = 1:n_hypotheses
+    for i = 1:n_query
+        match_in_subject = alignment(alignment(:, 2, hyp) == i, 1, hyp);
+        if match_in_subject
+            subject_match_indices(i, hyp) = match_in_subject;
+        end
     end
 end
 

@@ -338,16 +338,16 @@ image_to_measured_matches_detected = matchProbeLengthsRandom(...
 
 % Remove probe tips
 tip_filter = image_to_measured_matches_detected == matching_start_index;
-if any(tip_filter)
+if any(any(tip_filter))
     if warnings
-        warning('Removing detected interest point which was matched to the start of the probe.')
+        warning('Removing detected interest points which were matched to the start of the probe.')
     end
     image_to_measured_matches_detected(tip_filter) = 0;
 end
 tip_filter = image_to_measured_matches_detected == matching_end_index;
-if any(tip_filter)
+if any(any(tip_filter))
     if warnings
-        warning('Removing detected interest point which was matched to the end of the probe.')
+        warning('Removing detected interest points which were matched to the end of the probe.')
     end
     image_to_measured_matches_detected(tip_filter) = 0;
 end
@@ -357,18 +357,19 @@ end
 probe_widths_for_matching = probe.widths(matching_start_index:matching_end_index);
 image_to_measured_matches_detected_filter = logical(image_to_measured_matches_detected);
 image_to_measured_matches_detected(~image_to_measured_matches_detected_filter) = NaN;
-if ~all(image_to_measured_matches_detected_filter)
+n_hypotheses = size(image_to_measured_matches_detected_filter, 2);
+if ~all(all(image_to_measured_matches_detected_filter))
     if warnings
         warning('Some detected interest points in the image were not matched to known probe measurements.')
     end
-    matched_lengths = nan(n_detected_band_edges, 1);
+    matched_lengths = nan(n_detected_band_edges, n_hypotheses);
     matched_lengths(image_to_measured_matches_detected_filter) =...
         probe_lengths_for_matching(...
                 image_to_measured_matches_detected(...
                         image_to_measured_matches_detected_filter...
                     )...
             );
-    matched_widths = nan(n_detected_band_edges, 1);
+    matched_widths = nan(n_detected_band_edges, n_hypotheses);
     matched_widths(image_to_measured_matches_detected_filter) =...
         probe_widths_for_matching(...
                 image_to_measured_matches_detected(...
@@ -381,10 +382,10 @@ else
 end
 
 matches = struct(...
-        'index', num2cell((1:n_detected_band_edges).'),...
-        'lengthAlongPCAMajorAxis', num2cell(image_lengths_detected),...
-        'pointAbovePCAMajorAxis', num2cell(model_from_image_detected.above, 2),...
-        'pointBelowPCAMajorAxis', num2cell(model_from_image_detected.below, 2),...
+        'index', repmat(num2cell((1:n_detected_band_edges).'), 1, n_hypotheses),...
+        'lengthAlongPCAMajorAxis', repmat(num2cell(image_lengths_detected), 1, n_hypotheses),...
+        'pointAbovePCAMajorAxis', repmat(num2cell(model_from_image_detected.above, 2), 1, n_hypotheses),...
+        'pointBelowPCAMajorAxis', repmat(num2cell(model_from_image_detected.below, 2), 1, n_hypotheses),...
         'matchedLengthIndex', num2cell(...
                 image_to_measured_matches_detected + (matching_start_index - 1)...
             ),...
@@ -398,10 +399,14 @@ if display_detected_model_matching
         rmfield(matches, 'lengthAlongPCAMajorAxis');
     probe_detection_matches_display =...
         rmfield(probe_detection_matches_display, 'matchedWidth');
-    probe_detection_matches_display = struct2table(probe_detection_matches_display);
-    disp(probe_detection_matches_display);
+    for hyp = 1:n_hypotheses
+        fprintf('Hypothesis: %d\n', hyp)
+        probe_detection_matches_display_hyp = struct2table(probe_detection_matches_display(:, hyp));
+        disp(probe_detection_matches_display_hyp);
+    end
 end
 
-matches_filtered = matches(image_to_measured_matches_detected_filter);
-
+matches_filtered = cell(n_hypotheses, 1);
+for hyp = 1:n_hypotheses
+    matches_filtered{hyp} = matches(image_to_measured_matches_detected_filter(:, hyp), hyp);
 end

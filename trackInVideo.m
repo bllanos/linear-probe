@@ -286,26 +286,33 @@ while runLoop
             );
             
             % Undistort detected point coordinates
-            above = vertcat(matches_filtered(:).pointAbovePCAMajorAxis);
-            below = vertcat(matches_filtered(:).pointBelowPCAMajorAxis);
-            n_points = size(above, 1);
-            if n_points > 0
-                undistortedPoints = undistortPoints([ above; below ], cameraParams);
-                above = num2cell(undistortedPoints(1:n_points, :), 2);
-                below = num2cell(undistortedPoints((n_points + 1):end, :), 2);
-                [matches_filtered(:).pointAbovePCAMajorAxis] = above{:};
-                [matches_filtered(:).pointBelowPCAMajorAxis] = below{:};
-            
-                if return_detections
-                    detections(end + 1).matches_filtered = matches_filtered; %#ok<AGROW>
-                    detections(end).matches = matches;
-                    detections(end).frame = frame_index;
+            n_hypotheses = length(matches_filtered);
+            any_detected = false;
+            for hyp = 1:n_hypotheses
+                above = vertcat(matches_filtered{hyp}(:).pointAbovePCAMajorAxis);
+                below = vertcat(matches_filtered{hyp}(:).pointBelowPCAMajorAxis);
+                % All hypotheses presently have the same number of points, by construction in 'matchProbeLengthsRandom()'
+                n_points = size(above, 1);
+                if n_points > 0
+                    any_detected = true;
+                    
+                    undistortedPoints = undistortPoints([ above; below ], cameraParams);
+                    above = num2cell(undistortedPoints(1:n_points, :), 2);
+                    below = num2cell(undistortedPoints((n_points + 1):end, :), 2);
+                    [matches_filtered{hyp}(:).pointAbovePCAMajorAxis] = above{:};
+                    [matches_filtered{hyp}(:).pointBelowPCAMajorAxis] = below{:};
                 end
+            end
+            
+            if return_detections && any_detected
+                detections(end + 1).matches_filtered = matches_filtered; %#ok<AGROW>
+                detections(end).matches = matches;
+                detections(end).frame = frame_index;
             end
             
             if n_points > 2
                 % Localize in current frame
-                [ axis_locations, probe_axis, band_locations ] = localizeProbe(...
+                [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
                     probe, matches_filtered, P, localizationParams...
                 );
                 if return_localizations
@@ -326,8 +333,8 @@ while runLoop
                 end
                 
                 if annotate_video
-                    lengths = vertcat(matches_filtered(:).matchedLength);
-                    widths = vertcat(matches_filtered(:).matchedWidth);
+                    lengths = vertcat(matches_filtered{hyp}(:).matchedLength);
+                    widths = vertcat(matches_filtered{hyp}(:).matchedWidth);
                     I_out = plotProbeReprojection(...
                         I_out, undistortedPoints, lengths, widths, P, probe_axis, tip...
                     );

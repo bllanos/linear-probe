@@ -1,4 +1,4 @@
-function [ axis_locations, probe_axis, band_locations ] = localizeProbe(...
+function [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
        probe, matches_filtered, P, params, varargin...
     )
 % LOCALIZEPROBE  Locate the probe object in 3D space
@@ -155,7 +155,7 @@ function [ axis_locations, probe_axis, band_locations ] = localizeProbe(...
 
 %% Parse input arguments
 
-nargoutchk(1,3);
+nargoutchk(1,4);
 narginchk(4,6);
 
 if ~isempty(varargin)
@@ -182,43 +182,88 @@ if verbose_linear_estimation || display_linear_estimation ||...
     end
 end
 
-if length(matches_filtered) < 3
+% Only keep sufficiently long series of matches
+n_hypotheses = length(matches_filtered);
+hypothesis_filter = false(n_hypotheses, 1);
+for hyp = 1:n_hypotheses
+    hypothesis_filter(hyp) = (length(matches_filtered{hyp}) >= 3);
+end
+if ~any(hypothesis_filter)
     error('Insufficient number of probe band edge correspondences for probe location estimation.');
 end
 
 %% Linear estimation of probe location
 
-% Estimated centerline of the probe in the image
-above = vertcat(matches_filtered(:).pointAbovePCAMajorAxis);
-below = vertcat(matches_filtered(:).pointBelowPCAMajorAxis);
-allPoints = [ above; below ];
-[ coeff, ~, ~, ~, ~, mu ] = pca(allPoints);
+% Pick the best hypothesis, in terms of sum of squared reprojection error
+min_error = Inf;
+hyp_final = 0;
+above = cell(n_hypotheses, 1);
+below = cell(n_hypotheses, 1);
+lengths = cell(n_hypotheses, 1);
+widths = cell(n_hypotheses, 1);
+X_tip_per_hypothesis = zeros(n_hypotheses, 3);
+probe_axis_per_hypothesis = zeros(n_hypotheses, 3);
+for hyp = 1:n_hypotheses
+    if hypothesis_filter(hyp)
+        hypothesis = matches_filtered{hyp};
+        above{hyp} = vertcat(hypothesis(:).pointAbovePCAMajorAxis);
+        below{hyp} = vertcat(hypothesis(:).pointBelowPCAMajorAxis);
+        lengths{hyp} = vertcat(hypothesis(:).matchedLength);
+        widths{hyp} = vertcat(hypothesis(:).matchedWidth);
 
-% Express the PCA component vectors as lines in the space of the original data
-axes = pcaAxes2D( coeff, mu );
+        % Estimated centerline of the probe in the image
+        allPoints = [ above{hyp}; below{hyp} ];
+        [ coeff, ~, ~, ~, ~, mu ] = pca(allPoints);
 
-% The first axis is the estimated centerline of the probe
-%
-% I have not found a linear method for estimating the true axis of the
-% probe (taking projective distortion into account) that remains
-% numerically stable as the width of the probe decreases. However, as the
-% width of the probe decreases, the first PCA axis becomes an increasingly
-% good approximation of the true probe axis.
-image_centerline = axes(1, :);
+        % Express the PCA component vectors as lines in the space of the original data
+        axes = pcaAxes2D( coeff, mu );
 
-lengths = vertcat(matches_filtered(:).matchedLength);
-widths = vertcat(matches_filtered(:).matchedWidth);
-if verbose_linear_estimation
-    [X_tip, probe_axis] = probeTipAndOrientation(...
-        above, below, lengths, widths, P, image_centerline,...
-        params.linear_convergence_threshold, params.normalize_homography1D, I...
-    );
-else
-    [X_tip, probe_axis] = probeTipAndOrientation(...
-        above, below, lengths, widths, P, image_centerline,...
-        params.linear_convergence_threshold, params.normalize_homography1D...
-    );
+        % The first axis is the estimated centerline of the probe
+        %
+        % I have not found a linear method for estimating the true axis of the
+        % probe (taking projective distortion into account) that remains
+        % numerically stable as the width of the probe decreases. However, as the
+        % width of the probe decreases, the first PCA axis becomes an increasingly
+        % good approximation of the true probe axis.
+        image_centerline = axes(1, :);
+
+        if verbose_linear_estimation
+            [...
+                X_tip_per_hypothesis(hyp, :), probe_axis_per_hypothesis(hyp, :)...
+            ] = probeTipAndOrientation(...
+                above{hyp}, below{hyp}, lengths{hyp}, widths{hyp}, P, image_centerline,...
+                params.linear_convergence_threshold, params.normalize_homography1D, I...
+            );
+        else
+            [...
+                X_tip_per_hypothesis(hyp, :), probe_axis_per_hypothesis(hyp, :)...
+            ] = probeTipAndOrientation(...
+                above{hyp}, below{hyp}, lengths{hyp}, widths{hyp}, P, image_centerline,...
+                params.linear_convergence_threshold, params.normalize_homography1D...
+            );
+        end
+        
+        % Check error
+        [above_reprojected, below_reprojected] = reprojectProbe(...
+            lengths{hyp}, widths{hyp}, P, probe_axis_per_hypothesis(hyp, :), X_tip_per_hypothesis(hyp, :)...
+        );
+        reprojected = [above_reprojected; below_reprojected];
+        err = allPoints - reprojected;
+        err = sum(sum(err.^2)) / size(allPoints, 1);
+        if err < min_error
+            min_error = err;
+            hyp_final = hyp;
+        end
+    end
 end
+
+hyp = hyp_final;
+above = above{hyp};
+below = below{hyp};
+lengths = lengths{hyp};
+widths = widths{hyp};
+probe_axis = probe_axis_per_hypothesis(hyp, :);
+X_tip = X_tip_per_hypothesis(hyp, :);
 
 if display_linear_estimation
     plotProbeReprojection(...
@@ -270,10 +315,10 @@ if nargout > 2
         );
 
     band_locations = struct(...
-            'index', {matches_filtered.index}.',...
+            'index', {matches_filtered{hyp}.index}.',...
             'pointAbovePCAMajorAxis', num2cell(above_reprojected, 2),...
             'pointBelowPCAMajorAxis', num2cell(below_reprojected, 2),...
-            'matchedLengthIndex', {matches_filtered.matchedLengthIndex}.'...
+            'matchedLengthIndex', {matches_filtered{hyp}.matchedLengthIndex}.'...
         );
 end
 
