@@ -291,7 +291,6 @@ while runLoop
             for hyp = 1:n_hypotheses
                 above = vertcat(matches_filtered{hyp}(:).pointAbovePCAMajorAxis);
                 below = vertcat(matches_filtered{hyp}(:).pointBelowPCAMajorAxis);
-                % All hypotheses presently have the same number of points, by construction in 'matchProbeLengthsRandom()'
                 n_points = size(above, 1);
                 if n_points > 0
                     any_detected = true;
