@@ -100,10 +100,6 @@ true_z = zeros(n_rows * n_columns, 1);
 true_points = [true_x, true_z, true_y];
 
 true_points_aligned =  (alignment_basis * true_points.').' + repmat(origin, n_rows * n_columns, 1);
-transform_pca = [coeff, mu.'; 0 0 0 1].';
-true_points_aligned_pca =  [true_points_aligned ones(n_rows * n_columns, 1)] / transform_pca;
-true_points_aligned_pca = true_points_aligned_pca(:, 1:2);
-true_points_aligned_3 = repmat(true_points_aligned, 1, 1, n_angles);
 
 %% Plot true and measured points together
 
