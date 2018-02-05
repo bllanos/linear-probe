@@ -239,3 +239,61 @@ zlabel('Z')
 axis equal
 grid on
 title('Datapoints and registered square (in canonical space)')
+
+%% Quantitative Analysis
+
+% Count the number of outliers
+filter = points_canonical_space(:, 1) > -40 & points_canonical_space(:, 1) < 60 &...
+    points_canonical_space(:, 2) > -20 & points_canonical_space(:, 2) < 60;
+n_outliers = sum(~filter);
+outlier_fraction = n_outliers / n_points;
+n_inliers = n_points - n_outliers;
+
+% Distance of points to the square
+points = [x y z];
+distances = zeros(n_points, n_corners);
+distances_endpoints = zeros(n_points, 2);
+filter_endpoints = false(n_points, 2);
+for c = 1:n_corners
+    endpoints = square_true_corners_data_space([c (mod(c, n_corners) + 1)], 1:3);
+    endpoint_vector = endpoints(2, :) - endpoints(1, :);
+    endpoint_separation = norm(endpoint_vector);
+    endpoint_vector = endpoint_vector ./ endpoint_separation;
+    
+    distances_perpendicular = distanceToLine(points, endpoints);
+    for e = 1:2
+        points_to_endpoint = points - repmat(endpoints(e, :), n_points, 1);
+        distances_endpoints(:, e) = sqrt(dot(points_to_endpoint, points_to_endpoint, 2));
+        filter_endpoints_test = dot(points_to_endpoint, repmat(endpoint_vector, n_points, 1), 2);
+        if e == 1
+            % Before the first point on the line segment
+            filter_endpoints(:, e) = filter_endpoints_test < 0;
+        else
+            % After the second point on the line segment
+            filter_endpoints(:, e) = filter_endpoints_test > endpoint_separation;
+        end
+    end
+    distances_endpoints_merged = min(distances_endpoints, [], 2);
+    filter_endpoints_merged = any(filter_endpoints, 2);
+    
+    % Points between the two endpoints have their distance calculated
+    % perpendicular to the line segment
+    distances(:, c) = distances_perpendicular;
+    % Points outside the two endpoints have their distances calculated as
+    % the distance to the closest endpoint
+    distances(filter_endpoints_merged, c) = distances_endpoints_merged(filter_endpoints_merged);
+end
+distances = min(distances, [], 2);
+distances_sorted = sort(distances);
+
+figure;
+plot(distances_sorted, (1:n_points) / n_points, '-k')
+xlabel('Perpendicular shortest distance to square')
+ylabel('Cumulative proportion')
+title('Distribution of distances to the square')
+
+err = distances.^2;
+err = sum(err);
+rmse = sqrt(err / n_points);
+disp('RMS distance of points to the ideal square:')
+disp(rmse)

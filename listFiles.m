@@ -45,7 +45,7 @@ if ispc
     end
 else
     names = strtrim(strsplit(ls(wildcard), {'\f','\n','\r','\t','\v'}));
-    names = names(1:end); % There is always a terminating newline
+    names = names(1:(end - 1)); % There is always a terminating newline
 end
 
 end
