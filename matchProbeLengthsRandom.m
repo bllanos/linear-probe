@@ -81,11 +81,15 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 %
 % ## Output Arguments
 %
-% subject_match_indices -- Sequence alignment
-%   A vector of length 'n' where `subject_match_indices(i)` is the index of
-%   the matched point of `query(i)` in `subject`. If
-%   `subject_match_indices(i)` is zero, then `query(i)` is not matched to
-%   any point in `subject`.
+% subject_match_indices -- Sequence alignments
+%   An n x h array, where `subject_match_indices(k, i)` is the index of the
+%   matched point of `query(i)` in `subject`. If `subject_match_indices(k,
+%   i)` is zero, then `query(i)` is not matched to any point in `subject`.
+%   Each column of `subject_match_indices` is a separate sequence alignment
+%   hypothesis. `subject_match_indices` is the set of possible sequence
+%   alignments containing the largest number of "inlier" matches found when
+%   evaluating possible alignments. (Refer to the description of the
+%   algorithm below for more details.)
 %
 % ## Algorithm
 %
@@ -128,11 +132,12 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 %   that are at least `inlier_threshold`.
 % - The number of closest point pairs that satisfy a mutual consistency
 %   check.
-% - The separation of the closest point pairs satisfying the above two
-%   tests. (This is not a measure of reprojection error, as only the
-%   homography has been estimated, not one set of corresponding points.)
 %
-% The triplet selection and scoring process is the RANSAC algorithm.
+% The triplet selection and scoring process is the RANSAC algorithm. Scores
+% represent the number of "inlier" matches supporting the data association
+% hypothesis, and the inlier matches form the data association hypothesis.
+% The data association hypotheses supported by the largest number of
+% inliers are output as the columns of `subject_match_indices`.
 %
 % ## Notes
 % - Geometric verification will be skipped if either of the input

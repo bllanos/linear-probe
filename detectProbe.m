@@ -13,12 +13,12 @@ function [ matches_filtered, matches ] = detectProbe(...
 %
 % ## Description
 % matches_filtered = detectProbe( I, probe, probe_color_distributions, params [, verbose] )
-%   Returns a structure describing the probe's location in the image.
+%   Returns structure vectors describing the probe's location in the image.
 % [ matches_filtered, matches ] = detectProbe(...
 %       I, probe, probe_color_distributions, params [, verbose]...
 % )
-%   Additionally returns a structure describing all points detected in the
-%   image, not only those which were identified with the probe.
+%   Additionally returns a structure array describing all points detected
+%   in the image, not only those which were identified with the probe.
 %
 % ## Input Arguments
 %
@@ -93,18 +93,19 @@ function [ matches_filtered, matches ] = detectProbe(...
 % ## Output Arguments
 %
 % matches_filtered -- Detected and validated edges between coloured bands
-%   A copy of `matches`, with detected edges that were not matched to probe
-%   measurements filtered out. In other words, this is a version of
-%   'matches' without elements containing `NaN` values for any fields.
+%   A cell vector of structure vectors. The i-th cell contains a copy of
+%   the i-th column of `matches`, with detected edges that were not matched
+%   to probe measurements filtered out. In other words, this is a version
+%   of 'matches' without elements containing `NaN` values for any fields.
 %
 % matches -- All detected edges between coloured bands
-%   A structure vector describing the matches found from detected edges
+%   A 2D structure array describing the matches found from detected edges
 %   between bands of colour on the probe in the image to user-provided
 %   measurements of the edges between probe colour bands. Each element
 %   contains the match information for one detected edge. If no suitable
 %   match was found for a given edge detected in the image, the
 %   corresponding field values will be `NaN`. The fields of the structure
-%   vector are as follows:
+%   array are as follows:
 %   - index: The index of the detected edge between two bands of colour
 %       on the probe. The indices of edges correspond to the order of the
 %       edges along the major axis of the probe in the image, from left to
@@ -132,6 +133,13 @@ function [ matches_filtered, matches ] = detectProbe(...
 %   - matchedWidth: The value of `probe.widths(matchedLengthIndex)`, where
 %       `probe` is a structure input and output by
 %       'CreateProbeDetectionModel.m'.
+%
+%   Each column of `matches` is a separate data association hypothesis - A
+%   possible alignment of the detected edges to the edges of the probe.
+%   Consequently, some columns may have elements in common. Data
+%   association hypotheses are selected for having the largest number of
+%   consistent pairings between detected and known edges, as computed by
+%   'matchProbeLengthsRandom()'.
 %
 % ## Algorithm
 %

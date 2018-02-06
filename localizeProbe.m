@@ -13,6 +13,9 @@ function [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
 % [ axis_locations, probe_axis, band_locations ] = localizeProbe(...
 %     probe, matches_filtered, P, params [, verbose, I]...
 % )
+% [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
+%     probe, matches_filtered, P, params [, verbose, I]...
+% )
 %
 % ## Description
 % axis_locations = localizeProbe(...
@@ -30,6 +33,11 @@ function [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
 % )
 %   Additionally returns a structure describing the reprojection of the
 %   probe to image space.
+% [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
+%     probe, matches_filtered, P, params [, verbose, I]...
+% )
+%   Additionally returns the index of the data association hypothesis
+%   chosen as a basis for the pose estimate.
 %
 % ## Input Arguments
 %
@@ -101,11 +109,11 @@ function [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
 %   A structure vector describing the positions of the detected interest
 %   points on the probe. Each element contains the locations of the two
 %   endpoints of one detected edge between probe bands. This structure is a
-%   version of `matches_filtered` wherein points are reprojected from their
-%   estimated 3D locations, instead of detected in the image. In contrast
-%   to `axis_locations`, which contains data for all edges between probe
-%   bands, `band_locations` only contains data for the edges which were
-%   detected in the image.
+%   version of a cell of `matches_filtered`, `matches_filtered(hyp)`,
+%   wherein points are reprojected from their estimated 3D locations,
+%   instead of detected in the image. In contrast to `axis_locations`,
+%   which contains data for all edges between probe bands, `band_locations`
+%   only contains data for the edges which were detected in the image.
 %
 %   The fields of the structure vector are as follows:
 %   - index: The index of the detected edge between two bands of colour
@@ -126,6 +134,10 @@ function [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
 %       Specifically, this is the index into the user-provided measurements
 %       of the probe, `probe.lengths` and `probe.widths`.
 %
+% hyp -- Data association hypothesis index
+%   An integer specifying which cell in `matches_filtered` was selected as
+%   the data association hypothesis used for pose estimation.
+%
 % ## Algorithm
 %
 % Probe location is a two-step process: Linear initialization, followed by
@@ -136,6 +148,12 @@ function [ axis_locations, probe_axis, band_locations, hyp ] = localizeProbe(...
 % location of the probe which minimizes algebraic error. In the second
 % step, 'probeTipAndOrientationNonlinear()' refines the initial solution by
 % minimizing reprojection error using the Levenberg-Marquardt algorithm.
+%
+% The linear initialization is performed for each data association
+% hypothesis in `matches_filtered` (i.e. for each cell in
+% `matches_filtered`). The hypothesis which results in the lowest
+% reprojection error is selected for the nonlinear refinement step, and the
+% index of this chosen hypothesis is output in `hyp`.
 %
 % ## Notes
 % - The camera calibration matrix should be expressed using the same units

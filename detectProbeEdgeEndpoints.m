@@ -19,8 +19,8 @@ function [ endpoints ] = detectProbeEdgeEndpoints( bw, edge_width, sigma_theta, 
 %   The pixel width of the edges in `bw`, perhaps better defined as the
 %   search distance used to obtain the edges. This parameter is used to set
 %   the falloff of the radial component of the filter used to refine the
-%   edges in `bw` to join broken edges and eliminate portions of edges that
-%   protrude along the outside the probe. It is also used to eliminate
+%   edges in `bw` to join broken edges, and to eliminate portions of edges
+%   that protrude along the outside the probe. It is also used to eliminate
 %   short edges.
 %
 % sigma_theta -- Angular filter width
@@ -55,11 +55,13 @@ function [ endpoints ] = detectProbeEdgeEndpoints( bw, edge_width, sigma_theta, 
 % Specifically, regions may spill outwards along the exterior of the probe
 % and may be broken, due to strong highlights and reflections, but are
 % assumed to contain the true points where the edges meet the outer borders
-% of the probe. (This function cannot compensate for edges that have been
-% detected shorter than they actually are. In general, there is no way to
-% correct for this without using information about the physical widths of
-% the junctions between bands, which can only be used after the detected
-% edges have been matched to probe band junctions.)
+% of the probe.
+%
+% This function cannot compensate for edges that have been detected shorter
+% than they actually are. In general, there is no way to correct for this
+% without using information about the physical widths of the junctions
+% between bands, which can only be used after the detected edges have been
+% matched to probe band junctions.)
 %
 % The process used to estimate where band edges intersect the probe's
 % borders is as follows:
@@ -72,20 +74,16 @@ function [ endpoints ] = detectProbeEdgeEndpoints( bw, edge_width, sigma_theta, 
 %   component of the filter, whereas the `sigma_theta` parameter is the
 %   standard deviation of the angular Gaussian component of the filter.
 %
-% - The filtered image is binarized with `threshold` and intersected with
-%   the original edge image. The resulting binary image should contain
-%   fewer portions of edges that protrude along the outer borders of the
-%   probe.
+% - The filtered image is binarized with `threshold` to obtain
+%   `bw_filtered`, and intersected with the original edge image to obtain
+%   `bw_new`. `bw_new` should contain fewer portions of edges that protrude
+%   along the outer borders of the probe.
 %
 % - Candidate edge endpoints are extracted by finding the extreme points in
-%   each binary region along the PCA minor axis of the probe.
-%
-% - As there may still be spurious edge fragments lying along the outer
-%   borders of the probe, edge endpoints are rejected if their separation
-%   is less than `edge_width`. Note that this may incorrectly reject small
-%   portions of edges broken by highlights or reflections on the probe.
-%   This is not critical as long as these edge portions are not located
-%   where the true edges intersect the borders of the probe.
+%   each binary region in `bw_filtered` along the PCA minor axis of the
+%   probe, where the extreme points are constrained to be from the set of
+%   white pixels in `bw_new`. The PCA axes used in this step are those
+%   computed fresh from the white pixels in `bw_new`.
 %
 % - Candidate edge endpoints are removed if they are not on the expected
 %   side of the PCA major axis. Specifically, the endpoint with the largest
@@ -94,18 +92,12 @@ function [ endpoints ] = detectProbeEdgeEndpoints( bw, edge_width, sigma_theta, 
 %   This step will incorrectly reject endpoints if the PCA major axis is
 %   located outside the true borders of the probe.
 %
-% - At this stage, binary regions which correctly span the width of the
-%   probe each provide two final endpoints. However, binary regions forming
-%   broken edges still have spurious endpoints located inside the probe's
-%   borders (although fewer than before the preceding steps). It may be
-%   possible to remove these spurious endpoints by clustering endpoints
-%   into groups approximately aligned with the probe's minor axis, but this
-%   will incorrectly group endpoints from the two sides of very thin bands.
-%   Instead, the function attempts to repair broken edges by operating on
-%   the binary image obtained by filtering above (before it was intersected
-%   with the original edge image). For each set of candidate edge points
-%   located in the same binary region, only those with the most extreme
-%   second coordinates in the PCA axes space are retained.
+% - As there may still be spurious edge fragments lying along the outer
+%   borders of the probe, edge endpoints are rejected if their separation
+%   is less than `edge_width`. Note that this may incorrectly reject small
+%   portions of edges broken by highlights or reflections on the probe.
+%   This is not critical as long as these edge portions are not located
+%   where the true edges intersect the borders of the probe.
 %
 % See also pca, bilateralModel
 

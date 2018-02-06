@@ -147,6 +147,8 @@ function [ localizations, detections ] = trackInVideo(...
 %     'localizeProbe()'
 %   - band_locations: The `band_locations` output argument of
 %     'localizeProbe()'
+%   - hyp: The `hyp` output argument of
+%     'localizeProbe()'
 %
 % detections -- Probe detection results
 %   A structure vector, where each element describes the detection of the
@@ -254,7 +256,8 @@ if ~options.record_only
     return_localizations = (nargout > 0);
     if return_localizations
         localizations = struct(...
-            'frame', {}, 'axis_locations', {}, 'probe_axis', {}, 'band_locations', {}...
+            'frame', {}, 'axis_locations', {}, 'probe_axis', {},...
+            'band_locations', {}, 'hyp', {}...
         );
     end
     return_detections = (nargout > 1);
@@ -318,6 +321,7 @@ while runLoop
                     localizations(end + 1).axis_locations = axis_locations; %#ok<AGROW>
                     localizations(end).probe_axis = probe_axis;
                     localizations(end).band_locations = band_locations;
+                    localizations(end).hyp = hyp;
                     localizations(end).frame = frame_index;
                 end
                 

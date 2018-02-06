@@ -21,7 +21,8 @@ Vision-based localization of a thin probe:
 ## Environment
 - MATLAB R2016b and later were used for development, but earlier releases
   will likely work.
-- Requires the Image Processing Toolbox, and the Computer Vision Systems Toolbox.
+- Requires the Image Processing Toolbox, the Computer Vision Systems Toolbox,
+  and the Statistics and Machine Learning toolbox (just for PCA).
 - Live video processing uses the MATLAB Support Package for USB Webcams,
   and the Image Acquisition Toolbox in combination with the
   Image Acquisition Toolbox Support Package for Point Grey Hardware,
