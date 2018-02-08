@@ -1,7 +1,7 @@
 function [ subject_match_indices ] = matchProbeLengthsRandom(...
     subject_lengths, query_lengths,...
     subject_gap_cost, query_gap_cost,...
-    subject_colors, query_colors, direction_threshold, inlier_threshold,...
+    subject_colors, query_colors, thresholds,...
     varargin...
 )
 % MATCHPROBELENGTHSRANDOM  Align sequences of points on two lines using colour adjacency relationships and geometric verification
@@ -9,13 +9,13 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 % ## Syntax
 % subject_match_indices = matchProbeLengths(...
 %   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   subject_colors, query_colors, direction_threshold, inlier_threshold [, verbose]...
+%   subject_colors, query_colors, thresholds [, verbose]...
 % )
 %
 % ## Description
 % subject_match_indices = matchProbeLengths(...
 %   subject_lengths, query_lengths, subject_gap_cost, query_gap_cost,...
-%   subject_colors, query_colors, direction_threshold, inlier_threshold [, verbose]...
+%   subject_colors, query_colors, thresholds [, verbose]...
 % )
 %   Returns the indices of points in the subject sequence which match
 %   points in the query sequence. The matching is based on the colours to
@@ -61,18 +61,26 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 %   surrounding the i-th point in `query_lengths`. Analogous to
 %   `subject_colors`.
 %
-% direction_threshold -- Threshold for orientation disambiguation
-%   As discussed in the 'Algorithm' section below, if the alignment scores
-%   for the two possible relative orientations of the subject and query
-%   sequences differ by a factor equal to or greater than
-%   `direction_threshold`, the lower-scoring orientation is discarded.
-%   (Specifically, if the larger score is a factor of `direction_threshold`
-%   times or more the smaller score.)
-%
-% inlier_threshold -- Threshold for selecting inliers
-%   As discussed in the 'Algorithm' section below, final matches between
-%   the subject and query sequences are filtered to those with colour-based
-%   matching scores greater than or equal to `inlier_threshold`.
+% thresholds -- Threshold values
+%   A structure with the following fields:
+%   - direction_threshold: Threshold for orientation disambiguation.
+%     As discussed in the 'Algorithm' section below, if the alignment
+%     scores for the two possible relative orientations of the subject and
+%     query sequences differ by a factor equal to or greater than
+%     `direction_threshold`, the lower-scoring orientation is discarded.
+%     (Specifically, if the larger score is a factor of
+%     `direction_threshold` times or more the smaller score.)
+%   - inlier_threshold: Threshold for selecting inliers.
+%     As discussed in the 'Algorithm' section below, final matches between
+%     the subject and query sequences are filtered to those with
+%     colour-based matching scores greater than or equal to
+%     `inlier_threshold`.
+%   - local_alignment_threshold: The `threshold` input argument of
+%     'swSequenceAlignmentAffine()'. The best local alignment of the
+%     subject and query sequences is determined by
+%     'swSequenceAlignmentAffine()', using `threshold` as the cutoff for
+%     terminating local alignments. Refer to the documentation of
+%     'swSequenceAlignmentAffine.m' for details.
 %
 % verbose -- Debugging flag
 %   If true, graphical output will be generated for debugging purposes.
@@ -117,9 +125,9 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 % direction.
 %
 % If one direction produces an alignment score larger than or equal to
-% `direction_threshold` times the alignment score of the other direction,
-% all of the sample alignments of the other direction are excluded from
-% further processing.
+% `thresholds.direction_threshold` times the alignment score of the other
+% direction, all of the sample alignments of the other direction are
+% excluded from further processing.
 %
 % In the next stage, geometric verification, triplets of corresponding
 % points are selected at random from the optimal alignments. Each triplet
@@ -129,7 +137,7 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 % by the homography. The triplet is scored using a combination of the
 % following:
 % - The number of colour-based matching scores for the closest point pairs
-%   that are at least `inlier_threshold`.
+%   that are at least `thresholds.inlier_threshold`.
 % - The number of closest point pairs that satisfy a mutual consistency
 %   check.
 %
@@ -177,7 +185,7 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
             [~, nearest_ind(i_fn)] = min(abs(x1_mapped - x2(i_fn, 1)));
             inliers_filter(i_fn) =...
                 (color_scores(nearest_ind(i_fn), i_fn, direction) >=...
-                inlier_threshold);
+                thresholds.inlier_threshold);
         end
         
         % Enforce a mutual consistency check
@@ -263,13 +271,12 @@ if verbose
 end
 
 % Match sequences in the given directions with dynamic programming
-local_alignment_threshold = 0; % This is kind of a hidden parameter. Perhaps it should be an input argument
 subject_gap_cost = [subject_gap_cost 0];
 query_gap_cost = [query_gap_cost 0];
 n_alignments = n_subject * n_query;
 [ alignments_forward, score_forward ] = swSequenceAlignmentAffine(...
         subject_sequence, query_sequence,...
-        @f_similarity_forward, local_alignment_threshold,...
+        @f_similarity_forward, thresholds.local_alignment_threshold,...
         subject_gap_cost, query_gap_cost, 'Local', n_alignments...
     );
 
@@ -282,7 +289,7 @@ end
 query_sequence_reverse = fliplr(query_sequence);
 [ alignments_reverse, score_reverse ] = swSequenceAlignmentAffine(...
         subject_sequence, query_sequence_reverse,...
-        @f_similarity_reverse, local_alignment_threshold,...
+        @f_similarity_reverse, thresholds.local_alignment_threshold,...
         subject_gap_cost, query_gap_cost, 'Local', n_alignments...
     );
 
@@ -323,12 +330,12 @@ if verbose
 end
 
 if verify_matching
-    if score_forward >= (direction_threshold * score_reverse)
+    if score_forward >= (thresholds.direction_threshold * score_reverse)
         all_alignments = all_alignments(1:n_alignments);
         n_all_alignments = n_alignments;
         forward_only = true;
         reverse_only = false;
-    elseif score_reverse >= (direction_threshold * score_forward)
+    elseif score_reverse >= (thresholds.direction_threshold * score_forward)
         all_alignments = all_alignments((n_alignments + 1):end);
         n_all_alignments = n_alignments;
         reverse_only = true;

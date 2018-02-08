@@ -56,7 +56,8 @@ detected_point_alignment_outlier_threshold = 5;
 matching.subject_gap_cost_detection = 0;
 matching.query_gap_cost_detection = 0;
 matching.direction_threshold = 1.25;
-matching.alignment_inlier_threshold = 0.75;
+matching.inlier_threshold = 0.75;
+matching.local_alignment_threshold = 0;
 
 % Debugging tools
 detectBoundingBoxesVerbose.display_original_image = false;
