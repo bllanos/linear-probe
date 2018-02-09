@@ -67,6 +67,7 @@ function [ localizations, detections ] = trackInVideo(...
 %     corrected for lens distortion.
 %   - out_csv: A CSV file with the following columns. One row is generated
 %     for each frame in which the probe was successfully localized.
+%     - Video index (the value of `options.video_index`)
 %     - Frame index (the first frame has index `1`)
 %     - x-coordinate of the tip of the probe in 3D space
 %     - y-coordinate of the tip of the probe in 3D space
@@ -131,6 +132,12 @@ function [ localizations, detections ] = trackInVideo(...
 %     can be captured per unit time than if processing was enabled.
 %   - show_errors: Output exceptions, which are thrown by the probe
 %     detection and localization functions, as warnings.
+%   - video_index: The value to be output in the first column for each row
+%     of any output CSV file. This field is not required if
+%     `out_filenames.out_csv` is empty.
+%   - append_csv: A Boolean value indicating whether to overwrite the
+%     output CSV file (`false`) or append to it (`true`). This field is not
+%     required if `out_filenames.out_csv` is empty.
 %
 % ## Output Arguments
 %
@@ -246,7 +253,11 @@ if ~options.record_only
     end
     csv_output_enabled = ~isempty(out_filenames.out_csv);
     if csv_output_enabled
-        outputCSV = fopen(out_filenames.out_csv, 'w');
+        if options.append_csv
+            outputCSV = fopen(out_filenames.out_csv, 'a');
+        else
+            outputCSV = fopen(out_filenames.out_csv, 'w');
+        end
     end
 end
 
@@ -329,8 +340,8 @@ while runLoop
                 
                 if csv_output_enabled
                     fprintf(...
-                        outputCSV, '%d, %g, %g, %g, %g, %g, %g\n',...
-                        frame_index, tip(1), tip(2), tip(3),...
+                        outputCSV, '%d, %d, %g, %g, %g, %g, %g, %g\n',...
+                        options.video_index, frame_index, tip(1), tip(2), tip(3),...
                         probe_axis(1), probe_axis(2), probe_axis(3)...
                     );
                 end
@@ -356,7 +367,7 @@ while runLoop
             
         catch ME
             if options.show_errors
-                warning('Error in frame %d: "%s"', frame_index, ME.message);
+                warning('Error in frame %d: "%s"', frame_index, getReport(ME));
             end
         end
         

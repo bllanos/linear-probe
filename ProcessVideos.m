@@ -55,7 +55,8 @@
 % ## Output
 %
 % One output file of each of the following types will be generated for each
-% input video source. Output files will be saved in the directories
+% input video source, except in the case of CSV files, if 'concatenate_csv'
+% is `true` (see below). Output files will be saved in the directories
 % referred to by the 'output_*_directory' variables below. If an output
 % directory variable is empty, no output data files of the corresponding
 % type will be produced.
@@ -80,8 +81,20 @@
 %
 % A CSV file will be generated containing frame numbers, the corresponding
 % 3D locations of the probe tip, and the corresponding 3D unit direction
-% vectors from the probe tip to its other end. The CSV file will be saved
-% in the directory referred to by 'output_point_cloud_directory' below.
+% vectors from the probe tip to its other end. Additionally, the first
+% column of the CSV file will be the index of the video (starting from 1)
+% in the list of videos processed by this script. For videos captured
+% directly from cameras, the index is one greater than the variable
+% 'video_index', if it exists, or is 1, if 'video_index' does not exist.
+% 'video_index' is left in the workspace for use by future executions of
+% this script.
+%
+% The CSV file will be saved in the directory referred to by
+% 'output_point_cloud_directory' below. If 'concatenate_csv' is `true`, the
+% CSV files for all input videos, or for live videos captured until the
+% 'video_index' variable is cleared from the workspace, will be combined
+% into one. The name of the CSV file will be the name ordinarily given to
+% the CSV file for only the first video.
 %
 % The output point cloud is also described in the documentation of the
 % `out_filenames.out_csv` input argument of 'trackInVideo()' (refer to
@@ -137,6 +150,8 @@ parameters_list = {
         'detection_model_filename',...
         'rgb_sigma_filename',...
         'camera_params_filename',...
+        'concatenate_csv',...
+        'first_video_index',...
         'video_filenames',...
         'use_kernel_estimators',...
         'detectionParams',...
@@ -165,7 +180,10 @@ output_annotated_video_directory = []; %'C:\Users\llanos\Downloads';
 
 % Output directory for CSV format point cloud
 % Leave empty (`[]`) for no output point cloud
-output_point_cloud_directory = [];%'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\case_square';
+output_point_cloud_directory = '/home/llanos/Downloads'; %'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\case_square';
+
+% Combine CSV files
+concatenate_csv = false;
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
@@ -173,7 +191,8 @@ output_data_directory = [];%'C:\Users\llanos\Google Drive\PointProbing\DataAndRe
 
 % Video processing options
 % Refer to the documentation of the `options` parameter of 'trackInVideo()'
-% in 'trackInVideo.m'.
+% in 'trackInVideo.m'. Some fields of this parameter structure will be
+% filled automatically later in this script.
 options.video_mode = 'F7_RGB_2448x2048_Mode0'; % Determines which camera and video mode to use
 options.silent = false;
 options.frame_rate = 30;
@@ -240,6 +259,16 @@ any_output_files = ~all([
         isempty(output_data_directory)
     ]);
 
+if exist('video_index', 'var')
+    video_index = video_index + 1;
+else
+    video_index = 1;
+end
+first_video_index = video_index;
+if ~exist('point_cloud_filename', 'var')
+    point_cloud_filename = [];
+end
+
 for i = 1:n_videos
     % Generate output filenames
     if any_output_files && isempty(video_filenames{i})
@@ -269,7 +298,7 @@ for i = 1:n_videos
     end
     if isempty(output_point_cloud_directory)
         point_cloud_filename = [];
-    else
+    elseif ~concatenate_csv || isempty(point_cloud_filename)
         if isempty(video_filenames{i})
             point_cloud_filename = ['live_' cdate '_pointCloud.csv'];
         else
@@ -292,19 +321,23 @@ for i = 1:n_videos
         'out_csv', point_cloud_filename...
     );
     
-    % Video processing    
+    % Video processing
+    options_i = options;
+    options_i.video_index = video_index;
+    options_i.append_csv = (video_index ~= 1) && concatenate_csv;
     if ~isempty(output_data_directory)
         [ localizations, detections ] = trackInVideo(...
             video_filenames{i}, out_filenames,...
             probe, probe_color_distributions, rgb_sigma_polyfit,...
-            cameraParams, detectionParams, localizationParams, options...
+            cameraParams, detectionParams, localizationParams, options_i...
         );
         save(save_data_filename, save_variables_list{:});
     else
         trackInVideo(...
             video_filenames{i}, out_filenames,...
             probe, probe_color_distributions, rgb_sigma_polyfit,...
-            cameraParams, detectionParams, localizationParams, options...
+            cameraParams, detectionParams, localizationParams, options_i...
         );
     end
+    video_index = video_index + 1;
 end
