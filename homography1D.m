@@ -100,7 +100,7 @@ if ~isempty(varargin)
         h = V(:, end);
         eta_new = abs(A * h);
         % Avoid zero or negative weights
-        eta(eta_new >= 0) = eta_new(eta_new >= 0);
+        eta(eta_new > 0) = eta_new(eta_new > 0);
         l1Norm = sum(eta);
         % disp(l1Norm);
     end

@@ -83,7 +83,8 @@ function [ subject_match_indices ] = matchProbeLengthsRandom(...
 %     'swSequenceAlignmentAffine.m' for details.
 %
 % verbose -- Debugging flag
-%   If true, graphical output will be generated for debugging purposes.
+%   If true, graphical output will be generated for debugging purposes, and
+%   warnings will not be suppressed.
 %
 %   Defaults to false if not passed.
 %
@@ -232,7 +233,9 @@ query_sequence = 1:n_query;
 sample_size = 3;
 if n_subject < sample_size || n_query < sample_size
     verify_matching = false;
-    warning('Insufficient points available for geometric verification of alignments.')
+    if verbose
+        warning('Insufficient points available for geometric verification of alignments.')
+    end
 else
     verify_matching = true;
 end
@@ -415,7 +418,9 @@ if verify_matching
         );
     n_all_alignments = size(alignments_matrix, 2);
     if n_all_alignments == 0
-        warning('Alignments have insufficient lengths for geometric verification')
+        if verbose
+            warning('Alignments have insufficient lengths for geometric verification')
+        end
         
         % Just pick the first alignment from the best scoring direction
         if forward_only
@@ -425,7 +430,9 @@ if verify_matching
         elseif score_forward > score_reverse
             alignment = all_alignments{1};
         elseif score_forward == score_reverse
-            warning('Scores for forward and reverse alignments are equal. Orientation is ambiguous. Forward orientation is assumed.')
+            if verbose
+                warning('Scores for forward and reverse alignments are equal. Orientation is ambiguous. Forward orientation is assumed.')
+            end
             alignment = all_alignments{1};
         else
             alignment = all_alignments{n_alignments + 1};
@@ -520,7 +527,9 @@ else
     if score_forward > score_reverse
         alignment = all_alignments{1};
     elseif score_forward == score_reverse
-        warning('Scores for forward and reverse alignments are equal. Orientation is ambiguous. Forward orientation is assumed.')
+        if verbose
+            warning('Scores for forward and reverse alignments are equal. Orientation is ambiguous. Forward orientation is assumed.')
+        end
         alignment = all_alignments{1};
     else
         alignment = all_alignments{n_alignments + 1};
