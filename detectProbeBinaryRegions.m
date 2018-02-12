@@ -155,7 +155,7 @@ centroids = cell2mat(centroids);
 n_regions_all = size(centroids, 1);
 
 if n_regions_all < 2
-    error('Less than two regions within %g pixels of an appropriate adjacent colour were detected.', radius_adj)
+    error('PROBE:InsufficientRegionsDetected', 'Less than two regions within %g pixels of an appropriate adjacent colour were detected.', radius_adj)
 end
 
 % Find region pixel coordinates
@@ -201,6 +201,7 @@ while trial <= n_trials
     end
     trial = trial + 1;
 end
+n_inliers = n_inliers_max;
 
 % Finalize set of inliers
 % This time, use distances from region centroids to the estimated probe
@@ -208,15 +209,19 @@ end
 % used during RANSAC iteration. The previous outlier detection method is
 % too harsh, given the uncertainty in the estimated probe axis.
 diff_n_inliers = 1;
-while diff_n_inliers > 0
+while n_inliers > 1 && diff_n_inliers > 0
     [coeff_pca, ~, ~, ~, ~, mu_pca] = pca(centroids(inliers_filter, :));
-    centroids_pca = (centroids - repmat(mu_pca, n_regions_all, 1)) / (coeff_pca .');
-    distances = abs(centroids_pca(:, 2));
+    centroids_pca = (centroids - repmat(mu_pca, n_regions_all, 1)) / (coeff_pca.');
+    if size(centroids_pca, 2) == 1 % Centroids span a 1D space
+        distances = zeros(length(centroids_pca), 1);
+    else
+        distances = abs(centroids_pca(:, 2));
+    end
     mu = mean(distances(inliers_filter));
     sigma = std(distances(inliers_filter));
     mu_rep = repmat(mu,n_regions_all,1);
     sigma_rep = repmat(sigma,n_regions_all,1);
-    inliers_filter = abs(distances - mu_rep) < axis_distance_outlier_threshold * sigma_rep;
+    inliers_filter = abs(distances - mu_rep) <= axis_distance_outlier_threshold * sigma_rep;
     n_inliers_new = sum(inliers_filter);
     diff_n_inliers = abs(n_inliers_new - n_inliers);
     n_inliers = n_inliers_new;
