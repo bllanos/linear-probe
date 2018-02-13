@@ -44,7 +44,7 @@ if ispc
         names{i} = fullfile(filepath, strtrim(raw_names(i, :)));
     end
 else
-    names = strtrim(strsplit(ls(wildcard), {'\f','\n','\r','\t','\v'}));
+    names = strtrim(strsplit(ls(wildcard), {'  ','\f','\n','\r','\t','\v'}));
     names = names(1:(end - 1)); % There is always a terminating newline
 end
 

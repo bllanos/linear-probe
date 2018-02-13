@@ -132,8 +132,8 @@ function [ localizations, detections ] = trackInVideo(...
 %     can be captured per unit time than if processing was enabled.
 %   - show_errors: Output exceptions, which are thrown by the probe
 %     detection and localization functions, as warnings. These exceptions
-%     are bugs - Exceptions thrown because of failed detection are not
-%     output, for instance.
+%     are mostly bugs - Some exceptions thrown because of failed detection
+%     are not output, for instance.
 %   - video_index: The value to be output in the first column for each row
 %     of any output CSV file. This field is not required if
 %     `out_filenames.out_csv` is empty.

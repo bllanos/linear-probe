@@ -169,13 +169,13 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\model\rgbSkewer.mat';
+model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel.mat';
 % Image of probe
-I_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\model\rgbSkewer.tif';
+I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel_csc265.jpg';
 % Annotations for image of probe
-I_annotations_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\model\rgbSkewer_annotations.png';
+I_annotations_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel_csc265_annotated.png';
 % RGB noise parameters
-rgb_sigma_filename = 'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\model\rgbstddev_nonInteractive_video.mat';
+rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/noise/noise_csc265_rgbstddev_nonInteractive.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features

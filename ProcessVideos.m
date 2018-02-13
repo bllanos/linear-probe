@@ -160,42 +160,42 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180126_paperClipCase/model/rgbSkewer_detectionModel.mat';
+detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel_csc265_detectionModel.mat';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180126_paperClipCase/model/rgbstddev_nonInteractive_video.mat';
+rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/noise/noise_csc265_rgbstddev_nonInteractive.mat';
 % Camera calibration
-camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180126_paperClipCase/camera/cameraParams.mat';
+camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/camera/cameraParams.mat';
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180126_paperClipCase/case_square/*0004.avi';
+input_video_wildcard = '*.avi';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
-output_raw_video_directory = []; %'C:\Users\llanos\Downloads';
+output_raw_video_directory = [];
 
 % Output directory for annotated videos
 % Leave empty (`[]`) for no output annotated video
-output_annotated_video_directory = []; %'C:\Users\llanos\Downloads';
+output_annotated_video_directory = '.';
 
 % Output directory for CSV format point cloud
 % Leave empty (`[]`) for no output point cloud
-output_point_cloud_directory = '/home/llanos/Downloads'; %'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\case_square';
+output_point_cloud_directory = '.';
 
 % Combine CSV files
-concatenate_csv = false;
+concatenate_csv = true;
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
-output_data_directory = [];%'C:\Users\llanos\Google Drive\PointProbing\DataAndResults\20180126_paperClipCase\case_square';
+output_data_directory = [];
 
 % Video processing options
 % Refer to the documentation of the `options` parameter of 'trackInVideo()'
 % in 'trackInVideo.m'. Some fields of this parameter structure will be
 % filled automatically later in this script.
-options.video_mode = 'F7_RGB_2448x2048_Mode0'; % Determines which camera and video mode to use
+options.video_mode = 'webcam'; % Determines which camera and video mode to use
 options.silent = false;
-options.frame_rate = 30;
+options.frame_rate = 20;
 options.record_only = false;
 options.show_errors = true;
 
