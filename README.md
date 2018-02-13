@@ -1,5 +1,6 @@
 # CMPUT615 Project and Ongoing Research Endeavour
 **Started Spring 2016**
+
 **University of Alberta, Department of Computing Science**
 
 ## Code Contributors
@@ -76,4 +77,6 @@ Vision-based localization of a thin probe:
 
 ## Live or Pre-Recorded Video Workflow
 
-8. Use the script 'ProcessVideos.m'
+8. Use the script 'ProcessVideos.m'. Output CSV files (containing point clouds)
+   can be visualized using the point cloud viewer at
+   https://github.com/bllanos/point-cloud-viewer
