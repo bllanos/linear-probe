@@ -160,15 +160,15 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel_csc265_detectionModel.mat';
+detection_model_filename = '20180212_reverseEXPO/steel/redGreenSteel_csc265_detectionModel.mat';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/noise/noise_csc265_rgbstddev_nonInteractive.mat';
+rgb_sigma_filename = '20180212_reverseEXPO/noise/noise_csc265_rgbstddev_nonInteractive.mat';
 % Camera calibration
-camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/camera/cameraParams.mat';
+camera_params_filename = '20180212_reverseEXPO/camera/cameraParams.mat';
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = '*.avi';
+input_video_wildcard = '*.webm';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
@@ -183,7 +183,7 @@ output_annotated_video_directory = '.';
 output_point_cloud_directory = '.';
 
 % Combine CSV files
-concatenate_csv = true;
+concatenate_csv = false;
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
@@ -274,7 +274,7 @@ for i = 1:n_videos
     if any_output_files && isempty(video_filenames{i})
         cdate = replace(datestr(now, 31), {'-',' ',':'},'_');
     elseif any_output_files
-        [filepath, name, ext] = fileparts(video_filenames{i});
+        [filepath, name] = fileparts(video_filenames{i});
     end
     if isempty(output_raw_video_directory)
         raw_video_filename = [];
@@ -282,7 +282,7 @@ for i = 1:n_videos
         if isempty(video_filenames{i})
             raw_video_filename = ['live_' cdate '.avi'];
         else
-            raw_video_filename = [name '_copy' ext];
+            raw_video_filename = [name '_copy.avi'];
         end
         raw_video_filename = fullfile(output_raw_video_directory, raw_video_filename);
     end
@@ -292,7 +292,7 @@ for i = 1:n_videos
         if isempty(video_filenames{i})
             annotated_video_filename = ['live_' cdate '_annotated.avi'];
         else
-            annotated_video_filename = [name '_annotated' ext];
+            annotated_video_filename = [name '_annotated.avi'];
         end
         annotated_video_filename = fullfile(output_annotated_video_directory, annotated_video_filename);
     end
