@@ -271,8 +271,9 @@ end
     params.detectWithinBoundingBoxParams, detectWithinBoundingBoxVerbose...
     );
 
-if isempty(interest_points_detected)
-    error('No interest points detected.')
+if size(interest_points_detected, 1) < 3
+    % At least 3 points are needed to perform 2D PCA in bilateralModel()
+    error('PROBE:InsufficientPointsDetected', 'Fewer than three interest points were detected.')
 end
 
 %% Organize the detected points into per-edge pairs, and filter outliers

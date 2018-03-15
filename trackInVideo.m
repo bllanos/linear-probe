@@ -370,6 +370,7 @@ while runLoop
         catch ME
             switch ME.identifier
                 case 'PROBE:InsufficientRegionsDetected'
+                case 'PROBE:InsufficientPointsDetected'
                 otherwise
                     % rethrow(ME)
                     if options.show_errors

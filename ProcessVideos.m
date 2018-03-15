@@ -160,15 +160,15 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '20180212_reverseEXPO/steel/redGreenSteel_csc265_detectionModel.mat';
+detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/probe/redGreenSteel_probeDetectionModel.mat';
 % RGB noise parameters
-rgb_sigma_filename = '20180212_reverseEXPO/noise/noise_csc265_rgbstddev_nonInteractive.mat';
+rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise/rgbstddev_nonInteractive.mat';
 % Camera calibration
-camera_params_filename = '20180212_reverseEXPO/camera/cameraParams.mat';
+camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/camera/cameraIntrinsics.mat';
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = '*.webm';
+input_video_wildcard = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/takes_videos/*.avi';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
@@ -176,14 +176,14 @@ output_raw_video_directory = [];
 
 % Output directory for annotated videos
 % Leave empty (`[]`) for no output annotated video
-output_annotated_video_directory = '.';
+output_annotated_video_directory = [];
 
 % Output directory for CSV format point cloud
 % Leave empty (`[]`) for no output point cloud
-output_point_cloud_directory = '.';
+output_point_cloud_directory = [];
 
 % Combine CSV files
-concatenate_csv = false;
+concatenate_csv = true;
 
 % Output directory for comprehensive numerical results
 % Leave empty (`[]`) for no output data file
@@ -195,7 +195,7 @@ output_data_directory = [];
 % filled automatically later in this script.
 options.video_mode = 'webcam'; % Determines which camera and video mode to use
 options.silent = false;
-options.frame_rate = 20;
+options.frame_rate = 30;
 options.record_only = false;
 options.show_errors = true;
 

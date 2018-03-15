@@ -55,7 +55,7 @@ video_mode = true;
 
 if video_mode
     % Input video file
-    video_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/noise/noise_csc265.webm';
+    video_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise/noise2_longer.avi';
     
     % Starting offset in the video
     start_time = 0;
@@ -71,10 +71,10 @@ else
 end
 
 % Directory in which to save the output file
-out_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/noise';
+out_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise';
 
 % Name of the output file
-out_filename = 'noise_csc265_rgbstddev_nonInteractive.mat';
+out_filename = 'rgbstddev_nonInteractive.mat';
 
 % Number of pixels to plot when visualizing the results
 plot_count = 1000;

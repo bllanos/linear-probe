@@ -247,16 +247,18 @@ inliers_below_filter = (min_x_separation_indices_above(min_x_separation_indices_
 % Reference: MATLAB documentation page on "Inconsistent Data"
 % Outlier separation in x-coordinates
 inlier_separations = [min_separations_above(inliers_above_filter); min_separations_below(inliers_below_filter)];
-mu_separations = mean(inlier_separations);
 sigma_separations = std(inlier_separations);
+if sigma_separations > 0
+    mu_separations = mean(inlier_separations);
 
-mu_separations_rep = repmat(mu_separations,n_points_above,1);
-sigma_separations_rep = repmat(sigma_separations,n_points_above,1);
-inliers_above_filter = inliers_above_filter & (abs(min_separations_above - mu_separations_rep) < point_alignment_outlier_threshold * sigma_separations_rep);
+    mu_separations_rep = repmat(mu_separations,n_points_above,1);
+    sigma_separations_rep = repmat(sigma_separations,n_points_above,1);
+    inliers_above_filter = inliers_above_filter & (abs(min_separations_above - mu_separations_rep) < point_alignment_outlier_threshold * sigma_separations_rep);
 
-mu_separations_rep = repmat(mu_separations,n_points_below,1);
-sigma_separations_rep = repmat(sigma_separations,n_points_below,1);
-inliers_below_filter = inliers_below_filter & (abs(min_separations_below - mu_separations_rep) < point_alignment_outlier_threshold * sigma_separations_rep);
+    mu_separations_rep = repmat(mu_separations,n_points_below,1);
+    sigma_separations_rep = repmat(sigma_separations,n_points_below,1);
+    inliers_below_filter = inliers_below_filter & (abs(min_separations_below - mu_separations_rep) < point_alignment_outlier_threshold * sigma_separations_rep);
+end
 
 % Organize mismatched points according to their positions along the first
 % component axis

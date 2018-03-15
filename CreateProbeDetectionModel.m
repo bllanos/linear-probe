@@ -169,13 +169,13 @@ parameters_list = {
     };
 
 % Probe measurements
-model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel.mat';
+model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/probe/redGreenSteel.mat';
 % Image of probe
-I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel_csc265.jpg';
+I_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/probe/colorCalibration.tif';
 % Annotations for image of probe
-I_annotations_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/steel/redGreenSteel_csc265_annotated.png';
+I_annotations_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/probe/colorCalibration_annotated.png';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180212_reverseEXPO/noise/noise_csc265_rgbstddev_nonInteractive.mat';
+rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise/rgbstddev_nonInteractive.mat';
 
 % Annotation extraction parameters
 annotation_corner_search_width = 0; % Set to zero to use centers of user-marked annotations as opposed to nearby corner features
@@ -307,12 +307,12 @@ else
         model_from_image_new = model_from_image;
         if isfield(model_from_image, 'head')
             model_from_image_new.tail = model_from_image.head;
-        else
+        elseif isfield(model_from_image_new, 'tail')
             model_from_image_new = rmfield(model_from_image_new, 'tail');
         end
         if isfield(model_from_image, 'tail')
             model_from_image_new.head = model_from_image.tail;
-        else
+        elseif isfield(model_from_image_new, 'head')
             model_from_image_new = rmfield(model_from_image_new, 'head');
         end
         model_from_image_new.above = flipud(model_from_image_new.above);
