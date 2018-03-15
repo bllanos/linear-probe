@@ -309,6 +309,11 @@ end
 
 %% Label the colours between detected probe band edges
 
+if n_detected_band_edges < 2
+    % At least 2 edges are needed by labelDetectedColors()
+    error('PROBE:InsufficientEdgesDetected', 'Fewer than two edges between coloured bands were detected.')
+end
+
 [...
     probe_colors_detected_left, probe_colors_detected_right...
 ] = labelDetectedColors(...

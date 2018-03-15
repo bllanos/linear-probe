@@ -111,6 +111,8 @@ function [ colors_left, colors_right ] = labelDetectedColors(...
 %   by the detected endpoints of the edges between probe colour bands.
 %   These binary images might be useful for other tasks, and could be
 %   assigned to an output argument in the future.
+% - The `model_pca_space` and `model` input arguments must have at least
+%   two points in each of their 'above' and 'below' fields.
 %
 % See also detectWithinBoundingBox, bilateralModel
 
@@ -176,6 +178,19 @@ border_points_filter = border_points_filter &...
 border_points_filter = border_points_filter &...
     border_points(:, 1) >= 1 & border_points(:, 1) <= image_width &...
     border_points(:, 2) >= 1 & border_points(:, 2) <= image_height;
+% Select the closer intersection points
+for i = 1:size(line_endpoints, 1)
+    current_line_ind = find(border_points_filter & (line_indices == i));
+    n_intersection_points = length(current_line_ind);
+    if n_intersection_points > 1
+        distances = border_points(current_line_ind, :) - repmat(line_endpoints(i, 1:2), n_intersection_points, 1);
+        distances = dot(distances, distances, 2);
+        [~, selected_intersection_ind] = min(distances);
+        border_points_filter(current_line_ind([
+            1:(selected_intersection_ind - 1), (selected_intersection_ind + 1):end
+            ])) = false;
+    end
+end
 line_indices = line_indices(border_points_filter);
 border_points = border_points(border_points_filter, :);
 border_points(line_indices, :) = border_points;

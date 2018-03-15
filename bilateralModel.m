@@ -70,7 +70,9 @@ function [ model, lengths, axes, model_px, transform ] = bilateralModel( points,
 %
 % points -- 2D point coordinates
 %   An n x 2 array, where 'n' is the number of points, and where the
-%   columns store point x and y coordinates, respectively.
+%   columns store point x and y coordinates, respectively. `points` must
+%   contain at least three points for 2D principal components analysis to
+%   be possible.
 %
 % point_alignment_outlier_threshold -- Outlier threshold in standard deviations
 %   The number of standard deviations from the mean separation of the first

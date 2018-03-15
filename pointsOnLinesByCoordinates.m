@@ -1,5 +1,5 @@
 function [ p ] = pointsOnLinesByCoordinates(start, endpoint, coord, coordIndex)
-% POINTSONLINESBYCOORDINATES Check if points are between the endpoints of line segments
+% POINTSONLINESBYCOORDINATES Find points on lines between two endpoints by one coordinate
 %
 % ## Syntax
 % p = pointsOnLinesByCoordinates(start, endpoint, coord, coordIndex)
