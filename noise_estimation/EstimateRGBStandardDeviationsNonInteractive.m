@@ -55,23 +55,23 @@ video_mode = true;
 
 if video_mode
     % Input video file
-    video_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise/noise2_longer.avi';
-    
+    video_filename = '';
+
     % Starting offset in the video
     start_time = 0;
-    
+
     % Maximum number of frames to read (set to zero to read all frames)
     n_frames = 0;
 else
     % Directory containing the input images
-    in_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180108_noiseEstimation';
-    
+    in_directory = '';
+
     % Input image filename wildcard
     wildcard = '*.jpg';
 end
 
 % Directory in which to save the output file
-out_directory = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise';
+out_directory = '';
 
 % Name of the output file
 out_filename = 'rgbstddev_nonInteractive.mat';

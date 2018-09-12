@@ -6,10 +6,10 @@
 % File created January 26, 2018
 
 %% Parameters
-input_wildcard = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180124_redGreenSkewer_flea3/grid_csv/*.csv';
+input_wildcard = '';
 input_files = listFiles(input_wildcard);
 
-camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180124_redGreenSkewer_flea3/camera/cameraParams.mat';
+camera_params_filename = '';
 
 n_rows = 2;
 n_columns = 5;
@@ -111,7 +111,7 @@ for k = [1 n_angles]
     y_k = cell2mat(y_k);
     z_k = reshape(z(:, :, k), [], 1);
     z_k = cell2mat(z_k);
-    
+
     figure;
     hold on
     scatter3(x_k, y_k, z_k, 3, 'k', 'filled')
@@ -195,13 +195,13 @@ for dim = 1:3
     ylabel('Standard deviation [mm]')
     title(sprintf('Standard deviation along %s principal component', dim_names{dim}))
     legend(legend_str)
-    
+
 end
 
 %% Plot PCA vectors as a function of angle and depth
 
 % for j = 1:n_columns
-%     
+%
 %     vectors = reshape(permute(pca_coeff{j}, [2, 3, 1]), [], 3);
 %     scales = reshape(pca_var{j}.', [], 1);
 %     vectors = vectors .* repmat(scales, 1, 3);
@@ -210,10 +210,10 @@ end
 %     %colors = [repelem(colors(:, 1), 3), repelem(colors(:, 2), 3), repelem(colors(:, 3), 3)];
 %     colors = eye(3);
 %     colors = repmat(colors, n_coeff, 1);
-%     
+%
 %     figure;
 %     scatter3(vectors(:, 1), vectors(:, 2), vectors(:, 3), [], colors, 'filled');
-%     
+%
 %     % Colours denote first, second, third components
 %     xlabel('X [mm]')
 %     ylabel('Y [mm]')
@@ -232,7 +232,7 @@ for j = 1:n_columns
     end
     probe_axis = [repelem(probe_axis(:, 1), 3), repelem(probe_axis(:, 2), 3), repelem(probe_axis(:, 3), 3)];
     dots = dot(vectors, probe_axis, 2);
-    
+
     figure;
     hold on
     for dim = 1:3
@@ -240,7 +240,7 @@ for j = 1:n_columns
         plot(angles{j}, y, line_specs{dim});
     end
     hold off
-    
+
     xlabel('Angle on chequerboard (degrees)')
     ylabel('Angle with probe axis (degrees)')
     title(sprintf('PCA vectors at a depth of %g [mm]', true_points_aligned((row - 1) * n_columns + j, 3)))
@@ -255,7 +255,7 @@ for j = 1:n_columns
     for c = 1:n_coeff
         probe_axis(c, :) = mean([nx{row, j, c}, ny{row, j, c}, nz{row, j, c}], 1);
     end
-    
+
     % Project to image space
     vectors = [vectors, zeros(size(vectors, 1), 1)]; %#ok<AGROW>
     probe_axis = [probe_axis, zeros(size(probe_axis, 1), 1)]; %#ok<AGROW>
@@ -268,7 +268,7 @@ for j = 1:n_columns
     image_probe_axis = [repelem(image_probe_axis(:, 1), 3), repelem(image_probe_axis(:, 2), 3)];
     image_probe_axis = image_probe_axis ./ sqrt(dot(image_probe_axis, image_probe_axis, 2));
     dots = dot(image_vectors, image_probe_axis, 2);
-    
+
     figure;
     hold on
     for dim = 2:3
@@ -276,7 +276,7 @@ for j = 1:n_columns
         plot(angles{j}, y, line_specs{dim});
     end
     hold off
-    
+
     xlabel('Angle on chequerboard (degrees)')
     ylabel('Angle with probe axis in image (degrees)')
     title(sprintf('PCA vectors at a depth of %g [mm]', true_points_aligned((row - 1) * n_columns + j, 3)))

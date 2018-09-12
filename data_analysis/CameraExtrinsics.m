@@ -51,10 +51,10 @@ parameters_list = {
     };
 
 % Camera calibration
-camera_params_filename = 'cameraIntrinsics.mat';
+camera_params_filename = '';
 
 % Image of chequerboard
-I_filename = 'extrinsicCalibration.tif';
+I_filename = '';
 
 % Chequerboard square size
 square_size = 106.95; % Must be in the same units as used for camera calibration

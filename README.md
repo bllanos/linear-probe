@@ -1,10 +1,15 @@
-# CMPUT615 Project and Ongoing Research Endeavour
+# Do-It-Yourself Single Camera 3D Pointer Input Device
 **Started Spring 2016**
 
 **University of Alberta, Department of Computing Science**
 
+## Publication
+B. Llanos, and Y.-H. Yang, “Do-It-Yourself Single Camera 3D Pointer Input Device,”
+  in 2018 15th Conference on Computer and Robot Vision (CRV), 2018, pp. 214–221.
+  DOI 10.1109/CRV.2018.00038
+
 ## Code Contributors
-- Bernard Llanos, supervised by Dr. Y.H. Yang
+- Bernard Llanos, supervised by Dr. Y.-H. Yang
 
 ## Other Project Contributors
 - CMPUT615 Project partners (Winter 2017 offering):
@@ -32,6 +37,9 @@ Vision-based localization of a thin probe:
 ## Usage Instructions
 - Files starting with capital letters are MATLAB scripts, which can be used
   as described in their documentation comments.
+  - The scripts in 'data_analysis/' require data not provided in this repository,
+    and most of them have no use beyond producing some of the figures in the
+    conference paper cited above.
 - Remaining files are MATLAB functions called by the scripts.
 
 ================================================================================

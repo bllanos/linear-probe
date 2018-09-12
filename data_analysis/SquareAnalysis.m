@@ -6,7 +6,7 @@
 % File created January 28, 2018
 
 %% Data input parameters
-input_file = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180126_paperClipCase/case_square/tour.csv';
+input_file = '';
 
 % start_analysis = 621;
 % end_analysis = 719;
@@ -50,14 +50,14 @@ point_colors_all = 1:n_points_all;
 % colormap jet
 % c = colorbar;
 % c.Label.String = 'Frame number';
-% 
+%
 % xlabel('X')
 % ylabel('Y')
 % zlabel('Z')
 % axis equal
 % grid on
 % title('Points on tours of the square')
-% 
+%
 % % Points of interest
 % point_colors = 1:n_points;
 % figure;
@@ -68,7 +68,7 @@ point_colors_all = 1:n_points_all;
 % colormap jet
 % c = colorbar;
 % c.Label.String = 'Frame number';
-% 
+%
 % xlabel('X')
 % ylabel('Y')
 % zlabel('Z')
@@ -259,7 +259,7 @@ for c = 1:n_corners
     endpoint_vector = endpoints(2, :) - endpoints(1, :);
     endpoint_separation = norm(endpoint_vector);
     endpoint_vector = endpoint_vector ./ endpoint_separation;
-    
+
     distances_perpendicular = distanceToLine(points, endpoints);
     for e = 1:2
         points_to_endpoint = points - repmat(endpoints(e, :), n_points, 1);
@@ -275,7 +275,7 @@ for c = 1:n_corners
     end
     distances_endpoints_merged = min(distances_endpoints, [], 2);
     filter_endpoints_merged = any(filter_endpoints, 2);
-    
+
     % Points between the two endpoints have their distance calculated
     % perpendicular to the line segment
     distances(:, c) = distances_perpendicular;

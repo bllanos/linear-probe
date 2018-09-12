@@ -116,10 +116,10 @@ parameters_list = [parameters_list {
 model_filename = [];
 
 % Probe detection result
-detection_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180114_bluePenWithTape_saturationThreshold/detection_smallOcclusion.mat';
+detection_filename = '';
 
 % Camera projection matrix
-camera_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180112_bluePenWithTape/cameraCalibration/cameraParams_bouguetFormat.mat';
+camera_filename = '';
 
 % Image containing the probe
 I_filename = [];

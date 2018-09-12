@@ -160,15 +160,15 @@ parameters_list = {
     };
 
 % Probe detection model
-detection_model_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/probe/redGreenSteel_probeDetectionModel.mat';
+detection_model_filename = '';
 % RGB noise parameters
-rgb_sigma_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/noise/rgbstddev_nonInteractive.mat';
+rgb_sigma_filename = '';
 % Camera calibration
-camera_params_filename = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/camera/cameraIntrinsics.mat';
+camera_params_filename = '';
 
 % Wildcard for 'ls()' to find the videos to process.
 % Leave empty (`[]`) to read live video
-input_video_wildcard = '/home/llanos/GoogleDrive/PointProbing/DataAndResults/20180313_motionCapture/takes_videos/*.avi';
+input_video_wildcard = '';
 
 % Output directory for raw videos
 % Leave empty (`[]`) for no output raw video
@@ -314,13 +314,13 @@ for i = 1:n_videos
         end
         save_data_filename = fullfile(output_data_directory, save_data_filename);
     end
-    
+
     out_filenames = struct(...
         'raw_video', raw_video_filename,...
         'out_video', annotated_video_filename,...
         'out_csv', point_cloud_filename...
     );
-    
+
     % Video processing
     options_i = options;
     options_i.video_index = video_index;

@@ -240,7 +240,7 @@ parameters_list = [parameters_list {
     }];
 
 % Probe localization results
-localization_filename = fullfile('..','Data','probeLocalizationResults_probePrePaperOcclusion_1_t_rect.mat');
+localization_filename = '';
 
 % Measurements of the probe object
 model_filename = [];
@@ -253,13 +253,13 @@ I_filename = [];
 
 % Ground truth points
 % If none is provided, set it to an empty array (`[]`).
-visible_points_filename = fullfile('..','Data','probePrePaperOcclusion_1_t_groundTruth.mat');
+visible_points_filename = '';
 
 % Ground truth stereo information
 % If none is provided, set it to an empty array (`[]`).
-stereo_data_filename = fullfile('..','Data','probePrePaperOcclusion_1_stereo_groundTruth.mat');
-I1_filename = fullfile('..','Data','probePrePaperOcclusion_1_b_rect.bmp');
-I2_filename = fullfile('..','Data','probePrePaperOcclusion_1_t_rect.bmp');
+stereo_data_filename = '';
+I1_filename = '';
+I2_filename = '';
 
 % Parameters for interpreting annotated points
 point_alignment_outlier_threshold = 5;
@@ -321,7 +321,7 @@ if stereo_gt_available
     if ~all(ismember(stereo_variables_required, who))
         error('One or more of the stereo ground truth variables is not loaded.')
     end
-    
+
     n_x = size(x1, 1);
     stereo_orientation_gt_available = n_x > 1;
     if stereo_orientation_gt_available && display_reprojected_stereo_points
@@ -361,7 +361,7 @@ end
 %% Assess reprojection error
 
 if single_view_gt_available
-    
+
     % Classify marked points
     [ ~, ~, ~, visible_points_model ] = bilateralModel(...
         visible_points(:, 2:3), point_alignment_outlier_threshold, true...
@@ -376,7 +376,7 @@ if single_view_gt_available
         error(sprintf(['Not all probe colour band junctions are marked with two points - One on each edge of the probe.\n',...
             'Consider increasing the outlier detection threshold used when pairing points.'])); %#ok<SPERR>
     end
-    
+
     % Associate with reprojected points
     n_visible_points = size(visible_points, 1);
     n_visible_points_pairs = size(visible_points_model.above, 1);
@@ -392,13 +392,13 @@ if single_view_gt_available
                 1 ...
             );
     end
-    
+
     % Make sure the points are sorted by band index (in order for the
     % output to be better organized)
     [visible_length_indices, sorting_map] = sort(visible_length_indices);
     above_visible = visible_points_model.above(sorting_map, :);
     below_visible = visible_points_model.below(sorting_map, :);
-    
+
     % Obtain reprojected points for the interior of the probe
     [above_reprojected, below_reprojected] = reprojectProbe(...
         probe.lengths(visible_length_indices),...
@@ -411,7 +411,7 @@ if single_view_gt_available
     error_interior = gt - reprojected;
     error_interior = error_interior.^2;
     error_interior = [ sqrt(sum(error_interior(:, 1:2), 2)), sqrt(sum(error_interior(:, 3:end), 2)) ];
-    
+
     visible_points_error = struct(...
         'index', num2cell(visible_length_indices),...
         'gt', num2cell(gt, 2),...
@@ -422,7 +422,7 @@ if single_view_gt_available
     error_sum = sum(sum(error_interior));
     error_max_2d = max(max(error_interior));
     error_count = numel(error_interior);
-    
+
     % Repeat for the probe tips
     for name = {'head', 'tail'}
         if isfield(visible_points_model, name{1})
@@ -456,16 +456,16 @@ if single_view_gt_available
             end
         end
     end
-    
+
     error_mean_2d = error_sum / error_count;
-    
+
     if display_reprojection_statistics
         disp('Reprojection error:') %#ok<UNRCH>
         visible_points_error_display = struct2table(visible_points_error);
         disp(visible_points_error_display);
         fprintf('Mean reprojection error: %g\n', error_mean_2d);
         fprintf('Maximum reprojection error: %g\n', error_max_2d);
-        
+
         figure;
         error_mean_pairwise = mean(vertcat(visible_points_error(:).error), 2);
         plot(error_mean_pairwise);
@@ -478,7 +478,7 @@ end
 %% Assess 3D error
 
 if stereo_gt_available
-    
+
     % Triangulate 3D points
     x1 = sortrows(x1);
     x2 = sortrows(x2);
@@ -489,14 +489,14 @@ if stereo_gt_available
     x1 = x1(:, 2:3);
     x2 = x2(:, 2:3);
     X_gt = triangulate(x1, x2, P1.', P2.');
-    
+
     X_est = vertcat(probe_axis_locations(points_3d_indices).objectPoint);
-    
+
     % Calculate distance error
     error_3d = X_gt - X_est;
     error_3d = error_3d.^2;
     error_3d = sqrt(sum(error_3d, 2));
-    
+
     points_error_3d = struct(...
         'index', num2cell(points_3d_indices),...
         'gt', num2cell(X_gt, 2),...
@@ -506,7 +506,7 @@ if stereo_gt_available
 
     error_mean_3d = mean(error_3d);
     error_max_3d = max(error_3d);
-    
+
     if display_3d_statistics
         disp('3D distances from triangulated points:') %#ok<UNRCH>
         points_error_3d_display = struct2table(points_error_3d);
@@ -550,7 +550,7 @@ if stereo_gt_available
         error_orientation_depth = dot(d_gt_image_rotated, d_image_rotated);
         error_orientation_depth_deg = acosd(error_orientation_depth);
         error_orientation_depth = acos(error_orientation_depth);
-        
+
         if display_3d_statistics
             disp('Orientation errors:') %#ok<UNRCH>
             fprintf('Total angle:\n');
@@ -563,16 +563,16 @@ if stereo_gt_available
             fprintf('\tRadians: %g\n', error_orientation_depth);
             fprintf('\tDegrees: %g\n', error_orientation_depth_deg);
         end
-        
+
         if display_reprojected_stereo_points1 || display_reprojected_stereo_points2
-            
+
             % Least squares solution for the probe tip
             A = repmat(eye(3), n_x, 1);
             b = X_est - d_gt .* repmat(probe.lengths(points_3d_indices), 1, 3);
             b = b.';
             b = b(:);
             X_tip_gt = (A \ b).';
-            
+
             if display_reprojected_stereo_points1
                 [above_gt, below_gt] = reprojectProbe(...
                     probe.lengths, probe.widths, P1, d_gt, X_tip_gt...
@@ -582,7 +582,7 @@ if stereo_gt_available
                     'Reprojection of probe localization result vs. stereo data (Camera 1)'...
                 );
             end
-            
+
             if display_reprojected_stereo_points2
                 [above_gt, below_gt] = reprojectProbe(...
                     probe.lengths, probe.widths, P2, d_gt, X_tip_gt...
